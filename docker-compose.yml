@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: unifi-mcp
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
     ports:
       - "${UNIFI_MCP_PORT:-9155}:${UNIFI_MCP_PORT:-9155}"
     env_file:
