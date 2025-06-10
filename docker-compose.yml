@@ -1,0 +1,28 @@
+services:
+  unifi-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: unifi-mcp
+    ports:
+      - "${UNIFI_MCP_PORT:-9155}:${UNIFI_MCP_PORT:-9155}"
+    env_file:
+      - .env
+    volumes:
+      - unifi-logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6977/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - unifi-mcp-network
+
+volumes:
+  unifi-logs:
+
+networks:
+  unifi-mcp-network:
+    driver: bridge 

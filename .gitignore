@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.venv-backend
+.env
+*.log
+
+.bivvy
+.cursor
+
+
+web-ui/frontend/node_modules
+web-ui/backend/.venv-backend/
+.pnpm-store/
