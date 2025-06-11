@@ -11,7 +11,7 @@ services:
     env_file:
       - .env
     volumes:
-      - unifi-logs:/app/logs
+      - /mnt/cache/appdata/unifi-mcp/logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9155/health"]
@@ -20,11 +20,8 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - unifi-mcp-network
-
-volumes:
-  unifi-logs:
+      - jakenet
 
 networks:
-  unifi-mcp-network:
-    driver: bridge 
+  jakenet:
+    external: true 
