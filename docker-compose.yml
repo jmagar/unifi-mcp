@@ -14,7 +14,7 @@ services:
       - unifi-logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6977/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9155/health"]
       interval: 30s
       timeout: 10s
       retries: 3
