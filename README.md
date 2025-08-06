@@ -1,115 +1,184 @@
-# UniFi Local Controller MCP Server
+<div align="center">
 
-A Model Context Protocol (MCP) server that provides direct integration with local UniFi controllers, built with FastMCP and streamable HTTP transport.
+# 🌐 UniFi Local Controller MCP Server
 
-## Overview
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![FastMCP](https://img.shields.io/badge/FastMCP-Enabled-green.svg)](https://github.com/jlowin/fastmcp)
+[![License](https://img.shields.io/badge/License-Open%20Source-brightgreen.svg)](#license)
+[![UniFi](https://img.shields.io/badge/UniFi-Controller%20Ready-0559C9.svg)](https://ui.com)
 
-This MCP server enables programmatic access to your local UniFi controller through a comprehensive set of tools and resources. Unlike cloud-based solutions, this server connects directly to your UniFi controller for real-time device management and network monitoring.
+*A powerful Model Context Protocol (MCP) server for seamless UniFi controller integration*
 
-**Key Features:**
-- Direct local controller integration with Cloud Gateway Max and UniFi 7 AP support
-- Real-time device status, statistics, and management
-- **Clean, formatted output** - No more overwhelming JSON walls, just essential information
-- **Smart data formatting** - Human-readable bandwidth, uptimes, and device-specific details
-- Comprehensive network configuration access
-- Device management operations (restart, locate, client reconnection)
-- FastMCP resources with `unifi://` URI scheme for structured data access
+🚀 **Direct Local Access** • 📊 **Real-time Monitoring** • 🔧 **Device Management** • 🎯 **Clean Data Output**
 
-## Quick Start
+</div>
 
-### Prerequisites
-- Local UniFi controller (Cloud Gateway Max, UDM Pro, or traditional controller)
-- Direct network access to the controller
-- Local controller account (not UniFi Cloud/SSO account)
-- Python 3.11+
-- `uv` package manager
+---
 
-### Controller Compatibility
-- **UniFi OS devices** (UDM Pro, UDM SE, Cloud Gateway Max, Cloud Key Gen2+): Uses HTTPS port 443
-- **Legacy controllers** (Software controllers, Cloud Key Gen1): Uses HTTPS port 8443
-- **Authentication**: Requires local admin account, not UniFi Cloud credentials
+## ✨ Overview
 
-### Installation
+This MCP server provides **direct, real-time integration** with your local UniFi controller through a comprehensive suite of tools and resources. Built with modern FastMCP framework, it eliminates the need for cloud dependencies while delivering clean, formatted data output.
 
-1. **Clone and setup:**
-   ```bash
-   cd unifi-mcp
-   uv sync
-   ```
+### 🎯 **Key Features**
 
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your controller details
-   ```
+| Feature | Description |
+|---------|-------------|
+| 🏠 **Local Integration** | Direct controller access - no cloud dependencies |
+| 📡 **Real-time Data** | Live device status, statistics, and monitoring |
+| 🎨 **Clean Output** | Human-readable formatting - no JSON walls |
+| 🔧 **Device Control** | Restart, locate, and manage network devices |
+| 📊 **Smart Analytics** | Bandwidth, DPI stats, and network insights |
+| 🌐 **Universal Support** | Works with UDM Pro, Cloud Gateway Max, legacy controllers |
+| ⚡ **FastMCP Powered** | Modern MCP framework with streamable HTTP transport |
 
-3. **Run the server:**
-   ```bash
-   ./run.sh
-   # Or directly: uv run python unifi-local-mcp-server.py
-   ```
+## 🚀 Quick Start
 
-The server runs on `http://localhost:8001/mcp` by default.
+### 📋 Prerequisites
 
-## Configuration
+> **Before you begin**, ensure you have:
 
-### Required Environment Variables
+- 🏠 **Local UniFi Controller** (Cloud Gateway Max, UDM Pro, or traditional controller)
+- 🌐 **Direct Network Access** to the controller
+- 👤 **Local Admin Account** (not UniFi Cloud/SSO)
+- 🐍 **Python 3.11+**
+- 📦 **`uv` Package Manager**
+
+### 🔌 Controller Compatibility
+
+| Controller Type | Port | Examples |
+|----------------|------|----------|
+| 🆕 **UniFi OS Devices** | `443` | UDM Pro, UDM SE, Cloud Gateway Max, Cloud Key Gen2+ |
+| 🔄 **Legacy Controllers** | `8443` | Software controllers, Cloud Key Gen1 |
+
+> ⚠️ **Authentication Note**: Requires local admin account, **not** UniFi Cloud credentials
+
+### ⚡ Installation
+
+<details>
+<summary><b>📥 Step-by-Step Setup</b></summary>
+
+#### 1️⃣ **Clone and Setup**
+```bash
+cd unifi-mcp
+uv sync
+```
+
+#### 2️⃣ **Configure Environment**
+```bash
+cp .env.example .env
+# Edit .env with your controller details
+```
+
+#### 3️⃣ **Launch Server**
+```bash
+./run.sh
+# Or directly: uv run python unifi-local-mcp-server.py
+```
+
+</details>
+
+🎯 **Server Endpoint**: `http://localhost:8001/mcp`
+
+## ⚙️ Configuration
+
+### 🔑 Required Environment Variables
+
+<details>
+<summary><b>📝 Configuration Template</b></summary>
 
 ```bash
-# Controller connection (scheme and port required)
+# 🏠 Controller Connection (scheme and port required)
 UNIFI_CONTROLLER_URL=https://10.1.0.1:443  # UniFi OS (UDM Pro, Cloud Gateway Max)
 # UNIFI_CONTROLLER_URL=https://10.1.0.1:8443  # Legacy controllers
 UNIFI_USERNAME=admin                        # Local controller admin username
 UNIFI_PASSWORD=your_password               # Local controller admin password
 
-# Controller type configuration
+# 🔧 Controller Type Configuration
 UNIFI_IS_UDM_PRO=true                 # true for UniFi OS devices, false for legacy
 UNIFI_VERIFY_SSL=false                # false for self-signed certs, true for valid SSL
 
-# Optional server settings
+# 🌐 Optional Server Settings
 UNIFI_LOCAL_MCP_HOST=0.0.0.0          # Server bind address
 UNIFI_LOCAL_MCP_PORT=8001             # Server port
 UNIFI_LOCAL_MCP_LOG_LEVEL=INFO        # Logging level
 ```
 
-### Controller URL Examples
-- **UniFi OS devices**: `https://192.168.1.1:443` (UDM Pro, Cloud Gateway Max, Cloud Key Gen2+)
-- **Legacy controllers**: `https://unifi.example.com:8443` (Software controllers, Cloud Key Gen1)
-- **Custom ports**: Include the actual port if different from defaults
+</details>
 
-### SSL Certificate Handling
-- **Self-signed certificates** (common): Set `UNIFI_VERIFY_SSL=false`
-- **Valid SSL certificates**: Set `UNIFI_VERIFY_SSL=true`
-- **Custom CA bundle**: Provide path to CA bundle file
+### 🌐 Controller URL Examples
 
-## Available Tools
+| Type | URL Format | Use Case |
+|------|------------|----------|
+| 🆕 **UniFi OS** | `https://192.168.1.1:443` | UDM Pro, Cloud Gateway Max, Cloud Key Gen2+ |
+| 🔄 **Legacy** | `https://unifi.example.com:8443` | Software controllers, Cloud Key Gen1 |
+| 🔧 **Custom** | `https://controller:PORT` | Non-standard port configurations |
 
-### Device Management
-- `get_devices` - List all devices with clean, formatted summaries (no raw JSON)
-- `get_device_by_mac` - Get specific device details with formatted output
-- `restart_device` - Restart a UniFi device
-- `locate_device` - Trigger locate LED on device
+### 🔒 SSL Certificate Handling
 
-### Client Management  
-- `get_clients` - List connected clients with formatted connection details
-- `reconnect_client` - Force client reconnection
+| Certificate Type | Setting | Description |
+|-----------------|---------|-------------|
+| 🔓 **Self-signed** | `UNIFI_VERIFY_SSL=false` | Most common setup |
+| ✅ **Valid SSL** | `UNIFI_VERIFY_SSL=true` | Trusted certificate authority |
+| 📁 **Custom CA** | Provide CA bundle path | Enterprise environments |
 
-### Network Configuration
-- `get_sites` - List all controller sites
-- `get_wlan_configs` - Wireless network configurations
-- `get_network_configs` - Network/VLAN configurations
-- `get_port_configs` - Switch port profiles
-- `get_port_forwarding_rules` - Port forwarding rules
+## 🛠️ Available Tools
 
-### Monitoring & Statistics
-- `get_controller_status` - Controller system information
-- `get_events` - Recent controller events
-- `get_alarms` - Active system alarms
-- `get_dpi_stats` - Deep Packet Inspection statistics
-- `get_rogue_aps` - Detected rogue access points
-- `start_spectrum_scan` - Start RF spectrum scan on access point
-- `get_spectrum_scan_state` - Get spectrum scan results
-- `authorize_guest` - Authorize guest network access
+<div align="center">
+
+### 🎯 **Tool Categories**
+
+</div>
+
+<details>
+<summary><b>📱 Device Management</b></summary>
+
+| Tool | Description | Output |
+|------|-------------|--------|
+| `get_devices` | List all devices | 🎨 Clean, formatted summaries |
+| `get_device_by_mac` | Specific device details | 📊 Formatted device info |
+| `restart_device` | Restart UniFi device | ⚡ Device reboot |
+| `locate_device` | Trigger locate LED | 💡 Visual device identification |
+
+</details>
+
+<details>
+<summary><b>👥 Client Management</b></summary>
+
+| Tool | Description | Output |
+|------|-------------|--------|
+| `get_clients` | Connected clients | 🔗 Connection details |
+| `reconnect_client` | Force reconnection | 🔄 Client refresh |
+
+</details>
+
+<details>
+<summary><b>🌐 Network Configuration</b></summary>
+
+| Tool | Description | Output |
+|------|-------------|--------|
+| `get_sites` | Controller sites | 🏢 Site information |
+| `get_wlan_configs` | Wireless networks | 📡 WiFi configurations |
+| `get_network_configs` | Network/VLAN setup | 🔧 Network topology |
+| `get_port_configs` | Switch port profiles | 🔌 Port configurations |
+| `get_port_forwarding_rules` | Port forwarding | ➡️ Traffic routing rules |
+
+</details>
+
+<details>
+<summary><b>📊 Monitoring & Statistics</b></summary>
+
+| Tool | Description | Output |
+|------|-------------|--------|
+| `get_controller_status` | System information | 💻 Controller health |
+| `get_events` | Recent controller events | 📅 Event timeline |
+| `get_alarms` | Active system alarms | 🚨 Alert notifications |
+| `get_dpi_stats` | Deep Packet Inspection | 🔍 Traffic analysis |
+| `get_rogue_aps` | Rogue access points | ⚠️ Security threats |
+| `start_spectrum_scan` | RF spectrum analysis | 📡 Wireless diagnostics |
+| `get_spectrum_scan_state` | Scan results | 📊 RF environment data |
+| `authorize_guest` | Guest network access | 🎫 Visitor authorization |
+
+</details>
 
 ## MCP Resources
 
@@ -120,83 +189,54 @@ Access structured data using the `unifi://` URI scheme:
 - `unifi://devices` - All devices with clean formatting (default site)
 - `unifi://clients` - All connected clients with essential details (default site)
 - `unifi://dashboard` - Dashboard metrics and time-series data (default site)
-- `unifi://overview` - Network overview with glanceable info (default site)
-- `unifi://events` - Recent events (default site)
-- `unifi://alarms` - Active alarms (default site)
-- `unifi://health` - Site health status (default site)
-- `unifi://config/networks` - Network configurations (default site)
-- `unifi://config/wlans` - WLAN configurations (default site)
-- `unifi://config/portforward` - Port forwarding rules (default site)
-- `unifi://stats/bandwidth` - Bandwidth statistics (default site)
-- `unifi://stats/dpi` - DPI statistics (default site)
-- `unifi://channels` - Current wireless channels (default site)
-- `unifi://device-tags` - Device tags (default site)
-- `unifi://rogue-aps` - Detected rogue access points (default site)
-- `unifi://admins` - Administrator accounts
-- `unifi://sysinfo` - Controller system information
 
-### Site-Specific Resources
-- `unifi://devices/{site_name}` - Devices with clean formatting for specific site
-- `unifi://clients/{site_name}` - Clients with essential details for specific site
-- `unifi://dashboard/{site_name}` - Dashboard metrics for specific site
-- `unifi://overview/{site_name}` - Network overview for specific site
-- `unifi://stats/bandwidth/{site_name}` - Bandwidth statistics
-- `unifi://stats/dpi/{site_name}` - DPI statistics
-- `unifi://config/networks/{site_name}` - Network configurations
-- `unifi://config/wlans/{site_name}` - WLAN configurations
-- `unifi://config/portforward/{site_name}` - Port forwarding rules
-- `unifi://events/{site_name}` - Recent events
-- `unifi://alarms/{site_name}` - Active alarms
-- `unifi://health/{site_name}` - Site health status
-- `unifi://channels/{site_name}` - Current wireless channels
-- `unifi://device-tags/{site_name}` - Device tags
-- `unifi://rogue-aps/{site_name}` - Detected rogue access points
+<details>
+<summary><b>🎨 Data Formatting Engine</b></summary>
 
-### Device-Specific Resources
-- `unifi://device/{site_name}/{mac}` - Individual device details with clean formatting
-- `unifi://stats/device/{site_name}/{mac}` - Device performance stats
+| Feature | Description |
+|---------|-------------|
+| 🧠 **Smart Summarization** | Essential info only - no JSON walls |
+| 📱 **Device-Type Aware** | Custom formatting per device type |
+| 🔌 **Connection-Type Aware** | Tailored wired vs wireless details |
+| 📊 **Auto Conversion** | Bytes, uptimes, timestamps |
+| 🔄 **Recursive Formatting** | Clean nested data structures |
 
-### Additional Resources
-- `unifi://sites/{site_name}` - Detailed site information including health data
+</details>
 
-## Architecture
+### 🔐 Authentication Flow
 
-### Core Components
+```mermaid
+sequenceDiagram
+    participant Client
+    participant MCP Server
+    participant UniFi Controller
+    
+    Client->>MCP Server: Request
+    MCP Server->>UniFi Controller: Login (username/password)
+    UniFi Controller->>MCP Server: TOKEN/unifises cookie
+    MCP Server->>UniFi Controller: Parse CSRF token (UDM Pro)
+    MCP Server->>UniFi Controller: API Request + Auth Headers
+    UniFi Controller->>MCP Server: Response Data
+    MCP Server->>Client: Formatted Response
+```
 
-**UnifiControllerClient** - Handles authentication and API communication
-- Supports both UDM Pro and legacy controller authentication
-- Automatic session management with TOKEN cookies and CSRF tokens
-- Comprehensive error handling and retry logic
+### 🎯 Key Design Decisions
 
-**FastMCP Integration** - Modern MCP server framework
-- Streamable HTTP transport on port 8001
-- Structured resource system with URI templates
-- Comprehensive tool registration and validation
+| Decision | Rationale | Benefit |
+|----------|-----------|----------|
+| 📄 **Single-file server** | Complete implementation simplicity | Easy deployment & maintenance |
+| 🎯 **Default site assumption** | Most operations use "default" | Simplified API calls |
+| 🎨 **Clean data presentation** | Smart formatting helpers | No overwhelming JSON |
+| 📊 **Comprehensive resources** | Dashboard + detailed monitoring | Complete network visibility |
+| 🔧 **Resource vs Tool pattern** | Resources for data, tools for ops | Clear separation of concerns |
 
-**Data Formatting** - Clean, comprehensible output
-- **Smart Summarization** - Essential information only, no overwhelming JSON walls
-- **Device-Type Aware** - Different formatting for Access Points, Gateways, and Switches
-- **Connection-Type Aware** - Tailored details for wired vs wireless clients
-- Automatic byte conversion (B, KB, MB, GB, TB) with raw value preservation
-- Human-readable uptimes, timestamps, and signal strengths
-- Recursive formatting for nested data structures
+## 👨‍💻 Development
 
-### Authentication Flow
-1. Login to controller using username/password
-2. Extract TOKEN cookie (UDM Pro) or unifises cookie (legacy)
-3. Parse CSRF token from JWT payload for UDM Pro devices
-4. Include authentication headers in all subsequent requests
+### 🔥 Hot Reload Development
 
-### Key Design Decisions
-- **Single-file server**: Complete implementation in one file for simplicity
-- **Default site assumption**: Most operations default to "default" site
-- **Clean data presentation**: Smart formatting helpers eliminate JSON noise
-- **Comprehensive resources**: Dashboard, overview, and detailed monitoring capabilities
-- **Resource vs Tool pattern**: Resources for data access, tools for operations
+<details>
+<summary><b>🚀 Development Setup</b></summary>
 
-## Development
-
-### Running with Hot Reload
 ```bash
 # Install development dependencies
 uv sync --extra dev
@@ -205,7 +245,13 @@ uv sync --extra dev
 uv run reloaderoo unifi-local-mcp-server.py
 ```
 
-### Testing Tools
+</details>
+
+### 🧪 Testing Tools
+
+<details>
+<summary><b>🔧 API Testing Commands</b></summary>
+
 ```bash
 # List available tools
 curl -X POST http://localhost:8001/mcp/call \
@@ -218,46 +264,108 @@ curl -X POST http://localhost:8001/mcp/call \
   -d '{"method": "tools/call", "params": {"name": "get_devices"}}'
 ```
 
-### Common Endpoints
-- Health check: `http://localhost:8001/health`
-- MCP endpoint: `http://localhost:8001/mcp`
-- Tool execution: `http://localhost:8001/mcp/call`
+</details>
 
-## Troubleshooting
+### 🌐 API Endpoints
 
-### Authentication Issues
-- **401 Errors**: Check username/password and controller URL
-- **MFA Required**: Disable MFA or implement MFA support
-- **SSL Errors**: Set `UNIFI_VERIFY_SSL=false` for self-signed certificates
+| Endpoint | Purpose | Description |
+|----------|---------|-------------|
+| 💚 **Health** | `http://localhost:8001/health` | Server health check |
+| 🔗 **MCP** | `http://localhost:8001/mcp` | Main MCP endpoint |
+| ⚡ **Tools** | `http://localhost:8001/mcp/call` | Tool execution |
 
-### Controller Type Issues
-- **UDM Pro/Cloud Gateway Max**: Set `UNIFI_IS_UDM_PRO=true`
-- **Legacy Controllers**: Set `UNIFI_IS_UDM_PRO=false`
+## 🔧 Troubleshooting
 
-### Common Problems
-- **Empty DPI Stats**: Ensure DPI is enabled in controller settings
-- **No Devices Found**: Verify you have admin access to the controller
-- **Connection Timeouts**: Check network connectivity and controller availability
+<div align="center">
 
-## Technical Details
+### 🚨 **Common Issues & Solutions**
 
-### Built With
-- **[unifi-controller-api](https://github.com/tnware/unifi-controller-api)** - Python library for UniFi controller communication
-- **[FastMCP](https://github.com/jlowin/fastmcp)** - Modern Model Context Protocol server framework
-- **PyPI Package**: [unifi-controller-api](https://pypi.org/project/unifi-controller-api/)
+</div>
 
-### Implementation Notes
-- **Device model mapping**: Automatically translates device codes (e.g., "U7PG2") to human names (e.g., "UniFi AC Pro AP")
-- **Authentication retry**: Automatic retry on authentication failure for network resilience
-- **Session management**: Handles TOKEN cookies (UniFi OS) and unifises cookies (legacy) automatically
-- **CSRF protection**: Extracts and applies CSRF tokens from JWT payloads for UniFi OS devices
+<details>
+<summary><b>🔐 Authentication Issues</b></summary>
 
-### Network Requirements
-- **Direct access**: Server must have direct network connectivity to the UniFi controller
-- **Port access**: Ensure the appropriate HTTPS port (443 or 8443) is accessible
-- **Account type**: Must use local controller account, not UniFi Cloud/SSO credentials
-- **Admin privileges**: Account must have administrative access to the controller
+| Issue | Solution | Notes |
+|-------|----------|-------|
+| 🚫 **401 Errors** | Check username/password and controller URL | Verify credentials |
+| 🔒 **MFA Required** | Disable MFA or implement MFA support | Contact admin |
+| 🛡️ **SSL Errors** | Set `UNIFI_VERIFY_SSL=false` | For self-signed certs |
 
-## License
+</details>
 
-This project is open source. See repository for license details.
+<details>
+<summary><b>🎛️ Controller Type Issues</b></summary>
+
+| Controller Type | Setting | Description |
+|----------------|---------|-------------|
+| 🆕 **UDM Pro/Cloud Gateway Max** | `UNIFI_IS_UDM_PRO=true` | Modern UniFi OS devices |
+| 🔄 **Legacy Controllers** | `UNIFI_IS_UDM_PRO=false` | Traditional controllers |
+
+</details>
+
+<details>
+<summary><b>⚠️ Common Problems</b></summary>
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| 📊 **Empty DPI Stats** | DPI disabled | Enable DPI in controller settings |
+| 📱 **No Devices Found** | Insufficient permissions | Verify admin access |
+| ⏱️ **Connection Timeouts** | Network issues | Check connectivity & availability |
+
+</details>
+
+## 🔬 Technical Details
+
+### 🛠️ Built With
+
+<div align="center">
+
+| Component | Description | Link |
+|-----------|-------------|------|
+| 🐍 **unifi-controller-api** | Python UniFi library | [GitHub](https://github.com/tnware/unifi-controller-api) |
+| ⚡ **FastMCP** | Modern MCP framework | [GitHub](https://github.com/jlowin/fastmcp) |
+| 📦 **PyPI Package** | Controller API package | [PyPI](https://pypi.org/project/unifi-controller-api/) |
+
+</div>
+
+### 💡 Implementation Highlights
+
+<details>
+<summary><b>🎯 Smart Features</b></summary>
+
+| Feature | Description | Benefit |
+|---------|-------------|----------|
+| 🏷️ **Device Model Mapping** | Translates codes ("U7PG2" → "UniFi AC Pro AP") | Human-readable names |
+| 🔄 **Authentication Retry** | Auto-retry on auth failure | Network resilience |
+| 🍪 **Session Management** | Handles TOKEN/unifises cookies | Seamless authentication |
+| 🛡️ **CSRF Protection** | JWT token extraction & application | Security compliance |
+
+</details>
+
+### 🌐 Network Requirements
+
+<details>
+<summary><b>📋 Prerequisites Checklist</b></summary>
+
+- ✅ **Direct Access**: Server → UniFi controller connectivity
+- ✅ **Port Access**: HTTPS port (443/8443) accessibility  
+- ✅ **Account Type**: Local controller account (not Cloud/SSO)
+- ✅ **Admin Privileges**: Administrative controller access
+
+</details>
+
+---
+
+<div align="center">
+
+## 📄 License
+
+**This project is open source.** See repository for license details.
+
+---
+
+*Made with ❤️ for the UniFi community*
+
+**[⭐ Star this repo](https://github.com/jmagar/unifi-mcp)** • **[🐛 Report Issues](https://github.com/jmagar/unifi-mcp/issues)** • **[💡 Request Features](https://github.com/jmagar/unifi-mcp/issues/new)**
+
+</div>

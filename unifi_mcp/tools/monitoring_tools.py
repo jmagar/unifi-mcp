@@ -180,17 +180,21 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
     
     
     @mcp.tool()
-    async def get_rogue_aps(site_name: str = "default") -> List[Dict[str, Any]]:
+    async def get_rogue_aps(site_name: str = "default", limit: int = 20) -> List[Dict[str, Any]]:
         """
-        Get detected rogue access points.
+        Get detected rogue access points (filtered to prevent large responses).
         
         Args:
             site_name: UniFi site name (default: "default")
+            limit: Maximum number of rogue APs to return (default: 20, max: 50)
             
         Returns:
             List of rogue access points with signal information
         """
         try:
+            # Limit the maximum to prevent overwhelming responses
+            limit = min(limit, 50)
+            
             rogue_aps = await client.get_rogue_aps(site_name)
             
             if isinstance(rogue_aps, dict) and "error" in rogue_aps:
@@ -199,16 +203,43 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(rogue_aps, list):
                 return [{"error": "Unexpected response format"}]
             
+            # Sort by signal strength (strongest first) and limit results
+            filtered_rogues = sorted(rogue_aps, 
+                                   key=lambda x: x.get("rssi", -100), 
+                                   reverse=True)[:limit]
+            
             # Format rogue APs for clean output
             formatted_rogues = []
-            for rogue in rogue_aps:
+            
+            # Add summary if results were limited
+            if len(rogue_aps) > limit:
+                formatted_rogues.append({
+                    "summary": f"Showing top {limit} of {len(rogue_aps)} detected rogue APs (sorted by signal strength)"
+                })
+            
+            for rogue in filtered_rogues:
+                rssi = rogue.get("rssi", "Unknown")
+                signal_str = f"{rssi} dBm" if isinstance(rssi, (int, float)) else str(rssi)
+                
+                # Determine threat level based on signal strength
+                if isinstance(rssi, (int, float)):
+                    if rssi > -60:
+                        threat_level = "High"
+                    elif rssi > -80:
+                        threat_level = "Medium"
+                    else:
+                        threat_level = "Low"
+                else:
+                    threat_level = "Unknown"
+                
                 formatted_rogue = {
                     "ssid": rogue.get("essid", "Hidden"),
                     "bssid": rogue.get("bssid", "Unknown"),
                     "channel": rogue.get("channel", "Unknown"),
                     "frequency": rogue.get("freq", "Unknown"),
-                    "signal_strength": f"{rogue.get('rssi', 'Unknown')} dBm",
+                    "signal_strength": signal_str,
                     "security": rogue.get("security", "Unknown"),
+                    "threat_level": threat_level,
                     "first_seen": format_timestamp(rogue.get("first_seen", 0)),
                     "last_seen": format_timestamp(rogue.get("last_seen", 0)),
                     "detected_by": rogue.get("ap_mac", "Unknown")

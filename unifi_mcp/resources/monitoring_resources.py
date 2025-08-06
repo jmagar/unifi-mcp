@@ -8,7 +8,7 @@ import logging
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import format_timestamp, format_data_values
+from ..formatters import format_generic_list, format_timestamp, format_data_values
 
 logger = logging.getLogger(__name__)
 
@@ -31,39 +31,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             if not events:
                 return "**UniFi Events**\n\nNo recent events found."
             
-            # Limit to most recent 15 events to prevent overwhelming output
-            recent_events = events[-15:]
-            summary = f"**UniFi Recent Events** ({len(recent_events)} of {len(events)} total)\n\n"
-            
-            for event in recent_events:
-                timestamp = format_timestamp(event.get("time", 0))
-                event_type = event.get("key", "Unknown")
-                message = event.get("msg", "No message")
-                device = event.get("ap", event.get("gw", event.get("sw", "System")))
-                user = event.get("user", "System")
-                
-                # Determine event icon based on type
-                if "connected" in event_type.lower():
-                    icon = "🔗"
-                elif "disconnected" in event_type.lower():
-                    icon = "🔌"
-                elif "login" in event_type.lower():
-                    icon = "🔐"
-                elif "alarm" in event_type.lower() or "alert" in event_type.lower():
-                    icon = "⚠️"
-                elif "upgrade" in event_type.lower() or "update" in event_type.lower():
-                    icon = "📦"
-                else:
-                    icon = "📋"
-                
-                summary += f"{icon} **{timestamp}**\n"
-                summary += f"  • Event: {event_type}\n"
-                summary += f"  • Device: {device}\n"
-                if user != "System":
-                    summary += f"  • User: {user}\n"
-                summary += f"  • Message: {message}\n\n"
-            
-            return summary.strip()
+            return format_generic_list(events[-15:], "Recent Events", ["time", "key", "msg", "user"])
             
         except Exception as e:
             logger.error(f"Error in events resource: {e}")
@@ -85,39 +53,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             if not events:
                 return f"**UniFi Events - {site_name}**\n\nNo recent events found."
             
-            # Limit to most recent 15 events to prevent overwhelming output
-            recent_events = events[-15:]
-            summary = f"**UniFi Recent Events - {site_name}** ({len(recent_events)} of {len(events)} total)\n\n"
-            
-            for event in recent_events:
-                timestamp = format_timestamp(event.get("time", 0))
-                event_type = event.get("key", "Unknown")
-                message = event.get("msg", "No message")
-                device = event.get("ap", event.get("gw", event.get("sw", "System")))
-                user = event.get("user", "System")
-                
-                # Determine event icon based on type
-                if "connected" in event_type.lower():
-                    icon = "🔗"
-                elif "disconnected" in event_type.lower():
-                    icon = "🔌"
-                elif "login" in event_type.lower():
-                    icon = "🔐"
-                elif "alarm" in event_type.lower() or "alert" in event_type.lower():
-                    icon = "⚠️"
-                elif "upgrade" in event_type.lower() or "update" in event_type.lower():
-                    icon = "📦"
-                else:
-                    icon = "📋"
-                
-                summary += f"{icon} **{timestamp}**\n"
-                summary += f"  • Event: {event_type}\n"
-                summary += f"  • Device: {device}\n"
-                if user != "System":
-                    summary += f"  • User: {user}\n"
-                summary += f"  • Message: {message}\n\n"
-            
-            return summary.strip()
+            return format_generic_list(events[-15:], "Recent Events", ["time", "key", "msg", "user"])
             
         except Exception as e:
             logger.error(f"Error in site events resource for {site_name}: {e}")
@@ -139,44 +75,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             # Filter active alarms only
             active_alarms = [alarm for alarm in alarms if not alarm.get("archived", False)]
             
-            if not active_alarms:
-                return "**UniFi Active Alarms**\n\n😊 No active alarms - all clear!"
-            
-            summary = f"**UniFi Active Alarms** ({len(active_alarms)} active)\n\n"
-            
-            # Limit to 10 most recent alarms
-            for alarm in active_alarms[:10]:
-                timestamp = format_timestamp(alarm.get("time", 0))
-                alarm_type = alarm.get("key", "Unknown")
-                message = alarm.get("msg", "No message")
-                severity = alarm.get("catname", "Unknown")
-                device = alarm.get("ap", alarm.get("gw", alarm.get("sw", "Unknown")))
-                handled = alarm.get("handled", False)
-                
-                # Determine alarm icon based on severity
-                if severity.lower() in ["critical", "high"]:
-                    icon = "🚨"
-                elif severity.lower() in ["medium", "warning"]:
-                    icon = "⚠️"
-                elif severity.lower() in ["low", "info"]:
-                    icon = "ℹ️"
-                else:
-                    icon = "🚨"
-                
-                summary += f"{icon} **{alarm_type}** ({severity})\n"
-                summary += f"  • Time: {timestamp}\n"
-                summary += f"  • Device: {device}\n"
-                summary += f"  • Message: {message}\n"
-                if handled:
-                    summary += f"  • Status: ✅ Handled\n"
-                else:
-                    summary += f"  • Status: 🔴 Unhandled\n"
-                summary += "\n"
-            
-            if len(active_alarms) > 10:
-                summary += f"... and {len(active_alarms) - 10} more active alarms\n"
-            
-            return summary.strip()
+            return format_generic_list(active_alarms[:10], "Active Alarms", ["time", "key", "msg", "catname"])
             
         except Exception as e:
             logger.error(f"Error in alarms resource: {e}")
@@ -227,15 +126,15 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 summary += f"  • Device: {device}\n"
                 summary += f"  • Message: {message}\n"
                 if handled:
-                    summary += f"  • Status: ✅ Handled\n"
+                    summary += "  • Status: ✅ Handled\n"
                 else:
-                    summary += f"  • Status: 🔴 Unhandled\n"
+                    summary += "  • Status: 🔴 Unhandled\n"
                 summary += "\n"
             
             if len(active_alarms) > 10:
                 summary += f"... and {len(active_alarms) - 10} more active alarms\n"
             
-            return summary.strip()
+            return format_generic_list(active_alarms[:10], "Site Active Alarms", ["time", "key", "msg", "catname"])
             
         except Exception as e:
             logger.error(f"Error in site alarms resource for {site_name}: {e}")
@@ -297,7 +196,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     summary += f"  • Disconnected: {num_disconnected}\n"
                 summary += "\n"
             
-            return summary.strip()
+            return format_generic_list(health, "Health Status", ["subsystem", "status"])
             
         except Exception as e:
             logger.error(f"Error in health resource: {e}")
@@ -359,7 +258,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     summary += f"  • Disconnected: {num_disconnected}\n"
                 summary += "\n"
             
-            return summary.strip()
+            return format_generic_list(health, "Site Health Status", ["subsystem", "status"])
             
         except Exception as e:
             logger.error(f"Error in site health resource for {site_name}: {e}")
@@ -422,7 +321,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     summary += f"  • Last Seen: {last_seen}\n"
                 summary += "\n"
             
-            return summary.strip()
+            return format_generic_list(dpi_stats[:10], "DPI Statistics", ["app", "tx_bytes", "rx_bytes"])
             
         except Exception as e:
             logger.error(f"Error in DPI stats resource: {e}")
@@ -485,7 +384,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     summary += f"  • Last Seen: {last_seen}\n"
                 summary += "\n"
             
-            return summary.strip()
+            return format_generic_list(dpi_stats[:10], "Site DPI Statistics", ["app", "tx_bytes", "rx_bytes"])
             
         except Exception as e:
             logger.error(f"Error in site DPI stats resource for {site_name}: {e}")
@@ -551,7 +450,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             if len(rogue_aps) > 10:
                 summary += f"... and {len(rogue_aps) - 10} more rogue APs\n"
             
-            return summary.strip()
+            return format_generic_list(rogue_aps[:10], "Rogue Access Points", ["ssid", "bssid", "channel", "rssi"])
             
         except Exception as e:
             logger.error(f"Error in rogue APs resource: {e}")
@@ -617,7 +516,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             if len(rogue_aps) > 10:
                 summary += f"... and {len(rogue_aps) - 10} more rogue APs\n"
             
-            return summary.strip()
+            return format_generic_list(rogue_aps[:10], "Site Rogue Access Points", ["ssid", "bssid", "channel", "rssi"])
             
         except Exception as e:
             logger.error(f"Error in site rogue APs resource for {site_name}: {e}")
@@ -652,7 +551,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             else:
                 uptime_str = "Unknown"
             
-            summary += f"🖥️ **Controller Information**\n"
+            summary += "🖥️ **Controller Information**\n"
             summary += f"  • Hostname: {hostname}\n"
             summary += f"  • Version: {version}\n"
             summary += f"  • Uptime: {uptime_str}\n"
@@ -673,7 +572,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                         "free": mem_free * 1024
                     })
                     
-                    summary += f"💾 **Memory Usage**\n"
+                    summary += "💾 **Memory Usage**\n"
                     summary += f"  • Total: {formatted_mem.get('total', 'Unknown')}\n"
                     summary += f"  • Used: {formatted_mem.get('used', 'Unknown')} ({mem_percent:.1f}%)\n"
                     summary += f"  • Free: {formatted_mem.get('free', 'Unknown')}\n\n"
@@ -681,7 +580,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             # Load average if available
             loadavg = sysinfo.get("loadavg_1", None)
             if loadavg is not None:
-                summary += f"📊 **System Load**\n"
+                summary += "📊 **System Load**\n"
                 summary += f"  • 1-minute average: {loadavg}\n"
                 if "loadavg_5" in sysinfo:
                     summary += f"  • 5-minute average: {sysinfo['loadavg_5']}\n"
@@ -691,13 +590,13 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             
             # Additional info if available
             if "board_rev" in sysinfo:
-                summary += f"🔧 **Hardware**\n"
+                summary += "🔧 **Hardware**\n"
                 summary += f"  • Board Revision: {sysinfo['board_rev']}\n"
                 if "cpu_cores" in sysinfo:
                     summary += f"  • CPU Cores: {sysinfo['cpu_cores']}\n"
                 summary += "\n"
             
-            return summary.strip()
+            return format_generic_list([sysinfo], "System Information", ["hostname", "version", "uptime"])
             
         except Exception as e:
             logger.error(f"Error in sysinfo resource: {e}")
@@ -742,18 +641,18 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 summary += f"{icon} **{name}** ({role})\n"
                 summary += f"  • Email: {email}\n"
                 if is_super:
-                    summary += f"  • Super Admin: ✅ Yes\n"
+                    summary += "  • Super Admin: ✅ Yes\n"
                 if requires_new_password:
-                    summary += f"  • Password Reset Required: ⚠️ Yes\n"
+                    summary += "  • Password Reset Required: ⚠️ Yes\n"
                 if last_login_time != "Unknown":
                     summary += f"  • Last Login: {last_login_time} ({last_login_by})\n"
                 if email_alerts:
-                    summary += f"  • Email Alerts: ✅ Enabled\n"
+                    summary += "  • Email Alerts: ✅ Enabled\n"
                 else:
-                    summary += f"  • Email Alerts: ❌ Disabled\n"
+                    summary += "  • Email Alerts: ❌ Disabled\n"
                 summary += "\n"
             
-            return summary.strip()
+            return format_generic_list(admins, "Admin Accounts", ["name", "email", "role"])
             
         except Exception as e:
             logger.error(f"Error in admins resource: {e}")

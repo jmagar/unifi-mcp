@@ -277,6 +277,258 @@ def format_site_summary(site: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def format_device_text(device: Dict[str, Any]) -> str:
+    """Format device into clean text representation."""
+    name = device.get('name', 'Unknown Device')
+    model = device.get('model', 'Unknown Model')
+    status = "Online" if device.get('state') == 1 else "Offline"
+    uptime = device.get('uptime', 0)
+    
+    # Format uptime
+    if uptime > 0:
+        days = uptime // 86400
+        hours = (uptime % 86400) // 3600
+        if days > 0:
+            uptime_str = f"{days}d {hours}h"
+        else:
+            uptime_str = f"{hours}h"
+    else:
+        uptime_str = "Unknown"
+    
+    # Determine device icon
+    device_type = device.get('type', '')
+    if device_type == 'uap':
+        icon = "📡"
+    elif device_type == 'ugw':
+        icon = "🌐"
+    elif device_type == 'usw':
+        icon = "🔌"
+    else:
+        icon = "📱"
+    
+    return f"{icon} {name} ({model}) - {status}, {uptime_str}"
+
+
+def format_client_text(client: Dict[str, Any]) -> str:
+    """Format client into clean text representation."""
+    name = client.get("name") or client.get("hostname", "Unknown Device")
+    ip = client.get("ip", "Unknown")
+    is_wired = client.get("is_wired", False)
+    connection_type = "Wired" if is_wired else "Wireless"
+    
+    # Connection icon
+    icon = "🔌" if is_wired else "📶"
+    
+    # Signal strength for wireless
+    if not is_wired:
+        rssi = client.get("rssi")
+        if rssi:
+            signal = f", {rssi}dBm"
+        else:
+            signal = ""
+    else:
+        signal = ""
+    
+    return f"{icon} {name} ({ip}) - {connection_type}{signal}"
+
+
+def format_site_text(site: Dict[str, Any]) -> str:
+    """Format site into clean text representation."""
+    name = site.get("desc", site.get("name", "Unknown Site"))
+    site_id = site.get("name", "Unknown")
+    role = site.get("role", "admin")
+    
+    # Calculate health
+    health = site.get("health", [])
+    total_subsystems = len(health)
+    healthy_subsystems = len([h for h in health if h.get("status") == "ok"])
+    health_percentage = (healthy_subsystems / total_subsystems * 100) if total_subsystems > 0 else 0
+    
+    # Device counts - try multiple field name patterns
+    aps = site.get("num_ap", site.get("ap_count", site.get("access_points", 0)))
+    gws = site.get("num_gw", site.get("gw_count", site.get("gateways", 0)))
+    sws = site.get("num_sw", site.get("sw_count", site.get("switches", 0)))
+    total_devices = aps + gws + sws
+    
+    return f"{name} (ID: {site_id}) | Role: {role} | Health: {health_percentage:.1f}% | Devices: {total_devices} (APs: {aps}, GWs: {gws}, SWs: {sws})"
+
+
+def format_devices_list(devices: List[Dict[str, Any]]) -> str:
+    """Format list of devices into clean text."""
+    if not devices:
+        return "No devices found."
+    
+    device_texts = []
+    for device in devices:
+        try:
+            device_texts.append(format_device_text(device))
+        except Exception:
+            name = device.get('name', 'Unknown Device')
+            mac = device.get('mac', 'Unknown MAC')
+            device_texts.append(f"⚠️ {name} (MAC: {mac}) - Error")
+    
+    return f"UniFi Network Devices ({len(devices)} total): " + " | ".join(device_texts)
+
+
+def format_clients_list(clients: List[Dict[str, Any]]) -> str:
+    """Format list of clients into clean text."""
+    if not clients:
+        return "No clients connected."
+    
+    client_texts = []
+    for client in clients:
+        try:
+            client_texts.append(format_client_text(client))
+        except Exception:
+            name = client.get('name', 'Unknown Device')
+            mac = client.get('mac', 'Unknown MAC')
+            client_texts.append(f"⚠️ {name} (MAC: {mac}) - Error")
+    
+    return f"Connected Clients ({len(clients)} total): " + " | ".join(client_texts)
+
+
+def format_sites_list(sites: List[Dict[str, Any]]) -> str:
+    """Format list of sites into clean text."""
+    if not sites:
+        return "No sites found."
+    
+    # For single site (most common), show details
+    if len(sites) == 1:
+        return f"UniFi Controller Site: {format_site_text(sites[0])}"
+    else:
+        # Multiple sites
+        site_texts = []
+        for site in sites:
+            try:
+                site_texts.append(format_site_text(site))
+            except Exception:
+                name = site.get("desc", site.get("name", "Unknown"))
+                site_texts.append(f"⚠️ {name} - Error")
+        
+        return f"UniFi Controller Sites ({len(sites)} total): " + " | ".join(site_texts)
+
+
+def format_network_text(network: Dict[str, Any]) -> str:
+    """Format network config into clean text representation."""
+    name = network.get("name", "Unknown Network")
+    purpose = network.get("purpose", "Unknown")
+    vlan = network.get("vlan", "None")
+    subnet = network.get("ip_subnet", "Unknown")
+    dhcp_enabled = network.get("dhcpd_enabled", False)
+    
+    # Determine network icon based on purpose
+    if purpose == "corporate":
+        icon = "🏢"
+    elif purpose == "wan":
+        icon = "🌍"
+    elif purpose == "guest":
+        icon = "👥"
+    elif purpose == "remote-user-vpn":
+        icon = "🔒"
+    else:
+        icon = "🔗"
+    
+    parts = [f"{icon} {name}"]
+    
+    if vlan != "None":
+        parts.append(f"VLAN {vlan}")
+    if subnet != "Unknown":
+        parts.append(subnet)
+    if dhcp_enabled:
+        parts.append("DHCP")
+    
+    return " | ".join(parts)
+
+
+def format_networks_list(networks: List[Dict[str, Any]]) -> str:
+    """Format list of networks into clean text."""
+    if not networks:
+        return "No networks configured."
+    
+    network_texts = []
+    for network in networks:
+        try:
+            network_texts.append(format_network_text(network))
+        except Exception:
+            name = network.get('name', 'Unknown Network')
+            network_texts.append(f"⚠️ {name} - Error")
+    
+    return f"Network Configurations ({len(networks)} total): " + " | ".join(network_texts)
+
+
+def format_wlan_text(wlan: Dict[str, Any]) -> str:
+    """Format WLAN config into clean text representation."""
+    name = wlan.get("name", "Unknown WLAN")
+    enabled = wlan.get("enabled", False)
+    security = wlan.get("security", "Unknown")
+    vlan = wlan.get("vlan", "Default")
+    guest_access = wlan.get("is_guest", False)
+    
+    # Status and security icons
+    status_icon = "✅" if enabled else "❌"
+    sec_icon = "🔒" if security.lower() in ["wpapsk", "wpa2psk", "wpa3psk"] else "🔓"
+    
+    parts = [f"📶 {name} {status_icon}"]
+    parts.append(f"{sec_icon} {security}")
+    
+    if vlan != "Default":
+        parts.append(f"VLAN {vlan}")
+    if guest_access:
+        parts.append("Guest")
+    
+    return " | ".join(parts)
+
+
+def format_wlans_list(wlans: List[Dict[str, Any]]) -> str:
+    """Format list of WLANs into clean text."""
+    if not wlans:
+        return "No WLANs configured."
+    
+    wlan_texts = []
+    for wlan in wlans:
+        try:
+            wlan_texts.append(format_wlan_text(wlan))
+        except Exception:
+            name = wlan.get('name', 'Unknown WLAN')
+            wlan_texts.append(f"⚠️ {name} - Error")
+    
+    return f"WLAN Configurations ({len(wlans)} total): " + " | ".join(wlan_texts)
+
+
+def format_generic_list(items: List[Dict[str, Any]], resource_type: str, key_fields: List[str]) -> str:
+    """Generic formatter for any list of items with configurable key fields."""
+    if not items:
+        return f"No {resource_type.lower()} found."
+    
+    item_texts = []
+    for item in items:
+        try:
+            # Extract key values from the item
+            parts = []
+            for field in key_fields:
+                value = item.get(field)
+                if value is not None and value != "" and value != "Unknown":
+                    # Format boolean values
+                    if isinstance(value, bool):
+                        value = "✅" if value else "❌"
+                    # Format numeric values with units if needed
+                    elif isinstance(value, (int, float)) and field.endswith(('_bytes', 'bytes')):
+                        value = format_bytes(value)
+                    elif isinstance(value, (int, float)) and field in ('uptime', 'duration'):
+                        value = format_uptime(value)
+                    
+                    parts.append(str(value))
+            
+            item_texts.append(" | ".join(parts) if parts else "Unknown Item")
+            
+        except Exception:
+            # Fallback for problematic items
+            name = item.get('name', item.get('id', 'Unknown'))
+            item_texts.append(f"⚠️ {name} - Error")
+    
+    return f"{resource_type} ({len(items)} total): " + " | ".join(item_texts)
+
+
 def format_data_values(data: Any) -> Any:
     """Recursively format data values for human consumption."""
     if isinstance(data, dict):

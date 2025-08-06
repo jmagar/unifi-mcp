@@ -5,11 +5,10 @@ Provides comprehensive dashboard and overview resources with glanceable informat
 """
 
 import logging
-from datetime import datetime
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import format_overview_data, get_device_type_name, format_data_values
+from ..formatters import get_device_type_name, format_data_values, format_generic_list
 
 logger = logging.getLogger(__name__)
 
@@ -26,58 +25,109 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
             if isinstance(dashboard, dict) and "error" in dashboard:
                 return f"Error retrieving dashboard: {dashboard['error']}"
             
-            if not isinstance(dashboard, dict):
-                return "Error: Unexpected response format"
-            
-            summary = "**UniFi Dashboard Metrics**\n\n"
-            
-            # Extract key metrics if available
-            if "wan" in dashboard:
-                wan_data = dashboard["wan"]
-                wan_tx = wan_data.get("tx_bytes-r", 0)
-                wan_rx = wan_data.get("rx_bytes-r", 0)
-                wan_total = wan_tx + wan_rx
+            # Handle both dict and list formats - dashboard might return list of time-series data
+            if isinstance(dashboard, list):
+                if not dashboard:
+                    return "**UniFi Dashboard Metrics**\n\nNo dashboard data available."
                 
-                formatted_wan = format_data_values({
-                    "total": wan_total,
-                    "tx": wan_tx,
-                    "rx": wan_rx
-                })
+                # Use the most recent data point
+                latest_data = dashboard[-1] if dashboard else {}
                 
-                summary += f"🌐 **WAN Traffic (Real-time)**\n"
-                summary += f"  • Total: {formatted_wan.get('total', '0 B')}/s\n"
-                summary += f"  • Upload: {formatted_wan.get('tx', '0 B')}/s\n"
-                summary += f"  • Download: {formatted_wan.get('rx', '0 B')}/s\n\n"
-            
-            if "wlan" in dashboard:
-                wlan_data = dashboard["wlan"]
-                wlan_tx = wlan_data.get("tx_bytes-r", 0)
-                wlan_rx = wlan_data.get("rx_bytes-r", 0)
-                wlan_total = wlan_tx + wlan_rx
+                summary = "**UniFi Dashboard Metrics** (Latest Data Point)\n\n"
                 
-                formatted_wlan = format_data_values({
-                    "total": wlan_total,
-                    "tx": wlan_tx,
-                    "rx": wlan_rx
-                })
+                # Extract WAN traffic if available
+                wan_tx = latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0))
+                wan_rx = latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0))
+                if wan_tx > 0 or wan_rx > 0:
+                    formatted_wan = format_data_values({
+                        "tx": wan_tx,
+                        "rx": wan_rx,
+                        "total": wan_tx + wan_rx
+                    })
+                    
+                    summary += "🌐 **WAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wan.get('rx', '0 B')}/s\n\n"
                 
-                summary += f"📶 **WLAN Traffic (Real-time)**\n"
-                summary += f"  • Total: {formatted_wlan.get('total', '0 B')}/s\n"
-                summary += f"  • Upload: {formatted_wlan.get('tx', '0 B')}/s\n"
-                summary += f"  • Download: {formatted_wlan.get('rx', '0 B')}/s\n\n"
+                # Extract wireless traffic if available
+                wlan_tx = latest_data.get("tx_bytes-r", 0)
+                wlan_rx = latest_data.get("rx_bytes-r", 0)
+                if wlan_tx > 0 or wlan_rx > 0:
+                    formatted_wlan = format_data_values({
+                        "tx": wlan_tx,
+                        "rx": wlan_rx,
+                        "total": wlan_tx + wlan_rx
+                    })
+                    
+                    summary += "📶 **WLAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wlan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wlan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wlan.get('rx', '0 B')}/s\n\n"
+                
+                # Additional metrics if available
+                if "latency_avg" in latest_data:
+                    latency = latest_data.get("latency_avg", 0)
+                    summary += f"⏱️ **Network Latency**: {latency:.1f}ms average\n\n"
+                
+                # Add note about time-series data
+                summary += f"*Data from {len(dashboard)} time points - showing latest measurements*"
+                
+                return format_generic_list([dashboard[-1]], "Dashboard Metrics", ["wan-tx_bytes", "wan-rx_bytes", "time"])
             
-            if "num_clients" in dashboard:
-                num_clients = dashboard["num_clients"]
-                summary += f"👥 **Connected Clients**: {num_clients}\n\n"
+            elif isinstance(dashboard, dict):
+                summary = "**UniFi Dashboard Metrics**\n\n"
+                
+                # Extract key metrics if available
+                if "wan" in dashboard:
+                    wan_data = dashboard["wan"]
+                    wan_tx = wan_data.get("tx_bytes-r", 0)
+                    wan_rx = wan_data.get("rx_bytes-r", 0)
+                    wan_total = wan_tx + wan_rx
+                    
+                    formatted_wan = format_data_values({
+                        "total": wan_total,
+                        "tx": wan_tx,
+                        "rx": wan_rx
+                    })
+                    
+                    summary += "🌐 **WAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wan.get('rx', '0 B')}/s\n\n"
+                
+                if "wlan" in dashboard:
+                    wlan_data = dashboard["wlan"]
+                    wlan_tx = wlan_data.get("tx_bytes-r", 0)
+                    wlan_rx = wlan_data.get("rx_bytes-r", 0)
+                    wlan_total = wlan_tx + wlan_rx
+                    
+                    formatted_wlan = format_data_values({
+                        "total": wlan_total,
+                        "tx": wlan_tx,
+                        "rx": wlan_rx
+                    })
+                    
+                    summary += "📶 **WLAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wlan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wlan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wlan.get('rx', '0 B')}/s\n\n"
+                
+                if "num_clients" in dashboard:
+                    num_clients = dashboard["num_clients"]
+                    summary += f"👥 **Connected Clients**: {num_clients}\n\n"
+                
+                if "num_aps" in dashboard:
+                    num_aps = dashboard["num_aps"]
+                    summary += f"📡 **Access Points**: {num_aps}\n\n"
+                
+                # Add note about real-time data
+                summary += "*Real-time traffic rates updated every few seconds*"
+                
+                return format_generic_list([dashboard], "Dashboard Data", ["tx_bytes-r", "rx_bytes-r", "time"])
             
-            if "num_aps" in dashboard:
-                num_aps = dashboard["num_aps"]
-                summary += f"📡 **Access Points**: {num_aps}\n\n"
-            
-            # Add note about real-time data
-            summary += "*Real-time traffic rates updated every few seconds*"
-            
-            return summary.strip()
+            else:
+                return "**UniFi Dashboard Metrics**\n\nUnexpected dashboard data format received."
             
         except Exception as e:
             logger.error(f"Error in dashboard resource: {e}")
@@ -93,58 +143,109 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
             if isinstance(dashboard, dict) and "error" in dashboard:
                 return f"Error retrieving dashboard for site {site_name}: {dashboard['error']}"
             
-            if not isinstance(dashboard, dict):
-                return "Error: Unexpected response format"
-            
-            summary = f"**UniFi Dashboard Metrics - {site_name}**\n\n"
-            
-            # Extract key metrics if available
-            if "wan" in dashboard:
-                wan_data = dashboard["wan"]
-                wan_tx = wan_data.get("tx_bytes-r", 0)
-                wan_rx = wan_data.get("rx_bytes-r", 0)
-                wan_total = wan_tx + wan_rx
+            # Handle both dict and list formats - dashboard might return list of time-series data
+            if isinstance(dashboard, list):
+                if not dashboard:
+                    return f"**UniFi Dashboard Metrics - {site_name}**\n\nNo dashboard data available."
                 
-                formatted_wan = format_data_values({
-                    "total": wan_total,
-                    "tx": wan_tx,
-                    "rx": wan_rx
-                })
+                # Use the most recent data point
+                latest_data = dashboard[-1] if dashboard else {}
                 
-                summary += f"🌐 **WAN Traffic (Real-time)**\n"
-                summary += f"  • Total: {formatted_wan.get('total', '0 B')}/s\n"
-                summary += f"  • Upload: {formatted_wan.get('tx', '0 B')}/s\n"
-                summary += f"  • Download: {formatted_wan.get('rx', '0 B')}/s\n\n"
-            
-            if "wlan" in dashboard:
-                wlan_data = dashboard["wlan"]
-                wlan_tx = wlan_data.get("tx_bytes-r", 0)
-                wlan_rx = wlan_data.get("rx_bytes-r", 0)
-                wlan_total = wlan_tx + wlan_rx
+                summary = f"**UniFi Dashboard Metrics - {site_name}** (Latest Data Point)\n\n"
                 
-                formatted_wlan = format_data_values({
-                    "total": wlan_total,
-                    "tx": wlan_tx,
-                    "rx": wlan_rx
-                })
+                # Extract WAN traffic if available
+                wan_tx = latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0))
+                wan_rx = latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0))
+                if wan_tx > 0 or wan_rx > 0:
+                    formatted_wan = format_data_values({
+                        "tx": wan_tx,
+                        "rx": wan_rx,
+                        "total": wan_tx + wan_rx
+                    })
+                    
+                    summary += "🌐 **WAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wan.get('rx', '0 B')}/s\n\n"
                 
-                summary += f"📶 **WLAN Traffic (Real-time)**\n"
-                summary += f"  • Total: {formatted_wlan.get('total', '0 B')}/s\n"
-                summary += f"  • Upload: {formatted_wlan.get('tx', '0 B')}/s\n"
-                summary += f"  • Download: {formatted_wlan.get('rx', '0 B')}/s\n\n"
+                # Extract wireless traffic if available
+                wlan_tx = latest_data.get("tx_bytes-r", 0)
+                wlan_rx = latest_data.get("rx_bytes-r", 0)
+                if wlan_tx > 0 or wlan_rx > 0:
+                    formatted_wlan = format_data_values({
+                        "tx": wlan_tx,
+                        "rx": wlan_rx,
+                        "total": wlan_tx + wlan_rx
+                    })
+                    
+                    summary += "📶 **WLAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wlan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wlan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wlan.get('rx', '0 B')}/s\n\n"
+                
+                # Additional metrics if available
+                if "latency_avg" in latest_data:
+                    latency = latest_data.get("latency_avg", 0)
+                    summary += f"⏱️ **Network Latency**: {latency:.1f}ms average\n\n"
+                
+                # Add note about time-series data
+                summary += f"*Data from {len(dashboard)} time points - showing latest measurements*"
+                
+                return format_generic_list([dashboard[-1]], "Site Dashboard Metrics", ["wan-tx_bytes", "wan-rx_bytes", "time"])
             
-            if "num_clients" in dashboard:
-                num_clients = dashboard["num_clients"]
-                summary += f"👥 **Connected Clients**: {num_clients}\n\n"
+            elif isinstance(dashboard, dict):
+                summary = f"**UniFi Dashboard Metrics - {site_name}**\n\n"
+                
+                # Extract key metrics if available
+                if "wan" in dashboard:
+                    wan_data = dashboard["wan"]
+                    wan_tx = wan_data.get("tx_bytes-r", 0)
+                    wan_rx = wan_data.get("rx_bytes-r", 0)
+                    wan_total = wan_tx + wan_rx
+                    
+                    formatted_wan = format_data_values({
+                        "total": wan_total,
+                        "tx": wan_tx,
+                        "rx": wan_rx
+                    })
+                    
+                    summary += "🌐 **WAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wan.get('rx', '0 B')}/s\n\n"
+                
+                if "wlan" in dashboard:
+                    wlan_data = dashboard["wlan"]
+                    wlan_tx = wlan_data.get("tx_bytes-r", 0)
+                    wlan_rx = wlan_data.get("rx_bytes-r", 0)
+                    wlan_total = wlan_tx + wlan_rx
+                    
+                    formatted_wlan = format_data_values({
+                        "total": wlan_total,
+                        "tx": wlan_tx,
+                        "rx": wlan_rx
+                    })
+                    
+                    summary += "📶 **WLAN Traffic (Real-time)**\n"
+                    summary += f"  • Total: {formatted_wlan.get('total', '0 B')}/s\n"
+                    summary += f"  • Upload: {formatted_wlan.get('tx', '0 B')}/s\n"
+                    summary += f"  • Download: {formatted_wlan.get('rx', '0 B')}/s\n\n"
+                
+                if "num_clients" in dashboard:
+                    num_clients = dashboard["num_clients"]
+                    summary += f"👥 **Connected Clients**: {num_clients}\n\n"
+                
+                if "num_aps" in dashboard:
+                    num_aps = dashboard["num_aps"]
+                    summary += f"📡 **Access Points**: {num_aps}\n\n"
+                
+                # Add note about real-time data
+                summary += "*Real-time traffic rates updated every few seconds*"
+                
+                return format_generic_list([dashboard], "Site Dashboard Data", ["tx_bytes-r", "rx_bytes-r", "time"])
             
-            if "num_aps" in dashboard:
-                num_aps = dashboard["num_aps"]
-                summary += f"📡 **Access Points**: {num_aps}\n\n"
-            
-            # Add note about real-time data
-            summary += "*Real-time traffic rates updated every few seconds*"
-            
-            return summary.strip()
+            else:
+                return f"**UniFi Dashboard Metrics - {site_name}**\n\nUnexpected dashboard data format received."
             
         except Exception as e:
             logger.error(f"Error in site dashboard resource for {site_name}: {e}")
@@ -178,7 +279,7 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                     port_forwarding = []
                 elif not isinstance(port_forwarding, list):
                     port_forwarding = []
-            except:
+            except Exception:
                 port_forwarding = []
             
             summary = "**UniFi Network Overview**\n\n"
@@ -212,7 +313,7 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                     }
             
             # Network devices summary
-            summary += f"🏭 **Network Infrastructure**\n"
+            summary += "🏭 **Network Infrastructure**\n"
             summary += f"  • Total Devices: {len(devices)} ({online_devices} online)\n"
             if device_counts["Gateway"] > 0:
                 summary += f"  • 🌐 Gateways: {device_counts['Gateway']}\n"
@@ -240,8 +341,8 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 summary += f"  • Version: {gateway_info['version']}\n\n"
             
             # Client summary
-            wireless_clients = [c for c in clients if c.get('is_wired', True) == False]
-            wired_clients = [c for c in clients if c.get('is_wired', True) == True]
+            wireless_clients = [c for c in clients if not c.get('is_wired', True)]
+            wired_clients = [c for c in clients if c.get('is_wired', True)]
             
             summary += f"👥 **Connected Clients** ({len(clients)} total)\n"
             if wireless_clients:
@@ -253,11 +354,11 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
             # Port forwarding summary
             if port_forwarding:
                 enabled_rules = [r for r in port_forwarding if r.get('enabled', False)]
-                summary += f"🚪 **Port Forwarding**\n"
+                summary += "🚪 **Port Forwarding**\n"
                 summary += f"  • Total Rules: {len(port_forwarding)}\n"
                 summary += f"  • Enabled Rules: {len(enabled_rules)}\n\n"
             
-            return summary.strip()
+            return format_generic_list(devices + clients, "Network Overview", ["name", "type", "status"])
             
         except Exception as e:
             logger.error(f"Error in overview resource: {e}")
@@ -291,7 +392,7 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                     port_forwarding = []
                 elif not isinstance(port_forwarding, list):
                     port_forwarding = []
-            except:
+            except Exception:
                 port_forwarding = []
             
             summary = f"**UniFi Network Overview - {site_name}**\n\n"
@@ -325,7 +426,7 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                     }
             
             # Network devices summary
-            summary += f"🏭 **Network Infrastructure**\n"
+            summary += "🏭 **Network Infrastructure**\n"
             summary += f"  • Total Devices: {len(devices)} ({online_devices} online)\n"
             if device_counts["Gateway"] > 0:
                 summary += f"  • 🌐 Gateways: {device_counts['Gateway']}\n"
@@ -353,8 +454,8 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 summary += f"  • Version: {gateway_info['version']}\n\n"
             
             # Client summary
-            wireless_clients = [c for c in clients if c.get('is_wired', True) == False]
-            wired_clients = [c for c in clients if c.get('is_wired', True) == True]
+            wireless_clients = [c for c in clients if not c.get('is_wired', True)]
+            wired_clients = [c for c in clients if c.get('is_wired', True)]
             
             summary += f"👥 **Connected Clients** ({len(clients)} total)\n"
             if wireless_clients:
@@ -366,11 +467,11 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
             # Port forwarding summary
             if port_forwarding:
                 enabled_rules = [r for r in port_forwarding if r.get('enabled', False)]
-                summary += f"🚪 **Port Forwarding**\n"
+                summary += "🚪 **Port Forwarding**\n"
                 summary += f"  • Total Rules: {len(port_forwarding)}\n"
                 summary += f"  • Enabled Rules: {len(enabled_rules)}\n\n"
             
-            return summary.strip()
+            return format_generic_list(devices + clients, "Site Network Overview", ["name", "type", "status"])
             
         except Exception as e:
             logger.error(f"Error in site overview resource for {site_name}: {e}")

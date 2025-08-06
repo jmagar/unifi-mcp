@@ -22,7 +22,8 @@ from .resources import (
     register_client_resources,
     register_network_resources,
     register_monitoring_resources,
-    register_overview_resources
+    register_overview_resources,
+    register_site_resources
 )
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ class UniFiMCPServer:
         register_network_resources(self.mcp, self.client)
         register_monitoring_resources(self.mcp, self.client)
         register_overview_resources(self.mcp, self.client)
+        register_site_resources(self.mcp, self.client)
         
         logger.info("UniFi MCP Server initialization complete")
     
