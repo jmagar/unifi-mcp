@@ -4,11 +4,11 @@ Network configuration MCP resources for UniFi MCP Server.
 Provides structured access to network configurations, sites, and settings.
 """
 
+import json
 import logging
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import format_generic_list
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,15 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(networks, list):
                 return "Error: Unexpected response format"
             
-            return format_generic_list(networks, "Network Configurations", ["name", "purpose", "vlan", "ip_subnet"])
+            # Filter networks to essential info
+            filtered_networks = [{
+                "name": net.get("name", "Unknown"),
+                "purpose": net.get("purpose", "Unknown"),
+                "vlan": net.get("vlan", "Unknown"),
+                "subnet": net.get("ip_subnet", "Unknown"),
+                "enabled": net.get("enabled", False)
+            } for net in networks]
+            return json.dumps(filtered_networks, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in network configs resource: {e}")
@@ -47,7 +55,15 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(networks, list):
                 return "Error: Unexpected response format"
             
-            return format_generic_list(networks, "Network Configurations", ["name", "purpose", "vlan", "ip_subnet"])
+            # Filter networks to essential info
+            filtered_networks = [{
+                "name": net.get("name", "Unknown"),
+                "purpose": net.get("purpose", "Unknown"),
+                "vlan": net.get("vlan", "Unknown"),
+                "subnet": net.get("ip_subnet", "Unknown"),
+                "enabled": net.get("enabled", False)
+            } for net in networks]
+            return json.dumps(filtered_networks, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in site network configs resource for {site_name}: {e}")
@@ -66,7 +82,16 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(wlans, list):
                 return "Error: Unexpected response format"
             
-            return format_generic_list(wlans, "WLAN Configurations", ["name", "enabled", "security", "vlan"])
+            # Filter WLANs to essential info
+            filtered_wlans = [{
+                "name": wlan.get("name", "Unknown"),
+                "ssid": wlan.get("x_passphrase", wlan.get("name", "Unknown")),
+                "enabled": wlan.get("enabled", False),
+                "security": wlan.get("security", "Unknown"),
+                "wpa_mode": wlan.get("wpa_mode", "Unknown"),
+                "channel": wlan.get("channel", "auto")
+            } for wlan in wlans]
+            return json.dumps(filtered_wlans, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in WLAN configs resource: {e}")
@@ -85,7 +110,16 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(wlans, list):
                 return "Error: Unexpected response format"
             
-            return format_generic_list(wlans, "WLAN Configurations", ["name", "enabled", "security", "vlan"])
+            # Filter WLANs to essential info
+            filtered_wlans = [{
+                "name": wlan.get("name", "Unknown"),
+                "ssid": wlan.get("x_passphrase", wlan.get("name", "Unknown")),
+                "enabled": wlan.get("enabled", False),
+                "security": wlan.get("security", "Unknown"),
+                "wpa_mode": wlan.get("wpa_mode", "Unknown"),
+                "channel": wlan.get("channel", "auto")
+            } for wlan in wlans]
+            return json.dumps(filtered_wlans, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in site WLAN configs resource for {site_name}: {e}")
@@ -104,7 +138,17 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(rules, list):
                 return "Error: Unexpected response format"
             
-            return format_generic_list(rules, "Port Forwarding Rules", ["name", "proto", "dst_port", "fwd", "enabled"])
+            # Filter port forwarding rules to essential info
+            filtered_rules = [{
+                "name": rule.get("name", "Unknown"),
+                "enabled": rule.get("enabled", False),
+                "src": rule.get("src", "any"),
+                "dst_port": rule.get("dst_port", "Unknown"),
+                "fwd_port": rule.get("fwd_port", "Unknown"),
+                "fwd_ip": rule.get("fwd", "Unknown"),
+                "protocol": rule.get("proto", "tcp_udp")
+            } for rule in rules]
+            return json.dumps(filtered_rules, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in port forwarding resource: {e}")
@@ -123,10 +167,17 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(rules, list):
                 return "Error: Unexpected response format"
             
-            if not rules:
-                return f"**UniFi Port Forwarding Rules - {site_name}**\n\nNo port forwarding rules configured."
-            
-            return format_generic_list(rules, "Port Forwarding Rules", ["name", "proto", "dst_port", "fwd", "enabled"])
+            # Filter port forwarding rules to essential info
+            filtered_rules = [{
+                "name": rule.get("name", "Unknown"),
+                "enabled": rule.get("enabled", False),
+                "src": rule.get("src", "any"),
+                "dst_port": rule.get("dst_port", "Unknown"),
+                "fwd_port": rule.get("fwd_port", "Unknown"),
+                "fwd_ip": rule.get("fwd", "Unknown"),
+                "protocol": rule.get("proto", "tcp_udp")
+            } for rule in rules]
+            return json.dumps(filtered_rules, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in site port forwarding resource for {site_name}: {e}")
@@ -145,43 +196,15 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(channels, list):
                 return "Error: Unexpected response format"
             
-            if not channels:
-                return "**UniFi Wireless Channels**\n\nNo wireless channel data available."
-            
-            summary = f"**UniFi Wireless Channels** ({len(channels)} access points)\n\n"
-            
-            for channel_info in channels:
-                ap_name = channel_info.get("name", "Unknown AP")
-                ap_mac = channel_info.get("mac", "Unknown")
-                
-                summary += f"📡 **{ap_name}**\n"
-                summary += f"  • MAC: {ap_mac}\n"
-                
-                # Radio information
-                radios = channel_info.get("radio_table", [])
-                for i, radio in enumerate(radios):
-                    radio_name = radio.get("name", f"Radio {i+1}")
-                    channel = radio.get("channel", "Unknown")
-                    tx_power = radio.get("tx_power", "Unknown")
-                    ht = radio.get("ht", "Unknown")
-                    
-                    # Determine band from channel
-                    if isinstance(channel, int):
-                        if channel <= 14:
-                            band = "2.4GHz"
-                        else:
-                            band = "5GHz"
-                    else:
-                        band = "Unknown"
-                    
-                    summary += f"  • {radio_name} ({band}): Channel {channel}, {tx_power}dBm"
-                    if ht != "Unknown":
-                        summary += f", {ht}MHz"
-                    summary += "\n"
-                
-                summary += "\n"
-            
-            return format_generic_list(channels, "Wireless Channels", ["name", "mac", "channel", "tx_power"])
+            # Filter channels to essential info
+            filtered_channels = [{
+                "radio": ch.get("radio", "Unknown"),
+                "channel": ch.get("channel", "Unknown"),
+                "tx_power": ch.get("tx_power", "Unknown"),
+                "utilization": ch.get("utilization", 0),
+                "num_sta": ch.get("num_sta", 0)
+            } for ch in channels]
+            return json.dumps(filtered_channels, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in channels resource: {e}")
@@ -200,43 +223,15 @@ def register_network_resources(mcp: FastMCP, client: UnifiControllerClient) -> N
             if not isinstance(channels, list):
                 return "Error: Unexpected response format"
             
-            if not channels:
-                return f"**UniFi Wireless Channels - {site_name}**\n\nNo wireless channel data available."
-            
-            summary = f"**UniFi Wireless Channels - {site_name}** ({len(channels)} access points)\n\n"
-            
-            for channel_info in channels:
-                ap_name = channel_info.get("name", "Unknown AP")
-                ap_mac = channel_info.get("mac", "Unknown")
-                
-                summary += f"📡 **{ap_name}**\n"
-                summary += f"  • MAC: {ap_mac}\n"
-                
-                # Radio information
-                radios = channel_info.get("radio_table", [])
-                for i, radio in enumerate(radios):
-                    radio_name = radio.get("name", f"Radio {i+1}")
-                    channel = radio.get("channel", "Unknown")
-                    tx_power = radio.get("tx_power", "Unknown")
-                    ht = radio.get("ht", "Unknown")
-                    
-                    # Determine band from channel
-                    if isinstance(channel, int):
-                        if channel <= 14:
-                            band = "2.4GHz"
-                        else:
-                            band = "5GHz"
-                    else:
-                        band = "Unknown"
-                    
-                    summary += f"  • {radio_name} ({band}): Channel {channel}, {tx_power}dBm"
-                    if ht != "Unknown":
-                        summary += f", {ht}MHz"
-                    summary += "\n"
-                
-                summary += "\n"
-            
-            return format_generic_list(channels, "Wireless Channels", ["name", "mac", "channel", "tx_power"])
+            # Filter channels to essential info
+            filtered_channels = [{
+                "radio": ch.get("radio", "Unknown"),
+                "channel": ch.get("channel", "Unknown"),
+                "tx_power": ch.get("tx_power", "Unknown"),
+                "utilization": ch.get("utilization", 0),
+                "num_sta": ch.get("num_sta", 0)
+            } for ch in channels]
+            return json.dumps(filtered_channels, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in site channels resource for {site_name}: {e}")

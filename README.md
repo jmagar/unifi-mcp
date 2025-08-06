@@ -148,6 +148,11 @@ UNIFI_LOCAL_MCP_LOG_LEVEL=INFO        # Logging level
 |------|-------------|--------|
 | `get_clients` | Connected clients | 🔗 Connection details |
 | `reconnect_client` | Force reconnection | 🔄 Client refresh |
+| `block_client` | Block client network access | 🚫 Security enforcement |
+| `unblock_client` | Restore client network access | ✅ Access restoration |
+| `forget_client` | Remove client historical data | 🗑️ GDPR compliance |
+| `set_client_name` | Set/update client name | 📝 Device identification |
+| `set_client_note` | Add notes to client record | 📋 Documentation |
 
 </details>
 
@@ -161,6 +166,9 @@ UNIFI_LOCAL_MCP_LOG_LEVEL=INFO        # Logging level
 | `get_network_configs` | Network/VLAN setup | 🔧 Network topology |
 | `get_port_configs` | Switch port profiles | 🔌 Port configurations |
 | `get_port_forwarding_rules` | Port forwarding | ➡️ Traffic routing rules |
+| `get_firewall_rules` | Firewall security rules | 🔒 Security audit |
+| `get_firewall_groups` | Firewall address groups | 👥 Security management |
+| `get_static_routes` | Advanced routing configuration | 🗺️ Network routing |
 
 </details>
 
@@ -177,18 +185,101 @@ UNIFI_LOCAL_MCP_LOG_LEVEL=INFO        # Logging level
 | `start_spectrum_scan` | RF spectrum analysis | 📡 Wireless diagnostics |
 | `get_spectrum_scan_state` | Scan results | 📊 RF environment data |
 | `authorize_guest` | Guest network access | 🎫 Visitor authorization |
+| `get_speedtest_results` | Historical speed test data | 📈 Performance analysis |
+| `get_ips_events` | Security threat detection | 🛡️ Threat monitoring |
 
 </details>
 
-## MCP Resources
+## 📋 MCP Resources
 
-Access structured data using the `unifi://` URI scheme:
+Access structured data using the `unifi://` URI scheme with **clean, filtered JSON output**:
 
-### Root Level Resources
-- `unifi://sites` - All controller sites
-- `unifi://devices` - All devices with clean formatting (default site)
-- `unifi://clients` - All connected clients with essential details (default site)
-- `unifi://dashboard` - Dashboard metrics and time-series data (default site)
+<div align="center">
+
+### 🎯 **Resource Categories**
+
+</div>
+
+<details>
+<summary><b>🏢 Site & Overview Resources</b></summary>
+
+| Resource | Description | Output Format |
+|----------|-------------|---------------|
+| `unifi://sites` | All controller sites | 🎨 Site summaries with health status |
+| `unifi://overview` | Network overview (default site) | 📊 Infrastructure & client summary |
+| `unifi://overview/{site_name}` | Network overview for specific site | 📊 Site-specific summary |
+
+</details>
+
+<details>
+<summary><b>📱 Device Resources</b></summary>
+
+| Resource | Description | Output Format |
+|----------|-------------|---------------|
+| `unifi://devices` | All devices (default site) | 🎨 Clean device summaries |
+| `unifi://devices/{site_name}` | All devices for specific site | 🎨 Site-specific devices |
+| `unifi://device/{site_name}/{mac}` | Individual device details | 📊 Detailed device info |
+| `unifi://stats/device/{site_name}/{mac}` | Device performance stats | 📈 Traffic & system metrics |
+| `unifi://device-tags` | Device tags (default site) | 🏷️ Tag assignments |
+| `unifi://device-tags/{site_name}` | Device tags for specific site | 🏷️ Site-specific tags |
+
+</details>
+
+<details>
+<summary><b>👥 Client Resources</b></summary>
+
+| Resource | Description | Output Format |
+|----------|-------------|---------------|
+| `unifi://clients` | Connected clients (default site) | 🔗 Essential connection details |
+| `unifi://clients/{site_name}` | Connected clients for specific site | 🔗 Site-specific clients |
+
+</details>
+
+<details>
+<summary><b>🌐 Network Configuration Resources</b></summary>
+
+| Resource | Description | Output Format |
+|----------|-------------|---------------|
+| `unifi://config/networks` | Network/VLAN configs (default site) | 🔧 Network topology |
+| `unifi://config/networks/{site_name}` | Networks for specific site | 🔧 Site-specific networks |
+| `unifi://config/wlans` | Wireless network configs (default site) | 📡 WiFi configurations |
+| `unifi://config/wlans/{site_name}` | WLANs for specific site | 📡 Site-specific WiFi |
+| `unifi://config/portforward` | Port forwarding rules (default site) | ➡️ Traffic routing rules |
+| `unifi://config/portforward/{site_name}` | Port forwarding for specific site | ➡️ Site-specific rules |
+| `unifi://channels` | Wireless channel info (default site) | 📶 RF channel utilization |
+| `unifi://channels/{site_name}` | Channels for specific site | 📶 Site-specific channels |
+
+</details>
+
+<details>
+<summary><b>📊 Monitoring & Statistics Resources</b></summary>
+
+| Resource | Description | Output Format |
+|----------|-------------|---------------|
+| `unifi://dashboard` | Dashboard metrics (default site) | 📈 Real-time traffic data |
+| `unifi://dashboard/{site_name}` | Dashboard for specific site | 📈 Site-specific metrics |
+| `unifi://events` | Recent events (default site) | 📅 Event timeline |
+| `unifi://events/{site_name}` | Events for specific site | 📅 Site-specific events |
+| `unifi://alarms` | Active alarms (default site) | 🚨 Alert notifications |
+| `unifi://alarms/{site_name}` | Alarms for specific site | 🚨 Site-specific alarms |
+| `unifi://health` | Site health status (default site) | ✅ Subsystem health |
+| `unifi://health/{site_name}` | Health for specific site | ✅ Site-specific health |
+| `unifi://stats/dpi` | DPI statistics (default site) | 🔍 Top application traffic |
+| `unifi://stats/dpi/{site_name}` | DPI stats for specific site | 🔍 Site-specific DPI |
+| `unifi://rogue-aps` | Rogue access points (default site) | ⚠️ Security threats |
+| `unifi://rogue-aps/{site_name}` | Rogue APs for specific site | ⚠️ Site-specific rogues |
+
+</details>
+
+<details>
+<summary><b>🔧 System Information Resources</b></summary>
+
+| Resource | Description | Output Format |
+|----------|-------------|---------------|
+| `unifi://sysinfo` | Controller system information | 💻 Hardware & software details |
+| `unifi://admins` | Administrator accounts | 👥 Admin user details |
+
+</details>
 
 <details>
 <summary><b>🎨 Data Formatting Engine</b></summary>

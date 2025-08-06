@@ -4,14 +4,76 @@ Device-related MCP resources for UniFi MCP Server.
 Provides structured access to device information and statistics.
 """
 
+import json
 import logging
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import format_generic_list, format_data_values
+from ..formatters import format_data_values
 
 logger = logging.getLogger(__name__)
 
+
+def filter_device_data(devices):
+    """Filter device data to show only essential information."""
+    filtered_devices = []
+    
+    for device in devices:
+        # Extract essential device info
+        filtered_device = {
+            "name": device.get("name", "Unknown Device"),
+            "mac": device.get("mac", "Unknown"),
+            "model": device.get("model", "Unknown"),
+            "type": get_device_type_name(device),
+            "status": "Online" if device.get("state", 0) == 1 else "Offline",
+            "ip": device.get("ip", "Unknown"),
+            "uptime": format_uptime(device.get("uptime", 0)),
+            "version": device.get("version", "Unknown")
+        }
+        
+        # Add device-type specific info
+        device_type = device.get('type', '')
+        if device_type == 'uap':  # Access Point
+            filtered_device["clients"] = device.get('num_sta', 0)
+            # Add basic radio info
+            radio_table = device.get("radio_table", [])
+            if radio_table:
+                filtered_device["radios"] = len(radio_table)
+        elif device_type == 'usw':  # Switch
+            port_table = device.get('port_table', [])
+            active_ports = len([p for p in port_table if p.get('up', False)])
+            filtered_device["ports"] = f"{active_ports}/{len(port_table)}"
+        elif device_type == 'ugw':  # Gateway
+            wan_info = device.get('wan1', {})
+            if wan_info:
+                filtered_device["wan_ip"] = wan_info.get('ip', 'Unknown')
+        
+        filtered_devices.append(filtered_device)
+    
+    return filtered_devices
+
+def get_device_type_name(device):
+    """Get human-readable device type name."""
+    device_type = device.get('type', '')
+    if device_type == 'uap':
+        return "Access Point"
+    elif device_type == 'ugw':
+        return "Gateway"
+    elif device_type == 'usw':
+        return "Switch"
+    else:
+        return "Device"
+
+def format_uptime(uptime):
+    """Format uptime in human readable format."""
+    if isinstance(uptime, (int, float)) and uptime > 0:
+        days = int(uptime // 86400)
+        hours = int((uptime % 86400) // 3600)
+        if days > 0:
+            return f"{days}d {hours}h"
+        else:
+            return f"{hours}h"
+    return "Unknown"
 
 def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> None:
     """Register all device-related MCP resources."""
@@ -28,11 +90,30 @@ def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(devices, list):
                 return "Error: Unexpected response format"
             
-            return format_generic_list(devices, "UniFi Network Devices", ["name", "model", "state", "uptime"])
+            filtered_devices = filter_device_data(devices)
+            return json.dumps(filtered_devices, indent=2, ensure_ascii=False)
             
         except Exception as e:
             return f"Error retrieving devices: {str(e)}"
     
+    
+    @mcp.resource("unifi://devices/{site_name}")
+    async def resource_site_devices(site_name: str):
+        """Get all devices with clean formatting for specific site."""
+        try:
+            devices = await client.get_devices(site_name)
+            
+            if isinstance(devices, dict) and "error" in devices:
+                return f"Error retrieving devices for site {site_name}: {devices['error']}"
+            
+            if not isinstance(devices, list):
+                return "Error: Unexpected response format"
+            
+            filtered_devices = filter_device_data(devices)
+            return filtered_devices
+            
+        except Exception as e:
+            return f"Error retrieving devices for site {site_name}: {str(e)}"
     
     @mcp.resource("unifi://device/{site_name}/{mac}")
     async def resource_device_detail(site_name: str, mac: str):
@@ -53,59 +134,10 @@ def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> No
             for device in devices:
                 device_mac = device.get("mac", "").lower().replace("-", ":").replace(".", ":")
                 if device_mac == normalized_mac:
-                    try:
-                        name = device.get('name', 'Unknown Device')
-                        model = device.get('model', 'Unknown Model')
-                        device_mac_display = device.get('mac', 'Unknown MAC')
-                        state = 'Online' if device.get('state', 0) == 1 else 'Offline'
-                        uptime = device.get('uptime', 0)
-                        ip = device.get('ip', 'Unknown')
-                        
-                        # Determine device icon and type
-                        device_type = device.get('type', '')
-                        if device_type == 'uap':
-                            icon = "📡"
-                            type_name = "Access Point"
-                        elif device_type == 'ugw':
-                            icon = "🌐"
-                            type_name = "Gateway"
-                        elif device_type == 'usw':
-                            icon = "🔌"
-                            type_name = "Switch"
-                        else:
-                            icon = "📱"
-                            type_name = "Device"
-                        
-                        summary = f"**{icon} {name}** ({type_name})\n\n"
-                        summary += "**Device Information:**\n"
-                        summary += f"  • Model: {model}\n"
-                        summary += f"  • MAC: {device_mac_display}\n"
-                        summary += f"  • IP Address: {ip}\n"
-                        summary += f"  • Status: {state}\n"
-                        summary += f"  • Uptime: {uptime}\n"
-                        
-                        # Add device-specific details
-                        if device_type == 'uap':  # Access Point
-                            num_clients = device.get('num_sta', 0)
-                            summary += f"  • Connected Clients: {num_clients}\n"
-                            
-                        elif device_type == 'usw':  # Switch
-                            port_table = device.get('port_table', [])
-                            active_ports = len([p for p in port_table if p.get('up', False)])
-                            summary += f"  • Active Ports: {active_ports}/{len(port_table)}\n"
-                            
-                        elif device_type == 'ugw':  # Gateway
-                            wan_info = device.get('wan1', {})
-                            if wan_info:
-                                wan_ip = wan_info.get('ip', 'Unknown')
-                                summary += f"  • WAN IP: {wan_ip}\n"
-                        
-                        return format_generic_list([device], "Device Details", ["name", "model", "state", "ip"])
-                        
-                    except Exception as format_error:
-                        return f"**Device Found** (MAC: {mac})\n\nError formatting device details: {str(format_error)}"
+                    filtered_device = filter_device_data([device])[0]
+                    return filtered_device
             
-            return f"**Device Not Found**\n\nNo device with MAC address {mac} found in site {site_name}."
+            return f"Device with MAC address {mac} not found in site {site_name}"
             
         except Exception as e:
             logger.error(f"Error in device detail resource for {mac}: {e}")
@@ -218,14 +250,32 @@ def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> No
                             summary += f"  • ... and {len(active_ports) - 3} more active ports\n"
                         summary += "\n"
                     
-                    # Create stats summary data
+                    # Create concise stats summary
                     stats_data = {
                         "name": name,
+                        "model": model,
+                        "mac": device.get('mac', '').upper(),
                         "uptime": uptime_str,
-                        "cpu": system_stats.get("cpu", "Unknown"),
-                        "memory": system_stats.get("mem", "Unknown")
+                        "system": {
+                            "cpu": f"{system_stats.get('cpu', 'Unknown')}%" if system_stats.get('cpu') != "Unknown" else "Unknown",
+                            "memory": f"{system_stats.get('mem', 'Unknown')}%" if system_stats.get('mem') != "Unknown" else "Unknown"
+                        },
+                        "traffic": {
+                            "total_bytes": tx_bytes + rx_bytes,
+                            "tx_packets": tx_packets,
+                            "rx_packets": rx_packets
+                        }
                     }
-                    return format_generic_list([stats_data], "Device Statistics", ["name", "uptime", "cpu", "memory"])
+                    
+                    # Add device-specific stats
+                    device_type = device.get('type', '')
+                    if device_type == 'uap' and radio_table:
+                        stats_data["radio_count"] = len(radio_table)
+                    elif device_type == 'usw' and port_table:
+                        stats_data["active_ports"] = len(active_ports)
+                        stats_data["total_ports"] = len(port_table)
+                    
+                    return json.dumps(stats_data, indent=2)
             
             return f"**Device Not Found**\n\nNo device with MAC address {mac} found in site {site_name}."
             
@@ -246,47 +296,18 @@ def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(tags, list):
                 return "Error: Unexpected response format"
             
-            if not tags:
-                return "**UniFi Device Tags**\n\nNo device tags configured."
-            
-            summary = f"**UniFi Device Tags** ({len(tags)} total)\n\n"
-            
+            # Filter tags to essential info only
+            filtered_tags = []
             for tag in tags:
-                name = tag.get("name", "Unknown Tag")
-                color = tag.get("color", "default")
-                members = tag.get("member_table", [])
-                
-                # Map color to emoji (approximate)
-                color_emoji = {
-                    "red": "🔴",
-                    "orange": "🟠",
-                    "yellow": "🟡",
-                    "green": "🟢",
-                    "blue": "🔵",
-                    "purple": "🟣",
-                    "gray": "⚫",
-                    "grey": "⚫"
-                }.get(color.lower(), "🏷️")
-                
-                summary += f"{color_emoji} **{name}**\n"
-                summary += f"  • Color: {color.title()}\n"
-                summary += f"  • Devices: {len(members)}\n"
-                
-                # Show first few device names if available
-                if members:
-                    device_names = []
-                    for member in members[:3]:  # Show first 3 devices
-                        device_name = member.get("name", member.get("mac", "Unknown"))
-                        device_names.append(device_name)
-                    
-                    summary += f"  • Tagged Devices: {', '.join(device_names)}"
-                    if len(members) > 3:
-                        summary += f" (+{len(members) - 3} more)"
-                    summary += "\n"
-                
-                summary += "\n"
+                filtered_tag = {
+                    "name": tag.get("name", "Unknown"),
+                    "id": tag.get("_id", "Unknown"),
+                    "device_count": len(tag.get("member_table", [])),
+                    "color": tag.get("attr_color", "default")
+                }
+                filtered_tags.append(filtered_tag)
             
-            return format_generic_list(tags, "Device Tags", ["name", "color"])
+            return json.dumps(filtered_tags, indent=2)
             
         except Exception as e:
             logger.error(f"Error in device tags resource: {e}")
@@ -305,48 +326,19 @@ def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(tags, list):
                 return "Error: Unexpected response format"
             
-            if not tags:
-                return f"**UniFi Device Tags - {site_name}**\n\nNo device tags configured."
-            
-            summary = f"**UniFi Device Tags - {site_name}** ({len(tags)} total)\n\n"
-            
+            # Filter tags to essential info only
+            filtered_tags = []
             for tag in tags:
-                name = tag.get("name", "Unknown Tag")
-                color = tag.get("color", "default")
-                members = tag.get("member_table", [])
+                filtered_tag = {
+                    "name": tag.get("name", "Unknown"),
+                    "id": tag.get("_id", "Unknown"),
+                    "device_count": len(tag.get("member_table", [])),
+                    "color": tag.get("attr_color", "default")
+                }
+                filtered_tags.append(filtered_tag)
                 
-                # Map color to emoji (approximate)
-                color_emoji = {
-                    "red": "🔴",
-                    "orange": "🟠",
-                    "yellow": "🟡",
-                    "green": "🟢",
-                    "blue": "🔵",
-                    "purple": "🟣",
-                    "gray": "⚫",
-                    "grey": "⚫"
-                }.get(color.lower(), "🏷️")
-                
-                summary += f"{color_emoji} **{name}**\n"
-                summary += f"  • Color: {color.title()}\n"
-                summary += f"  • Devices: {len(members)}\n"
-                
-                # Show first few device names if available
-                if members:
-                    device_names = []
-                    for member in members[:3]:  # Show first 3 devices
-                        device_name = member.get("name", member.get("mac", "Unknown"))
-                        device_names.append(device_name)
-                    
-                    summary += f"  • Tagged Devices: {', '.join(device_names)}"
-                    if len(members) > 3:
-                        summary += f" (+{len(members) - 3} more)"
-                    summary += "\n"
-                
-                summary += "\n"
-            
-            return format_generic_list(tags, "Site Device Tags", ["name", "color"])
+            return json.dumps(filtered_tags, indent=2)
             
         except Exception as e:
-            logger.error(f"Error in site device tags resource for {site_name}: {e}")
+            logger.error(f"Error in site device tags resource: {e}")
             return f"Error retrieving device tags for site {site_name}: {str(e)}"

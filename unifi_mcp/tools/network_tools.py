@@ -228,3 +228,129 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
         except Exception as e:
             logger.error(f"Error getting port forwarding rules: {e}")
             return [{"error": str(e)}]
+    
+    
+    @mcp.tool()
+    async def get_firewall_rules(site_name: str = "default") -> List[Dict[str, Any]]:
+        """
+        Get firewall rules for security audit and management.
+        
+        Args:
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            List of firewall rules with formatted information
+        """
+        try:
+            rules = await client._make_request("GET", "/rest/firewallrule", site_name=site_name)
+            
+            if isinstance(rules, dict) and "error" in rules:
+                return [rules]
+            
+            if not isinstance(rules, list):
+                return [{"error": "Unexpected response format"}]
+            
+            # Format firewall rules for clean output
+            formatted_rules = []
+            for rule in rules:
+                formatted_rule = {
+                    "name": rule.get("name", "Unnamed Rule"),
+                    "enabled": rule.get("enabled", False),
+                    "action": rule.get("action", "unknown"),
+                    "protocol": rule.get("protocol", "all"),
+                    "src_address": rule.get("src_address", "any"),
+                    "src_port": rule.get("src_port", "any"),
+                    "dst_address": rule.get("dst_address", "any"),
+                    "dst_port": rule.get("dst_port", "any"),
+                    "direction": rule.get("rule_index", "unknown"),
+                    "logging": rule.get("logging", False),
+                    "established": rule.get("state_established", False),
+                    "related": rule.get("state_related", False)
+                }
+                formatted_rules.append(formatted_rule)
+            
+            return formatted_rules
+            
+        except Exception as e:
+            logger.error(f"Error getting firewall rules: {e}")
+            return [{"error": str(e)}]
+    
+    
+    @mcp.tool()
+    async def get_firewall_groups(site_name: str = "default") -> List[Dict[str, Any]]:
+        """
+        Get firewall groups for security management.
+        
+        Args:
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            List of firewall groups with formatted information
+        """
+        try:
+            groups = await client._make_request("GET", "/rest/firewallgroup", site_name=site_name)
+            
+            if isinstance(groups, dict) and "error" in groups:
+                return [groups]
+            
+            if not isinstance(groups, list):
+                return [{"error": "Unexpected response format"}]
+            
+            # Format firewall groups for clean output
+            formatted_groups = []
+            for group in groups:
+                formatted_group = {
+                    "name": group.get("name", "Unnamed Group"),
+                    "group_type": group.get("group_type", "unknown"),
+                    "group_members": group.get("group_members", []),
+                    "member_count": len(group.get("group_members", [])),
+                    "description": group.get("description", "No description")
+                }
+                formatted_groups.append(formatted_group)
+            
+            return formatted_groups
+            
+        except Exception as e:
+            logger.error(f"Error getting firewall groups: {e}")
+            return [{"error": str(e)}]
+    
+    
+    @mcp.tool()
+    async def get_static_routes(site_name: str = "default") -> List[Dict[str, Any]]:
+        """
+        Get static routes for advanced network routing analysis.
+        
+        Args:
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            List of static routes with formatted information
+        """
+        try:
+            routes = await client._make_request("GET", "/rest/routing", site_name=site_name)
+            
+            if isinstance(routes, dict) and "error" in routes:
+                return [routes]
+            
+            if not isinstance(routes, list):
+                return [{"error": "Unexpected response format"}]
+            
+            # Format static routes for clean output
+            formatted_routes = []
+            for route in routes:
+                formatted_route = {
+                    "name": route.get("name", "Unnamed Route"),
+                    "enabled": route.get("enabled", False),
+                    "destination": route.get("static-route_network", "unknown"),
+                    "distance": route.get("static-route_distance", "unknown"),
+                    "gateway": route.get("static-route_nexthop", "unknown"),
+                    "interface": route.get("static-route_interface", "auto"),
+                    "type": route.get("type", "static")
+                }
+                formatted_routes.append(formatted_route)
+            
+            return formatted_routes
+            
+        except Exception as e:
+            logger.error(f"Error getting static routes: {e}")
+            return [{"error": str(e)}]

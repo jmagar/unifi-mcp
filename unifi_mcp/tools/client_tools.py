@@ -90,3 +90,214 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
         except Exception as e:
             logger.error(f"Error reconnecting client {mac}: {e}")
             return {"error": str(e)}
+    
+    
+    @mcp.tool()
+    async def block_client(mac: str, site_name: str = "default") -> Dict[str, Any]:
+        """
+        Block a client from accessing the network.
+        
+        Args:
+            mac: Client MAC address (any format)
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            Result of the block operation
+        """
+        try:
+            # Normalize MAC address
+            normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
+            
+            result = await client._make_request("POST", "/cmd/stamgr", 
+                                               site_name=site_name, 
+                                               data={"cmd": "block-sta", "mac": normalized_mac})
+            
+            if isinstance(result, dict) and "error" in result:
+                return result
+            
+            return {
+                "success": True,
+                "message": f"Client {mac} has been blocked from network access",
+                "mac": normalized_mac,
+                "details": result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error blocking client {mac}: {e}")
+            return {"error": str(e)}
+    
+    
+    @mcp.tool()
+    async def unblock_client(mac: str, site_name: str = "default") -> Dict[str, Any]:
+        """
+        Unblock a previously blocked client.
+        
+        Args:
+            mac: Client MAC address (any format)
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            Result of the unblock operation
+        """
+        try:
+            # Normalize MAC address
+            normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
+            
+            result = await client._make_request("POST", "/cmd/stamgr", 
+                                               site_name=site_name, 
+                                               data={"cmd": "unblock-sta", "mac": normalized_mac})
+            
+            if isinstance(result, dict) and "error" in result:
+                return result
+            
+            return {
+                "success": True,
+                "message": f"Client {mac} has been unblocked and can access the network",
+                "mac": normalized_mac,
+                "details": result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error unblocking client {mac}: {e}")
+            return {"error": str(e)}
+    
+    
+    @mcp.tool()
+    async def forget_client(mac: str, site_name: str = "default") -> Dict[str, Any]:
+        """
+        Remove historical data for a client (GDPR compliance).
+        
+        Args:
+            mac: Client MAC address (any format)
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            Result of the forget operation
+        """
+        try:
+            # Normalize MAC address
+            normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
+            
+            result = await client._make_request("POST", "/cmd/stamgr", 
+                                               site_name=site_name, 
+                                               data={"cmd": "forget-sta", "macs": [normalized_mac]})
+            
+            if isinstance(result, dict) and "error" in result:
+                return result
+            
+            return {
+                "success": True,
+                "message": f"Client {mac} historical data has been removed",
+                "mac": normalized_mac,
+                "details": result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error forgetting client {mac}: {e}")
+            return {"error": str(e)}
+    
+    
+    @mcp.tool()
+    async def set_client_name(mac: str, name: str, site_name: str = "default") -> Dict[str, Any]:
+        """
+        Set or update the name/alias for a client.
+        
+        Args:
+            mac: Client MAC address (any format)
+            name: New name for the client (empty string to remove)
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            Result of the name update operation
+        """
+        try:
+            # Normalize MAC address
+            normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
+            
+            # First get the client to find its ID
+            clients = await client.get_clients(site_name)
+            client_id = None
+            
+            if isinstance(clients, list):
+                for client_data in clients:
+                    if client_data.get("mac", "").lower().replace("-", ":").replace(".", ":") == normalized_mac:
+                        client_id = client_data.get("_id")
+                        break
+            
+            if not client_id:
+                return {"error": f"Client with MAC {mac} not found"}
+            
+            data = {"name": name} if name else {"name": ""}
+            
+            result = await client._make_request("POST", f"/upd/user/{client_id}", 
+                                               site_name=site_name, 
+                                               data=data)
+            
+            if isinstance(result, dict) and "error" in result:
+                return result
+            
+            action = "updated" if name else "removed"
+            return {
+                "success": True,
+                "message": f"Client {mac} name {action} successfully",
+                "mac": normalized_mac,
+                "name": name,
+                "details": result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error setting client name for {mac}: {e}")
+            return {"error": str(e)}
+    
+    
+    @mcp.tool()
+    async def set_client_note(mac: str, note: str, site_name: str = "default") -> Dict[str, Any]:
+        """
+        Set or update the note for a client.
+        
+        Args:
+            mac: Client MAC address (any format)
+            note: Note for the client (empty string to remove)
+            site_name: UniFi site name (default: "default")
+            
+        Returns:
+            Result of the note update operation
+        """
+        try:
+            # Normalize MAC address
+            normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
+            
+            # First get the client to find its ID
+            clients = await client.get_clients(site_name)
+            client_id = None
+            
+            if isinstance(clients, list):
+                for client_data in clients:
+                    if client_data.get("mac", "").lower().replace("-", ":").replace(".", ":") == normalized_mac:
+                        client_id = client_data.get("_id")
+                        break
+            
+            if not client_id:
+                return {"error": f"Client with MAC {mac} not found"}
+            
+            data = {"note": note} if note else {"note": ""}
+            
+            result = await client._make_request("POST", f"/upd/user/{client_id}", 
+                                               site_name=site_name, 
+                                               data=data)
+            
+            if isinstance(result, dict) and "error" in result:
+                return result
+            
+            action = "updated" if note else "removed"
+            return {
+                "success": True,
+                "message": f"Client {mac} note {action} successfully",
+                "mac": normalized_mac,
+                "note": note,
+                "details": result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error setting client note for {mac}: {e}")
+            return {"error": str(e)}

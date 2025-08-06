@@ -4,13 +4,26 @@ Overview MCP resources for UniFi MCP Server.
 Provides comprehensive dashboard and overview resources with glanceable information.
 """
 
+import json
 import logging
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import get_device_type_name, format_data_values, format_generic_list
+from ..formatters import format_data_values
 
 logger = logging.getLogger(__name__)
+
+def get_device_type_name(device):
+    """Get human-readable device type name."""
+    device_type = device.get('type', '')
+    if device_type == 'uap':
+        return "Access Point"
+    elif device_type == 'ugw':
+        return "Gateway"
+    elif device_type == 'usw':
+        return "Switch"
+    else:
+        return "Device"
 
 
 def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> None:
@@ -73,7 +86,18 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 # Add note about time-series data
                 summary += f"*Data from {len(dashboard)} time points - showing latest measurements*"
                 
-                return format_generic_list([dashboard[-1]], "Dashboard Metrics", ["wan-tx_bytes", "wan-rx_bytes", "time"])
+                latest = dashboard[-1]
+                # Filter dashboard to essential metrics
+                filtered_dashboard = {
+                    "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
+                    "wan_rx_rate": latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0)),
+                    "wlan_tx_rate": latest_data.get("tx_bytes-r", 0),
+                    "wlan_rx_rate": latest_data.get("rx_bytes-r", 0),
+                    "latency_avg": latest_data.get("latency_avg", 0),
+                    "timestamp": latest_data.get("time", 0),
+                    "data_points": len(dashboard)
+                }
+                return json.dumps(filtered_dashboard, indent=2, ensure_ascii=False)
             
             elif isinstance(dashboard, dict):
                 summary = "**UniFi Dashboard Metrics**\n\n"
@@ -124,7 +148,17 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 # Add note about real-time data
                 summary += "*Real-time traffic rates updated every few seconds*"
                 
-                return format_generic_list([dashboard], "Dashboard Data", ["tx_bytes-r", "rx_bytes-r", "time"])
+                # Filter dashboard to essential metrics
+                filtered_dashboard = {
+                    "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
+                    "wan_rx_rate": latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0)),
+                    "wlan_tx_rate": latest_data.get("tx_bytes-r", 0),
+                    "wlan_rx_rate": latest_data.get("rx_bytes-r", 0),
+                    "latency_avg": latest_data.get("latency_avg", 0),
+                    "timestamp": latest_data.get("time", 0),
+                    "data_points": len(dashboard)
+                }
+                return json.dumps(filtered_dashboard, indent=2, ensure_ascii=False)
             
             else:
                 return "**UniFi Dashboard Metrics**\n\nUnexpected dashboard data format received."
@@ -191,7 +225,18 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 # Add note about time-series data
                 summary += f"*Data from {len(dashboard)} time points - showing latest measurements*"
                 
-                return format_generic_list([dashboard[-1]], "Site Dashboard Metrics", ["wan-tx_bytes", "wan-rx_bytes", "time"])
+                latest = dashboard[-1]
+                # Filter dashboard to essential metrics
+                filtered_dashboard = {
+                    "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
+                    "wan_rx_rate": latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0)),
+                    "wlan_tx_rate": latest_data.get("tx_bytes-r", 0),
+                    "wlan_rx_rate": latest_data.get("rx_bytes-r", 0),
+                    "latency_avg": latest_data.get("latency_avg", 0),
+                    "timestamp": latest_data.get("time", 0),
+                    "data_points": len(dashboard)
+                }
+                return json.dumps(filtered_dashboard, indent=2, ensure_ascii=False)
             
             elif isinstance(dashboard, dict):
                 summary = f"**UniFi Dashboard Metrics - {site_name}**\n\n"
@@ -242,7 +287,17 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 # Add note about real-time data
                 summary += "*Real-time traffic rates updated every few seconds*"
                 
-                return format_generic_list([dashboard], "Site Dashboard Data", ["tx_bytes-r", "rx_bytes-r", "time"])
+                # Filter dashboard to essential metrics
+                filtered_dashboard = {
+                    "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
+                    "wan_rx_rate": latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0)),
+                    "wlan_tx_rate": latest_data.get("tx_bytes-r", 0),
+                    "wlan_rx_rate": latest_data.get("rx_bytes-r", 0),
+                    "latency_avg": latest_data.get("latency_avg", 0),
+                    "timestamp": latest_data.get("time", 0),
+                    "data_points": len(dashboard)
+                }
+                return json.dumps(filtered_dashboard, indent=2, ensure_ascii=False)
             
             else:
                 return f"**UniFi Dashboard Metrics - {site_name}**\n\nUnexpected dashboard data format received."
@@ -358,7 +413,30 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 summary += f"  • Total Rules: {len(port_forwarding)}\n"
                 summary += f"  • Enabled Rules: {len(enabled_rules)}\n\n"
             
-            return format_generic_list(devices + clients, "Network Overview", ["name", "type", "status"])
+            overview_items = devices + clients
+            item_texts = []
+            for item in overview_items:
+                name = item.get("name", "Unknown")
+                item_type = item.get("type", "Device") if "type" in item else "Client"
+                status = "Online" if item.get("state") == 1 or item.get("is_online", False) else "Offline"
+                item_texts.append(f"{name} ({item_type}) - {status}")
+            # Create filtered overview summary
+            filtered_overview = {
+                "summary": {
+                    "total_devices": len(devices),
+                    "online_devices": online_devices,
+                    "device_types": device_counts,
+                    "total_clients": len(clients),
+                    "wireless_clients": len(wireless_clients),
+                    "wired_clients": len(wired_clients)
+                },
+                "gateway": gateway_info,
+                "port_forwarding": {
+                    "total_rules": len(port_forwarding),
+                    "enabled_rules": len([r for r in port_forwarding if r.get('enabled', False)])
+                } if port_forwarding else None
+            }
+            return json.dumps(filtered_overview, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in overview resource: {e}")
@@ -471,7 +549,30 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 summary += f"  • Total Rules: {len(port_forwarding)}\n"
                 summary += f"  • Enabled Rules: {len(enabled_rules)}\n\n"
             
-            return format_generic_list(devices + clients, "Site Network Overview", ["name", "type", "status"])
+            overview_items = devices + clients
+            item_texts = []
+            for item in overview_items:
+                name = item.get("name", "Unknown")
+                item_type = item.get("type", "Device") if "type" in item else "Client"
+                status = "Online" if item.get("state") == 1 or item.get("is_online", False) else "Offline"
+                item_texts.append(f"{name} ({item_type}) - {status}")
+            # Create filtered overview summary
+            filtered_overview = {
+                "summary": {
+                    "total_devices": len(devices),
+                    "online_devices": online_devices,
+                    "device_types": device_counts,
+                    "total_clients": len(clients),
+                    "wireless_clients": len(wireless_clients),
+                    "wired_clients": len(wired_clients)
+                },
+                "gateway": gateway_info,
+                "port_forwarding": {
+                    "total_rules": len(port_forwarding),
+                    "enabled_rules": len([r for r in port_forwarding if r.get('enabled', False)])
+                } if port_forwarding else None
+            }
+            return json.dumps(filtered_overview, indent=2, ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"Error in site overview resource for {site_name}: {e}")

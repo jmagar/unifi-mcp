@@ -375,3 +375,115 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
         except Exception as e:
             logger.error(f"Error authorizing guest {mac}: {e}")
             return {"error": str(e)}
+    
+    
+    @mcp.tool()
+    async def get_speedtest_results(site_name: str = "default", limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Get historical internet speed test results.
+        
+        Args:
+            site_name: UniFi site name (default: "default")
+            limit: Maximum number of results to return (default: 20)
+            
+        Returns:
+            List of speed test results with formatted information
+        """
+        try:
+            # Use the archive speedtest endpoint with time range
+            import time
+            end_time = int(time.time() * 1000)  # Current time in milliseconds
+            start_time = end_time - (30 * 24 * 60 * 60 * 1000)  # 30 days ago
+            
+            data = {
+                "start": start_time,
+                "end": end_time,
+                "attrs": ["time", "xput_download", "xput_upload", "latency", "ping", "jitter"]
+            }
+            
+            results = await client._make_request("POST", "/stat/report/archive.speedtest", 
+                                               site_name=site_name, data=data)
+            
+            if isinstance(results, dict) and "error" in results:
+                return [results]
+            
+            if not isinstance(results, list):
+                return [{"error": "Unexpected response format"}]
+            
+            # Format speed test results for clean output
+            formatted_results = []
+            for result in results[-limit:]:  # Get the most recent results
+                formatted_result = {
+                    "timestamp": format_timestamp(result.get("time", 0)),
+                    "download_mbps": round(result.get("xput_download", 0) / 1000000, 2),
+                    "upload_mbps": round(result.get("xput_upload", 0) / 1000000, 2),
+                    "latency_ms": result.get("latency", 0),
+                    "ping_ms": result.get("ping", 0),
+                    "jitter_ms": result.get("jitter", 0),
+                    "server": result.get("server", "Unknown")
+                }
+                formatted_results.append(formatted_result)
+            
+            return formatted_results
+            
+        except Exception as e:
+            logger.error(f"Error getting speed test results: {e}")
+            return [{"error": str(e)}]
+    
+    
+    @mcp.tool()
+    async def get_ips_events(site_name: str = "default", limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Get IPS/IDS threat detection events for security monitoring.
+        
+        Args:
+            site_name: UniFi site name (default: "default")
+            limit: Maximum number of events to return (default: 50)
+            
+        Returns:
+            List of IPS events with formatted threat information
+        """
+        try:
+            # Use the IPS events endpoint with time range
+            import time
+            end_time = int(time.time() * 1000)  # Current time in milliseconds
+            start_time = end_time - (7 * 24 * 60 * 60 * 1000)  # 7 days ago
+            
+            data = {
+                "start": start_time,
+                "end": end_time,
+                "attrs": ["time", "src_ip", "dst_ip", "proto", "app_proto", "signature", 
+                         "category", "action", "severity", "msg"]
+            }
+            
+            events = await client._make_request("POST", "/stat/ips/event", 
+                                              site_name=site_name, data=data)
+            
+            if isinstance(events, dict) and "error" in events:
+                return [events]
+            
+            if not isinstance(events, list):
+                return [{"error": "Unexpected response format"}]
+            
+            # Format IPS events for clean output
+            formatted_events = []
+            for event in events[-limit:]:  # Get the most recent events
+                formatted_event = {
+                    "timestamp": format_timestamp(event.get("time", 0)),
+                    "source_ip": event.get("src_ip", "Unknown"),
+                    "destination_ip": event.get("dst_ip", "Unknown"),
+                    "protocol": event.get("proto", "Unknown"),
+                    "app_protocol": event.get("app_proto", "Unknown"),
+                    "signature": event.get("signature", "Unknown"),
+                    "category": event.get("category", "Unknown"),
+                    "action": event.get("action", "Unknown"),
+                    "severity": event.get("severity", "Unknown"),
+                    "message": event.get("msg", "No message")
+                }
+                formatted_events.append(formatted_event)
+            
+            return formatted_events
+            
+        except Exception as e:
+            logger.error(f"Error getting IPS events: {e}")
+            return [{"error": str(e)}]
