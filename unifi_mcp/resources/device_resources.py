@@ -9,7 +9,7 @@ import logging
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import format_data_values
+from ..formatters import format_data_values, format_uptime
 
 logger = logging.getLogger(__name__)
 
@@ -64,16 +64,6 @@ def get_device_type_name(device):
     else:
         return "Device"
 
-def format_uptime(uptime):
-    """Format uptime in human readable format."""
-    if isinstance(uptime, (int, float)) and uptime > 0:
-        days = int(uptime // 86400)
-        hours = int((uptime % 86400) // 3600)
-        if days > 0:
-            return f"{days}d {hours}h"
-        else:
-            return f"{hours}h"
-    return "Unknown"
 
 def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> None:
     """Register all device-related MCP resources."""

@@ -31,6 +31,70 @@ DEVICE_MODEL_MAP = {
 }
 
 
+def get_tx_power_str(device: Dict[str, Any], radio_index: int) -> str:
+    """Get TX power string for a radio, handling Unknown values safely."""
+    radio_table = device.get("radio_table", [])
+    if len(radio_table) <= radio_index:
+        return "Unknown dBm"
+    
+    tx_power = radio_table[radio_index].get("tx_power")
+    if tx_power is None or tx_power == "Unknown" or tx_power == "":
+        return "Unknown dBm"
+    
+    try:
+        # Try to format as number if it's numeric
+        power_val = float(tx_power)
+        return f"{power_val} dBm"
+    except (ValueError, TypeError):
+        return "Unknown dBm"
+
+
+def get_temperature_str(temp_value) -> str:
+    """Get temperature string, handling Unknown values safely."""
+    if temp_value is None or temp_value == "Unknown" or temp_value == "":
+        return "Unknown°C"
+    
+    try:
+        temp_val = float(temp_value)
+        return f"{temp_val}°C"
+    except (ValueError, TypeError):
+        return "Unknown°C"
+
+
+def get_percentage_str(value) -> str:
+    """Get percentage string, handling Unknown values safely."""
+    if value is None or value == "Unknown" or value == "":
+        return "Unknown%"
+    
+    try:
+        percent_val = float(value)
+        return f"{percent_val:.1f}%"
+    except (ValueError, TypeError):
+        return "Unknown%"
+
+
+def get_power_str(value) -> str:
+    """Get power string, handling Unknown values safely."""
+    if value is None or value == "Unknown" or value == "":
+        return "Unknown W"
+    
+    try:
+        power_val = float(value)
+        return f"{power_val:.1f}W"
+    except (ValueError, TypeError):
+        return "Unknown W"
+
+
+def get_uplink_speed_str(speedtest_status: Dict[str, Any]) -> str:
+    """Get uplink speed string, handling Unknown values safely."""
+    try:
+        download = speedtest_status.get('xput_download', 0) or 0
+        upload = speedtest_status.get('xput_upload', 0) or 0
+        return f"{download} Mbps down, {upload} Mbps up"
+    except (ValueError, TypeError):
+        return "Unknown speed"
+
+
 def format_bytes(bytes_value: Union[int, float, str, None]) -> str:
     """Convert bytes to human-readable format."""
     if bytes_value is None or bytes_value == "":
@@ -189,18 +253,18 @@ def format_device_summary(device: Dict[str, Any]) -> Dict[str, Any]:
             "total_clients": device.get("num_sta", 0),
             "channel_2g": device.get("radio_table", [{}])[0].get("channel") if device.get("radio_table") else None,
             "channel_5g": device.get("radio_table", [{}])[1].get("channel") if len(device.get("radio_table", [])) > 1 else None,
-            "tx_power_2g": f"{device.get('radio_table', [{}])[0].get('tx_power', 'Unknown')} dBm" if device.get("radio_table") else "Unknown",
-            "tx_power_5g": f"{device.get('radio_table', [{}])[1].get('tx_power', 'Unknown')} dBm" if len(device.get("radio_table", [])) > 1 else "Unknown"
+            "tx_power_2g": get_tx_power_str(device, 0),
+            "tx_power_5g": get_tx_power_str(device, 1)
         })
     
     elif device_type == "Gateway":
         summary.update({
             "wan_ip": device.get("wan1", {}).get("ip", "Unknown"),
             "lan_ip": device.get("lan_ip", "Unknown"),
-            "uplink_speed": f"{device.get('speedtest-status', {}).get('xput_download', 0)} Mbps down, {device.get('speedtest-status', {}).get('xput_upload', 0)} Mbps up",
-            "cpu_usage": f"{device.get('system-stats', {}).get('cpu', 0):.1f}%",
-            "memory_usage": f"{device.get('system-stats', {}).get('mem', 0):.1f}%",
-            "temperature": f"{device.get('general_temperature', 'Unknown')}°C"
+            "uplink_speed": get_uplink_speed_str(device.get('speedtest-status', {})),
+            "cpu_usage": get_percentage_str(device.get('system-stats', {}).get('cpu', 0)),
+            "memory_usage": get_percentage_str(device.get('system-stats', {}).get('mem', 0)),
+            "temperature": get_temperature_str(device.get('general_temperature'))
         })
     
     elif device_type == "Switch":
@@ -211,9 +275,9 @@ def format_device_summary(device: Dict[str, Any]) -> Dict[str, Any]:
         summary.update({
             "total_ports": len(port_table),
             "active_ports": active_ports,
-            "poe_power_used": f"{poe_power:.1f}W",
-            "cpu_usage": f"{device.get('system-stats', {}).get('cpu', 0):.1f}%",
-            "memory_usage": f"{device.get('system-stats', {}).get('mem', 0):.1f}%"
+            "poe_power_used": get_power_str(poe_power),
+            "cpu_usage": get_percentage_str(device.get('system-stats', {}).get('cpu', 0)),
+            "memory_usage": get_percentage_str(device.get('system-stats', {}).get('mem', 0))
         })
     
     return summary

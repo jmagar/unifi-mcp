@@ -248,7 +248,11 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 return [rules]
             
             if not isinstance(rules, list):
-                return [{"error": "Unexpected response format"}]
+                return [{"error": f"Unexpected response format: {type(rules).__name__}", "data": rules}]
+            
+            # Add debug info if no rules found
+            if not rules:
+                return [{"message": "No firewall rules found", "rule_count": 0}]
             
             # Format firewall rules for clean output
             formatted_rules = []

@@ -408,19 +408,29 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 return [results]
             
             if not isinstance(results, list):
-                return [{"error": "Unexpected response format"}]
+                return [{"error": f"Unexpected response format: {type(results).__name__}", "data": results}]
             
             # Format speed test results for clean output
             formatted_results = []
             for result in results[-limit:]:  # Get the most recent results
+                # Try different possible field names for speed values
+                download_speed = (result.get("xput_download", 0) or 
+                                result.get("download", 0) or 
+                                result.get("download_speed", 0) or
+                                result.get("down", 0))
+                upload_speed = (result.get("xput_upload", 0) or 
+                              result.get("upload", 0) or 
+                              result.get("upload_speed", 0) or
+                              result.get("up", 0))
+                
                 formatted_result = {
                     "timestamp": format_timestamp(result.get("time", 0)),
-                    "download_mbps": round(result.get("xput_download", 0) / 1000000, 2),
-                    "upload_mbps": round(result.get("xput_upload", 0) / 1000000, 2),
-                    "latency_ms": result.get("latency", 0),
+                    "download_mbps": round(download_speed, 2) if download_speed else 0.0,
+                    "upload_mbps": round(upload_speed, 2) if upload_speed else 0.0,
+                    "latency_ms": result.get("latency", result.get("rtt", 0)),
                     "ping_ms": result.get("ping", 0),
                     "jitter_ms": result.get("jitter", 0),
-                    "server": result.get("server", "Unknown")
+                    "server": result.get("server", result.get("test_server", "Unknown"))
                 }
                 formatted_results.append(formatted_result)
             
