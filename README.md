@@ -17,7 +17,7 @@
 
 ## ✨ Overview
 
-This MCP server provides **direct, real-time integration** with your local UniFi controller through a comprehensive suite of tools and resources. Built with modern FastMCP framework, it eliminates the need for cloud dependencies while delivering clean, formatted data output.
+This MCP server provides **direct, real-time integration** with your local UniFi controller through a comprehensive suite of tools and resources. Built with modern FastMCP framework as a modular Python package, it eliminates the need for cloud dependencies while delivering clean, formatted data output with advanced logging and process management.
 
 ### 🎯 **Key Features**
 
@@ -30,6 +30,8 @@ This MCP server provides **direct, real-time integration** with your local UniFi
 | 📊 **Smart Analytics** | Bandwidth, DPI stats, and network insights |
 | 🌐 **Universal Support** | Works with UDM Pro, Cloud Gateway Max, legacy controllers |
 | ⚡ **FastMCP Powered** | Modern MCP framework with streamable HTTP transport |
+| 📋 **Advanced Logging** | Prettified logs with colors and background execution |
+| 🔧 **Process Management** | PID files, log streaming, and independent execution |
 
 ## 🚀 Quick Start
 
@@ -71,8 +73,9 @@ cp .env.example .env
 
 #### 3️⃣ **Launch Server**
 ```bash
-./run.sh
-# Or directly: uv run python unifi-local-mcp-server.py
+./run.sh              # Start server in background + stream logs
+./run.sh logs         # Stream logs from running server
+# Or directly: uv run python -m unifi_mcp.main
 ```
 
 </details>
@@ -97,10 +100,14 @@ UNIFI_PASSWORD=your_password               # Local controller admin password
 UNIFI_IS_UDM_PRO=true                 # true for UniFi OS devices, false for legacy
 UNIFI_VERIFY_SSL=false                # false for self-signed certs, true for valid SSL
 
-# 🌐 Optional Server Settings
+# 🌐 Server Settings
 UNIFI_LOCAL_MCP_HOST=0.0.0.0          # Server bind address
 UNIFI_LOCAL_MCP_PORT=8001             # Server port
 UNIFI_LOCAL_MCP_LOG_LEVEL=INFO        # Logging level
+
+# 📋 Advanced Logging & Process Management
+MCP_LOG_FILE=logs/unifi-mcp.log       # Override default log file location
+MCP_PID_FILE=logs/unifi-mcp.pid       # Override default PID file location
 ```
 
 </details>
@@ -315,11 +322,12 @@ sequenceDiagram
 
 | Decision | Rationale | Benefit |
 |----------|-----------|----------|
-| 📄 **Single-file server** | Complete implementation simplicity | Easy deployment & maintenance |
+| 📦 **Modular package structure** | Organized tools, resources, config | Easy maintenance & extensibility |
 | 🎯 **Default site assumption** | Most operations use "default" | Simplified API calls |
 | 🎨 **Clean data presentation** | Smart formatting helpers | No overwhelming JSON |
 | 📊 **Comprehensive resources** | Dashboard + detailed monitoring | Complete network visibility |
 | 🔧 **Resource vs Tool pattern** | Resources for data, tools for ops | Clear separation of concerns |
+| 📋 **Advanced logging** | Prettified output with process mgmt | Better debugging & monitoring |
 
 ## 👨‍💻 Development
 
@@ -332,8 +340,13 @@ sequenceDiagram
 # Install development dependencies
 uv sync --extra dev
 
-# Run with hot reload (if available)
-uv run reloaderoo unifi-local-mcp-server.py
+# Run directly for development
+uv run python -m unifi_mcp.main
+
+# Background server management
+./run.sh              # Start in background + stream logs
+./run.sh logs         # Stream logs from running server
+kill $(cat logs/unifi-mcp.pid)  # Stop background server
 ```
 
 </details>

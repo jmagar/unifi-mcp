@@ -4,20 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Context
 
-Single-file UniFi MCP server in `unifi-local-mcp-server.py` using FastMCP with streamable HTTP transport. Connects directly to local UniFi controllers (Cloud Gateway Max, UDM Pro) for real-time device management.
+Modular UniFi MCP server using FastMCP with streamable HTTP transport. Built as a Python package (`unifi_mcp`) with organized tools, resources, client, and configuration modules. Connects directly to local UniFi controllers (Cloud Gateway Max, UDM Pro) for real-time device management.
+
+### Package Structure
+- `unifi_mcp/main.py` - Main entry point
+- `unifi_mcp/server.py` - FastMCP server implementation  
+- `unifi_mcp/client.py` - UniFi controller client
+- `unifi_mcp/tools/` - MCP tool implementations
+- `unifi_mcp/resources/` - MCP resource implementations
+- `unifi_mcp/config.py` - Configuration and logging setup
 
 ## Development Commands
 
 ```bash
 # Setup and run
 uv sync              # Install dependencies
-./run.sh             # Start server (syncs deps + runs server)
+./run.sh             # Start server in background with log streaming
+./run.sh logs        # Stream logs from running server
 
 # Development
 uv add package-name                    # Add dependency
 uv run ruff check .                   # Lint code
 uv run mypy .                         # Type check
 uv run pytest                        # Run tests
+uv run python -m unifi_mcp.main      # Run server directly
 ```
 
 ## Key Architecture Patterns
@@ -66,6 +76,12 @@ Required environment variables:
 - `UNIFI_USERNAME` - Local admin account (not UniFi Cloud)
 - `UNIFI_PASSWORD` - Local admin password
 
+Optional logging and server management:
+- `MCP_LOG_FILE` - Override log file location (default: logs/unifi-mcp.log)
+- `MCP_PID_FILE` - Override PID file location (default: logs/unifi-mcp.pid)
+- `UNIFI_LOCAL_MCP_LOG_LEVEL` - Set logging level (DEBUG, INFO, WARNING, ERROR)
+- `UNIFI_LOCAL_MCP_LOG_FILE` - Server-specific log file setting
+
 Default settings handle most UDM Pro/Cloud Gateway Max setups.
 
 ## Testing MCP Server
@@ -76,3 +92,27 @@ curl -X POST http://localhost:8001/mcp/call -H "Content-Type: application/json" 
 ```
 
 Server runs on port 8001 with endpoint `/mcp`.
+
+## Logging and Process Management
+
+The server includes advanced logging and process management features:
+
+### Log Management
+- **Prettified logs**: Colored output with timestamps via `./run.sh`
+- **Background execution**: Server runs independently in background
+- **PID file management**: Process ID stored for easy management
+- **Log streaming**: Use `./run.sh logs` to view logs from running server
+
+### Log Colors
+- **DEBUG**: Cyan
+- **INFO**: Green  
+- **WARNING**: Yellow
+- **ERROR**: Red
+- **CRITICAL**: Magenta
+
+### Process Control
+```bash
+./run.sh              # Start server + stream logs
+./run.sh logs         # Stream logs only
+kill $(cat logs/unifi-mcp.pid)  # Stop server
+```

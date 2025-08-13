@@ -17,6 +17,15 @@ services:
       - UNIFI_LOCAL_MCP_HOST=${UNIFI_LOCAL_MCP_HOST:-0.0.0.0}
       - UNIFI_LOCAL_MCP_PORT=${UNIFI_LOCAL_MCP_PORT:-8001}
       - UNIFI_LOCAL_MCP_LOG_LEVEL=${UNIFI_LOCAL_MCP_LOG_LEVEL:-INFO}
+      - UNIFI_LOCAL_MCP_LOG_FILE=${UNIFI_LOCAL_MCP_LOG_FILE:-/app/logs/unifi-mcp.log}
+      
+      # Logging and Process Management
+      - MCP_LOG_FILE=${MCP_LOG_FILE:-/app/logs/unifi-mcp.log}
+      - MCP_PID_FILE=${MCP_PID_FILE:-/app/logs/unifi-mcp.pid}
+    
+    # Volume mounts
+    volumes:
+      - unifi-mcp-logs:/app/logs
     
     # Health check
     healthcheck:
@@ -27,6 +36,10 @@ services:
       start_period: 10s
     networks:
       - unifi-mcp-network
+
+volumes:
+  unifi-mcp-logs:
+    driver: local
 
 networks:
   unifi-mcp-network:

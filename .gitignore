@@ -11,6 +11,10 @@ wheels/
 .venv-backend
 .env
 *.log
+*.pid
+
+# Runtime files
+logs/
 
 .bivvy
 .cursor

@@ -12,6 +12,66 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+class ClearingFileHandler(logging.FileHandler):
+    """Custom file handler that clears the log file when it exceeds max_bytes."""
+    
+    def __init__(self, filename, max_bytes=10 * 1024 * 1024, mode='a', encoding=None, delay=False):
+        """
+        Initialize handler with file size limit.
+        
+        Args:
+            filename: Log file path
+            max_bytes: Maximum file size in bytes (default 10MB)
+            mode: File open mode
+            encoding: File encoding
+            delay: Whether to delay file opening
+        """
+        self.max_bytes = max_bytes
+        super().__init__(filename, mode, encoding, delay)
+    
+    def emit(self, record):
+        """Emit a record, checking file size first."""
+        try:
+            # Check file size before writing
+            if self.stream and hasattr(self.stream, 'name'):
+                try:
+                    file_size = os.path.getsize(self.stream.name)
+                    if file_size >= self.max_bytes:
+                        # Close current stream
+                        if self.stream:
+                            self.stream.close()
+                        
+                        # Clear the file by opening in write mode
+                        with open(self.baseFilename, 'w') as f:
+                            f.write("")  # Clear the file
+                        
+                        # Reopen in append mode
+                        self.stream = self._open()
+                        
+                        # Log the clearing event
+                        clear_msg = f"Log file cleared - exceeded {self.max_bytes / (1024*1024):.1f}MB limit"
+                        super().emit(logging.LogRecord(
+                            name="unifi_mcp.config",
+                            level=logging.INFO,
+                            pathname="",
+                            lineno=0,
+                            msg=clear_msg,
+                            args=(),
+                            exc_info=None
+                        ))
+                
+                except (OSError, IOError):
+                    # If we can't check file size, just continue
+                    pass
+            
+            # Emit the original record
+            super().emit(record)
+            
+        except Exception:
+            # If anything goes wrong, fall back to standard behavior
+            super().emit(record)
+
+
 @dataclass
 class UniFiConfig:
     """UniFi controller configuration settings."""
@@ -96,7 +156,12 @@ def setup_logging(config: ServerConfig) -> None:
     
     # Add file handler if specified
     if config.log_file:
-        file_handler = logging.FileHandler(config.log_file)
+        # Ensure log directory exists
+        log_path = Path(config.log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Use our custom clearing file handler with 10MB limit
+        file_handler = ClearingFileHandler(config.log_file, max_bytes=10 * 1024 * 1024)
         file_handler.setFormatter(logging.Formatter(log_format))
         logging.getLogger().addHandler(file_handler)
     
