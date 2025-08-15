@@ -2,9 +2,9 @@
 
 # UniFi MCP Server (Modular Version) Startup Script
 
-# Set default log file and PID file
-LOG_FILE=${MCP_LOG_FILE:-${LOG_FILE:-"logs/unifi-mcp.log"}}
-PID_FILE=${MCP_PID_FILE:-${PID_FILE:-"logs/unifi-mcp.pid"}}
+# Set default log file and PID file to use /tmp
+LOG_FILE=${MCP_LOG_FILE:-${LOG_FILE:-"/tmp/unifi-mcp.log"}}
+PID_FILE=${MCP_PID_FILE:-${PID_FILE:-"/tmp/unifi-mcp.pid"}}
 
 # Handle command line arguments
 if [[ "$1" == "logs" ]]; then

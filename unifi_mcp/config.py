@@ -128,7 +128,7 @@ class ServerConfig:
         host = os.getenv("UNIFI_LOCAL_MCP_HOST", "0.0.0.0")
         port = int(os.getenv("UNIFI_LOCAL_MCP_PORT", "8001"))
         log_level = os.getenv("UNIFI_LOCAL_MCP_LOG_LEVEL", "INFO")
-        log_file = os.getenv("UNIFI_LOCAL_MCP_LOG_FILE")
+        log_file = os.getenv("UNIFI_LOCAL_MCP_LOG_FILE", "/tmp/unifi-mcp.log")
         
         return cls(
             host=host,
