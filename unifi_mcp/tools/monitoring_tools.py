@@ -8,9 +8,20 @@ statistics, and security monitoring data.
 import logging
 from typing import Any, Dict, List
 from fastmcp import FastMCP
+from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent
 
 from ..client import UnifiControllerClient
-from ..formatters import format_timestamp, format_data_values
+from ..formatters import (
+    format_timestamp,
+    format_data_values,
+    format_events_list,
+    format_alarms_list,
+    format_dpi_stats_list,
+    format_rogue_aps_list,
+    format_speedtests_list,
+    format_ips_events_list,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +30,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
     """Register all monitoring and statistics tools."""
     
     @mcp.tool()
-    async def get_controller_status() -> Dict[str, Any]:
+    async def get_controller_status() -> ToolResult:
         """
         Get controller system information and status.
         
@@ -31,22 +42,34 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             result = await client._make_request("GET", "/status", site_name="")
             
             if isinstance(result, dict) and "error" in result:
-                return result
-            
-            return {
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
+                    structured_content=result
+                )
+
+            resp = {
                 "status": "online",
                 "server_version": result.get("server_version", "Unknown"),
                 "up": result.get("up", False),
                 "details": result
             }
+            up_icon = "✓" if resp.get("up") else "✗"
+            text = f"Controller Status\n  Version: {resp['server_version']} | Up: {up_icon}"
+            return ToolResult(
+                content=[TextContent(type="text", text=text)],
+                structured_content=resp
+            )
             
         except Exception as e:
             logger.error(f"Error getting controller status: {e}")
-            return {"error": str(e)}
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
     
     
     @mcp.tool()
-    async def get_events(limit: int = 100, site_name: str = "default") -> List[Dict[str, Any]]:
+    async def get_events(limit: int = 100, site_name: str = "default") -> ToolResult:
         """
         Get recent controller events.
         
@@ -61,10 +84,16 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             events = await client.get_events(site_name, limit)
             
             if isinstance(events, dict) and "error" in events:
-                return [events]
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {events.get('error','unknown error')}")],
+                    structured_content=[events]
+                )
             
             if not isinstance(events, list):
-                return [{"error": "Unexpected response format"}]
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: Unexpected response format")],
+                    structured_content=[{"error": "Unexpected response format"}]
+                )
             
             # Format events for clean output
             formatted_events = []
@@ -83,15 +112,22 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 }
                 formatted_events.append(formatted_event)
             
-            return formatted_events
+            summary_text = format_events_list(formatted_events)
+            return ToolResult(
+                content=[TextContent(type="text", text=summary_text)],
+                structured_content=formatted_events
+            )
             
         except Exception as e:
             logger.error(f"Error getting events: {e}")
-            return [{"error": str(e)}]
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content=[{"error": str(e)}]
+            )
     
     
     @mcp.tool()
-    async def get_alarms(active_only: bool = True, site_name: str = "default") -> List[Dict[str, Any]]:
+    async def get_alarms(active_only: bool = True, site_name: str = "default") -> ToolResult:
         """
         Get controller alarms.
         
@@ -106,10 +142,16 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             alarms = await client.get_alarms(site_name)
             
             if isinstance(alarms, dict) and "error" in alarms:
-                return [alarms]
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {alarms.get('error','unknown error')}")],
+                    structured_content=[alarms]
+                )
             
             if not isinstance(alarms, list):
-                return [{"error": "Unexpected response format"}]
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: Unexpected response format")],
+                    structured_content=[{"error": "Unexpected response format"}]
+                )
             
             # Filter and format alarms
             formatted_alarms = []
@@ -130,15 +172,22 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 }
                 formatted_alarms.append(formatted_alarm)
             
-            return formatted_alarms
+            summary_text = format_alarms_list(formatted_alarms)
+            return ToolResult(
+                content=[TextContent(type="text", text=summary_text)],
+                structured_content=formatted_alarms
+            )
             
         except Exception as e:
             logger.error(f"Error getting alarms: {e}")
-            return [{"error": str(e)}]
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content=[{"error": str(e)}]
+            )
     
     
     @mcp.tool()
-    async def get_dpi_stats(by_filter: str = "by_app", site_name: str = "default") -> List[Dict[str, Any]]:
+    async def get_dpi_stats(by_filter: str = "by_app", site_name: str = "default") -> ToolResult:
         """
         Get Deep Packet Inspection (DPI) statistics.
         
@@ -153,10 +202,16 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             dpi_stats = await client.get_dpi_stats(site_name)
             
             if isinstance(dpi_stats, dict) and "error" in dpi_stats:
-                return [dpi_stats]
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {dpi_stats.get('error','unknown error')}")],
+                    structured_content=[dpi_stats]
+                )
             
             if not isinstance(dpi_stats, list):
-                return [{"error": "Unexpected response format"}]
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: Unexpected response format")],
+                    structured_content=[{"error": "Unexpected response format"}]
+                )
             
             # Format DPI stats with data formatting
             formatted_stats = []
@@ -172,15 +227,22 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 
                 formatted_stats.append(formatted_stat)
             
-            return formatted_stats
+            summary_text = format_dpi_stats_list(formatted_stats)
+            return ToolResult(
+                content=[TextContent(type="text", text=summary_text)],
+                structured_content=formatted_stats
+            )
             
         except Exception as e:
             logger.error(f"Error getting DPI stats: {e}")
-            return [{"error": str(e)}]
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content=[{"error": str(e)}]
+            )
     
     
     @mcp.tool()
-    async def get_rogue_aps(site_name: str = "default", limit: int = 20) -> List[Dict[str, Any]]:
+    async def get_rogue_aps(site_name: str = "default", limit: int = 20) -> ToolResult:
         """
         Get detected rogue access points (filtered to prevent large responses).
         
@@ -198,10 +260,16 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             rogue_aps = await client.get_rogue_aps(site_name)
             
             if isinstance(rogue_aps, dict) and "error" in rogue_aps:
-                return [rogue_aps]
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {rogue_aps.get('error','unknown error')}")],
+                    structured_content=[rogue_aps]
+                )
             
             if not isinstance(rogue_aps, list):
-                return [{"error": "Unexpected response format"}]
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: Unexpected response format")],
+                    structured_content=[{"error": "Unexpected response format"}]
+                )
             
             # Sort by signal strength (strongest first) and limit results
             filtered_rogues = sorted(rogue_aps, 
@@ -246,15 +314,27 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 }
                 formatted_rogues.append(formatted_rogue)
             
-            return formatted_rogues
+            # Build compact text; include summary if present at index 0
+            text_items = [item for item in formatted_rogues if isinstance(item, dict) and item.get('ssid')]
+            header = next((item.get('summary') for item in formatted_rogues if isinstance(item, dict) and 'summary' in item), None)
+            summary_text = format_rogue_aps_list(text_items)
+            if header:
+                summary_text = header + "\n" + summary_text
+            return ToolResult(
+                content=[TextContent(type="text", text=summary_text)],
+                structured_content=formatted_rogues
+            )
             
         except Exception as e:
             logger.error(f"Error getting rogue APs: {e}")
-            return [{"error": str(e)}]
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content=[{"error": str(e)}]
+            )
     
     
     @mcp.tool()
-    async def start_spectrum_scan(mac: str, site_name: str = "default") -> Dict[str, Any]:
+    async def start_spectrum_scan(mac: str, site_name: str = "default") -> ToolResult:
         """
         Start RF spectrum scan on access point.
         
@@ -277,21 +357,31 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             result = await client._make_request("POST", "/cmd/devmgr", site_name=site_name, data=data)
             
             if isinstance(result, dict) and "error" in result:
-                return result
-            
-            return {
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
+                    structured_content=result
+                )
+
+            resp = {
                 "success": True,
                 "message": f"Spectrum scan started on AP {mac}",
                 "details": result
             }
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Spectrum scan started: {mac}")],
+                structured_content=resp
+            )
             
         except Exception as e:
             logger.error(f"Error starting spectrum scan on {mac}: {e}")
-            return {"error": str(e)}
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
     
     
     @mcp.tool()
-    async def get_spectrum_scan_state(mac: str, site_name: str = "default") -> Dict[str, Any]:
+    async def get_spectrum_scan_state(mac: str, site_name: str = "default") -> ToolResult:
         """
         Get RF spectrum scan state and results.
         
@@ -309,16 +399,24 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             result = await client._make_request("GET", f"/stat/spectrum-scan/{normalized_mac}", site_name=site_name)
             
             if isinstance(result, dict) and "error" in result:
-                return result
-            
-            return {
-                "mac": mac,
-                "scan_data": result
-            }
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
+                    structured_content=result
+                )
+
+            resp = {"mac": mac, "scan_data": result}
+            text = f"Spectrum Scan State\n  MAC: {mac} | Data: {'✓' if bool(result) else '✗'}"
+            return ToolResult(
+                content=[TextContent(type="text", text=text)],
+                structured_content=resp
+            )
             
         except Exception as e:
             logger.error(f"Error getting spectrum scan state for {mac}: {e}")
-            return {"error": str(e)}
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
     
     
     @mcp.tool()
@@ -329,7 +427,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
         down_bandwidth: int = None,
         quota: int = None,
         site_name: str = "default"
-    ) -> Dict[str, Any]:
+    ) -> ToolResult:
         """
         Authorize guest client for network access.
         
@@ -364,21 +462,32 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             result = await client._make_request("POST", "/cmd/stamgr", site_name=site_name, data=data)
             
             if isinstance(result, dict) and "error" in result:
-                return result
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
+                    structured_content=result
+                )
             
-            return {
+            resp = {
                 "success": True,
                 "message": f"Guest {mac} authorized for {minutes} minutes",
                 "details": result
             }
+            text = f"Guest authorized: {mac} | {minutes} min"
+            return ToolResult(
+                content=[TextContent(type="text", text=text)],
+                structured_content=resp
+            )
             
         except Exception as e:
             logger.error(f"Error authorizing guest {mac}: {e}")
-            return {"error": str(e)}
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
     
     
     @mcp.tool()
-    async def get_speedtest_results(site_name: str = "default", limit: int = 20) -> List[Dict[str, Any]]:
+    async def get_speedtest_results(site_name: str = "default", limit: int = 20) -> ToolResult:
         """
         Get historical internet speed test results.
         
@@ -405,10 +514,16 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                                                site_name=site_name, data=data)
             
             if isinstance(results, dict) and "error" in results:
-                return [results]
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {results.get('error','unknown error')}")],
+                    structured_content=[results]
+                )
             
             if not isinstance(results, list):
-                return [{"error": f"Unexpected response format: {type(results).__name__}", "data": results}]
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: Unexpected response format: {type(results).__name__}")],
+                    structured_content=[{"error": f"Unexpected response format: {type(results).__name__}", "data": results}]
+                )
             
             # Format speed test results for clean output
             formatted_results = []
@@ -434,15 +549,22 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 }
                 formatted_results.append(formatted_result)
             
-            return formatted_results
+            summary_text = format_speedtests_list(formatted_results)
+            return ToolResult(
+                content=[TextContent(type="text", text=summary_text)],
+                structured_content=formatted_results
+            )
             
         except Exception as e:
             logger.error(f"Error getting speed test results: {e}")
-            return [{"error": str(e)}]
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content=[{"error": str(e)}]
+            )
     
     
     @mcp.tool()
-    async def get_ips_events(site_name: str = "default", limit: int = 50) -> List[Dict[str, Any]]:
+    async def get_ips_events(site_name: str = "default", limit: int = 50) -> ToolResult:
         """
         Get IPS/IDS threat detection events for security monitoring.
         
@@ -470,10 +592,16 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                                               site_name=site_name, data=data)
             
             if isinstance(events, dict) and "error" in events:
-                return [events]
+                return ToolResult(
+                    content=[TextContent(type="text", text=f"Error: {events.get('error','unknown error')}")],
+                    structured_content=[events]
+                )
             
             if not isinstance(events, list):
-                return [{"error": "Unexpected response format"}]
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: Unexpected response format")],
+                    structured_content=[{"error": "Unexpected response format"}]
+                )
             
             # Format IPS events for clean output
             formatted_events = []
@@ -492,8 +620,15 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 }
                 formatted_events.append(formatted_event)
             
-            return formatted_events
+            summary_text = format_ips_events_list(formatted_events)
+            return ToolResult(
+                content=[TextContent(type="text", text=summary_text)],
+                structured_content=formatted_events
+            )
             
         except Exception as e:
             logger.error(f"Error getting IPS events: {e}")
-            return [{"error": str(e)}]
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content=[{"error": str(e)}]
+            )

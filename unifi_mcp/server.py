@@ -6,6 +6,7 @@ and server lifecycle management.
 """
 
 import logging
+import os
 from typing import Optional
 from fastmcp import FastMCP
 
@@ -36,7 +37,34 @@ class UniFiMCPServer:
         """Initialize the UniFi MCP server."""
         self.unifi_config = unifi_config
         self.server_config = server_config
-        self.mcp = FastMCP("UniFi Local Controller MCP Server")
+        
+        # Check if OAuth is configured via environment variables
+        auth_provider = os.getenv("FASTMCP_SERVER_AUTH")
+        if auth_provider:
+            logger.info(f"OAuth authentication enabled: {auth_provider}")
+            # Manually create GoogleProvider with environment variables
+            try:
+                from fastmcp.server.auth.providers.google import GoogleProvider
+                
+                google_provider = GoogleProvider(
+                    client_id=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID"),
+                    client_secret=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET"),
+                    base_url=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL"),
+                    required_scopes=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES", "").split(","),
+                    redirect_path=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REDIRECT_PATH", "/auth/callback"),
+                    timeout_seconds=int(os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_TIMEOUT_SECONDS", "10"))
+                )
+                
+                self.mcp = FastMCP("UniFi Local Controller MCP Server", auth=google_provider)
+                logger.info("Google OAuth provider configured successfully")
+                
+            except Exception as e:
+                logger.error(f"Failed to configure Google OAuth: {e}")
+                logger.info("Falling back to no authentication")
+                self.mcp = FastMCP("UniFi Local Controller MCP Server")
+        else:
+            logger.info("No authentication configured - server will run without OAuth")
+            self.mcp = FastMCP("UniFi Local Controller MCP Server")
         self.client: Optional[UnifiControllerClient] = None
         
     async def initialize(self) -> None:
@@ -54,6 +82,10 @@ class UniFiMCPServer:
         register_network_tools(self.mcp, self.client)
         register_monitoring_tools(self.mcp, self.client)
         
+        # Register authentication test tool if OAuth is enabled
+        if os.getenv("FASTMCP_SERVER_AUTH"):
+            self._register_auth_tools()
+        
         # Register all resources
         logger.info("Registering MCP resources...")
         register_device_resources(self.mcp, self.client)
@@ -64,6 +96,49 @@ class UniFiMCPServer:
         register_site_resources(self.mcp, self.client)
         
         logger.info("UniFi MCP Server initialization complete")
+    
+    def _register_auth_tools(self) -> None:
+        """Register authentication-related tools for testing OAuth."""
+        logger.info("Registering authentication test tools...")
+        
+        @self.mcp.tool
+        async def get_user_info() -> dict:
+            """Returns information about the authenticated Google user.
+            
+            This tool requires Google OAuth authentication and can be used to test
+            that the authentication system is working properly.
+            
+            Returns:
+                dict: User information including email, name, Google ID, etc.
+            """
+            try:
+                # Import here to avoid issues if not using authentication
+                from fastmcp.server.dependencies import get_access_token
+                
+                token = get_access_token()
+                # The GoogleProvider stores user data in token claims
+                user_info = {
+                    "google_id": token.claims.get("sub"),
+                    "email": token.claims.get("email"),
+                    "name": token.claims.get("name"),
+                    "picture": token.claims.get("picture"),
+                    "locale": token.claims.get("locale"),
+                    "verified_email": token.claims.get("email_verified"),
+                    "token_issued_at": token.claims.get("iat"),
+                    "token_expires_at": token.claims.get("exp")
+                }
+                
+                logger.info(f"User authenticated: {user_info.get('email', 'unknown')}")
+                return user_info
+                
+            except Exception as e:
+                logger.error(f"Error getting user info: {e}")
+                return {
+                    "error": f"Failed to get user info: {str(e)}",
+                    "authenticated": False
+                }
+        
+        logger.info("Authentication test tools registered successfully")
     
     async def cleanup(self) -> None:
         """Cleanup server resources."""

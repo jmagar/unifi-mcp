@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.116.1", 
-    "fastmcp>=2.11.0",
+    "fastmcp==2.12.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.1.1",
     "unifi-controller-api>=0.3.0",
@@ -27,3 +27,7 @@ unifi-local-mcp = "unifi_mcp.local_server:main"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["unifi_mcp*"]
+exclude = ["logs*", "docs*"]
