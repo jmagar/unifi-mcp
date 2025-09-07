@@ -30,6 +30,10 @@ from .resources import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_mac(mac: str) -> str:
+    return mac.strip().lower().replace("-", ":").replace(".", ":")
+
+
 class UniFiMCPServer:
     """UniFi MCP Server with modular architecture."""
     
@@ -38,30 +42,52 @@ class UniFiMCPServer:
         self.unifi_config = unifi_config
         self.server_config = server_config
         
-        # Check if OAuth is configured via environment variables
+        # Check if Google OAuth is configured via environment variables
         auth_provider = os.getenv("FASTMCP_SERVER_AUTH")
-        if auth_provider:
-            logger.info(f"OAuth authentication enabled: {auth_provider}")
-            # Manually create GoogleProvider with environment variables
-            try:
-                from fastmcp.server.auth.providers.google import GoogleProvider
-                
-                google_provider = GoogleProvider(
-                    client_id=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID"),
-                    client_secret=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET"),
-                    base_url=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL"),
-                    required_scopes=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES", "").split(","),
-                    redirect_path=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REDIRECT_PATH", "/auth/callback"),
-                    timeout_seconds=int(os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_TIMEOUT_SECONDS", "10"))
-                )
-                
-                self.mcp = FastMCP("UniFi Local Controller MCP Server", auth=google_provider)
-                logger.info("Google OAuth provider configured successfully")
-                
-            except Exception as e:
-                logger.error(f"Failed to configure Google OAuth: {e}")
-                logger.info("Falling back to no authentication")
+        self._auth_enabled = False
+        
+        if auth_provider == "google":
+            logger.info("Google OAuth authentication requested")
+            # Validate required Google env vars
+            client_id = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID")
+            client_secret = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET")
+            base_url = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL")
+            
+            if not client_id or not client_secret or not base_url:
+                logger.error("Missing required Google OAuth environment variables")
+                logger.error("Required: FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID, FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET, FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL")
                 self.mcp = FastMCP("UniFi Local Controller MCP Server")
+            else:
+                try:
+                    from fastmcp.server.auth.providers.google import GoogleProvider
+                    
+                    # Build scopes by splitting and filtering
+                    scopes_str = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES", "")
+                    if scopes_str:
+                        scopes = [s.strip() for s in scopes_str.split(",") if s.strip()]
+                    else:
+                        scopes = []
+                    
+                    if not scopes:
+                        scopes = ["openid", "email", "profile"]
+                    
+                    google_provider = GoogleProvider(
+                        client_id=client_id,
+                        client_secret=client_secret,
+                        base_url=base_url,
+                        required_scopes=scopes,
+                        redirect_path=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REDIRECT_PATH", "/auth/callback"),
+                        timeout_seconds=int(os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_TIMEOUT_SECONDS", "10"))
+                    )
+                    
+                    self.mcp = FastMCP("UniFi Local Controller MCP Server", auth=google_provider)
+                    self._auth_enabled = True
+                    logger.info("Google OAuth provider configured successfully")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to configure Google OAuth: {e}")
+                    logger.info("Falling back to no authentication")
+                    self.mcp = FastMCP("UniFi Local Controller MCP Server")
         else:
             logger.info("No authentication configured - server will run without OAuth")
             self.mcp = FastMCP("UniFi Local Controller MCP Server")
@@ -73,7 +99,12 @@ class UniFiMCPServer:
         
         # Initialize UniFi client
         self.client = UnifiControllerClient(self.unifi_config)
-        await self.client.connect()
+        try:
+            await self.client.connect()
+        except Exception as e:
+            logger.error(f"Failed to connect to UniFi controller: {e}")
+            # Optionally: raise to abort startup
+            raise
         
         # Register all tools
         logger.info("Registering MCP tools...")
@@ -83,7 +114,7 @@ class UniFiMCPServer:
         register_monitoring_tools(self.mcp, self.client)
         
         # Register authentication test tool if OAuth is enabled
-        if os.getenv("FASTMCP_SERVER_AUTH"):
+        if self._auth_enabled:
             self._register_auth_tools()
         
         # Register all resources
@@ -116,7 +147,15 @@ class UniFiMCPServer:
                 from fastmcp.server.dependencies import get_access_token
                 
                 token = get_access_token()
+                # If get_access_token becomes async in future versions:
+                # token = await get_access_token()
                 # The GoogleProvider stores user data in token claims
+                from datetime import datetime, timezone
+                def _to_iso(ts):
+                    try:
+                        return datetime.fromtimestamp(int(ts), tz=timezone.utc).isoformat()
+                    except Exception:
+                        return ts
                 user_info = {
                     "google_id": token.claims.get("sub"),
                     "email": token.claims.get("email"),
@@ -124,11 +163,12 @@ class UniFiMCPServer:
                     "picture": token.claims.get("picture"),
                     "locale": token.claims.get("locale"),
                     "verified_email": token.claims.get("email_verified"),
-                    "token_issued_at": token.claims.get("iat"),
-                    "token_expires_at": token.claims.get("exp")
+                    "token_issued_at": _to_iso(token.claims.get("iat")),
+                    "token_expires_at": _to_iso(token.claims.get("exp")),
+                    "authenticated": True,
                 }
                 
-                logger.info(f"User authenticated: {user_info.get('email', 'unknown')}")
+                logger.debug("User authenticated.")
                 return user_info
                 
             except Exception as e:

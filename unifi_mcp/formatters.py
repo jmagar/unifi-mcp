@@ -608,7 +608,7 @@ def format_events_list(events: List[Dict[str, Any]]) -> str:
     # Show first 10 for brevity in text; full list remains in structured content
     preview = events[:10]
     for e in preview:
-        ts = e.get("timestamp") or e.get("time") or ""
+        ts = format_timestamp(e.get("timestamp") or e.get("time") or "")
         typ = e.get("type", e.get("key", "?"))
         msg = str(e.get("message", e.get("msg", "")))[:80]
         lines.append(f"  • {ts} | {typ}: {msg}")
@@ -625,7 +625,7 @@ def format_alarms_list(alarms: List[Dict[str, Any]]) -> str:
     preview = alarms[:10]
     for a in preview:
         act = "⚠️" if not a.get("archived") else "🗂"
-        ts = a.get("timestamp", "")
+        ts = format_timestamp(a.get("timestamp", ""))
         sev = str(a.get("severity", "")).title()[:10]
         msg = str(a.get("message", "")).strip()[:80]
         lines.append(f"  {act} {ts} | {sev}: {msg}")
@@ -688,7 +688,7 @@ def format_speedtests_list(results: List[Dict[str, Any]]) -> str:
     lines: List[str] = [f"Speed Tests ({len(results)} shown)"]
     preview = results[:10]
     for r in preview:
-        ts = r.get("timestamp", "")
+        ts = format_timestamp(r.get("timestamp", ""))
         dl = r.get("download_mbps", 0)
         ul = r.get("upload_mbps", 0)
         lat = r.get("latency_ms", r.get("ping_ms", 0))
@@ -705,7 +705,7 @@ def format_ips_events_list(events: List[Dict[str, Any]]) -> str:
     lines: List[str] = [f"IPS Events ({len(events)} shown)"]
     preview = events[:10]
     for e in preview:
-        ts = e.get("timestamp", "")
+        ts = format_timestamp(e.get("timestamp", ""))
         sig = str(e.get("signature", "?"))[:36]
         sev = e.get("severity", "?")
         src = e.get("source_ip", e.get("src_ip", "?"))

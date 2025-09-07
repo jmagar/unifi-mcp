@@ -111,7 +111,8 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             for wlan in wlans:
                 formatted_wlan = {
                     "name": wlan.get("name", "Unknown WLAN"),
-                    "ssid": wlan.get("x_iapp_key", wlan.get("name", "Unknown")),
+                    # SSID is typically under 'ssid' (fallback to profile 'name')
+                    "ssid": wlan.get("ssid", wlan.get("name", "Unknown SSID")),
                     "enabled": wlan.get("enabled", False),
                     "security": wlan.get("security", "Unknown"),
                     "wpa_mode": wlan.get("wpa_mode", "Unknown"),
@@ -239,16 +240,16 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             
             # Compact summary: name | VLAN/native | PoE | Security
             lines = [f"Port Profiles ({len(formatted_ports)} total)"]
-            lines.append(f"  {'En':<2} {'Name':<28} {'Native':<8} {'Tagged':<12} {'PoE':<5} {'Sec':<3}")
-            lines.append(f"  {'-'*2:<2} {'-'*28:<28} {'-'*8:<8} {'-'*12:<12} {'-'*5:<5} {'-'*3:<3}")
+            lines.append(f"  {'En':<2} {'Profile Name':<28} {'Native VLAN':<11} {'Tagged Count':<13} {'PoE Mode':<8} {'Port Security':<13}")
+            lines.append(f"  {'-'*2:<2} {'-'*28:<28} {'-'*11:<11} {'-'*13:<13} {'-'*8:<8} {'-'*13:<13}")
             for p in formatted_ports[:40]:
                 en = '✓' if p.get('enabled') else '✗'
                 name = str(p.get('name',''))[:28]
-                native = str(p.get('native_vlan','Default'))[:8]
-                tagged = str(len(p.get('tagged_vlans',[]) or []))[:12]
-                poe = str(p.get('poe_mode','auto'))[:5]
+                native = str(p.get('native_vlan','Default'))[:11]
+                tagged = str(len(p.get('tagged_vlans',[]) or []))[:13]
+                poe = str(p.get('poe_mode','auto'))[:8]
                 sec = '✓' if p.get('port_security') else '✗'
-                lines.append(f"  {en:<2} {name:<28} {native:<8} {tagged:<12} {poe:<5} {sec:<3}")
+                lines.append(f"  {en:<2} {name:<28} {native:<11} {tagged:<13} {poe:<8} {sec:<13}")
             if len(formatted_ports) > 40:
                 lines.append(f"  ... and {len(formatted_ports)-40} more")
             summary_text = "\n".join(lines)
@@ -366,7 +367,8 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "src_port": rule.get("src_port", "any"),
                     "dst_address": rule.get("dst_address", "any"),
                     "dst_port": rule.get("dst_port", "any"),
-                    "direction": rule.get("rule_index", "unknown"),
+                    "ruleset": rule.get("ruleset", "unknown"),
+                    "index": rule.get("rule_index", None),
                     "logging": rule.get("logging", False),
                     "established": rule.get("state_established", False),
                     "related": rule.get("state_related", False)

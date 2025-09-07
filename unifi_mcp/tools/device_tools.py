@@ -36,13 +36,13 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             if isinstance(devices, dict) and "error" in devices:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {devices.get('error','unknown error')}")],
-                    structured_content=[devices]
+                    structured_content={"error": devices.get('error','unknown error'), "raw": devices}
                 )
             
             if not isinstance(devices, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content=[{"error": "Unexpected response format"}]
+                    structured_content={"error": "Unexpected response format", "raw": devices}
                 )
             
             # Format each device for clean output
@@ -70,7 +70,7 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             logger.error(f"Error getting devices: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -92,13 +92,13 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             if isinstance(devices, dict) and "error" in devices:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {devices.get('error','unknown error')}")],
-                    structured_content=devices
+                    structured_content={"error": devices.get('error','unknown error'), "raw": devices}
                 )
             
             if not isinstance(devices, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content={"error": "Unexpected response format"}
+                    structured_content={"error": "Unexpected response format", "raw": devices}
                 )
             
             # Normalize MAC address for comparison
@@ -122,14 +122,14 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
 
             return ToolResult(
                 content=[TextContent(type="text", text=f"Device with MAC {mac} not found")],
-                structured_content={"error": f"Device with MAC {mac} not found"}
+                structured_content={"error": f"Device with MAC {mac} not found", "raw": None}
             )
             
         except Exception as e:
             logger.error(f"Error getting device by MAC {mac}: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content={"error": str(e)}
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -148,11 +148,14 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
         try:
             result = await client.restart_device(mac, site_name)
             
-            if isinstance(result, dict) and "error" in result:
-                return ToolResult(
-                    content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
-                    structured_content=result
-                )
+            if isinstance(result, dict):
+                rc = result.get("meta", {}).get("rc")
+                if rc != "ok":
+                    msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
+                    return ToolResult(
+                        content=[TextContent(type="text", text=f"Error: {msg}")],
+                        structured_content={"error": msg, "raw": result}
+                    )
 
             resp = {
                 "success": True,
@@ -168,7 +171,7 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             logger.error(f"Error restarting device {mac}: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content={"error": str(e)}
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -187,11 +190,20 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
         try:
             result = await client.locate_device(mac, site_name)
             
-            if isinstance(result, dict) and "error" in result:
-                return ToolResult(
-                    content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
-                    structured_content=result
-                )
+            if isinstance(result, dict):
+                if "error" in result:
+                    return ToolResult(
+                        content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
+                        structured_content={"error": result.get('error','unknown error'), "raw": result}
+                    )
+                
+                rc = result.get("meta", {}).get("rc")
+                if rc != "ok":
+                    msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
+                    return ToolResult(
+                        content=[TextContent(type="text", text=f"Error: {msg}")],
+                        structured_content={"error": msg, "raw": result}
+                    )
 
             resp = {
                 "success": True,
@@ -207,5 +219,5 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             logger.error(f"Error locating device {mac}: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content={"error": str(e)}
+                structured_content={"error": str(e), "raw": None}
             )

@@ -44,7 +44,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if isinstance(result, dict) and "error" in result:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
-                    structured_content=result
+                    structured_content={"error": result.get('error','unknown error'), "raw": result}
                 )
 
             resp = {
@@ -86,18 +86,21 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if isinstance(events, dict) and "error" in events:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {events.get('error','unknown error')}")],
-                    structured_content=[events]
+                    structured_content={"error": events.get('error','unknown error'), "raw": events}
                 )
             
             if not isinstance(events, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content=[{"error": "Unexpected response format"}]
+                    structured_content={"error": "Unexpected response format", "raw": events}
                 )
             
             # Format events for clean output
             formatted_events = []
-            for event in events[-limit:]:  # Get most recent events
+            events_sorted = sorted(
+                events, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True
+            )[:limit]
+            for event in events_sorted:
                 formatted_event = {
                     "timestamp": format_timestamp(event.get("time", 0)),
                     "type": event.get("key", "Unknown"),
@@ -122,7 +125,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             logger.error(f"Error getting events: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -144,13 +147,13 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if isinstance(alarms, dict) and "error" in alarms:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {alarms.get('error','unknown error')}")],
-                    structured_content=[alarms]
+                    structured_content={"error": alarms.get('error','unknown error'), "raw": alarms}
                 )
             
             if not isinstance(alarms, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content=[{"error": "Unexpected response format"}]
+                    structured_content={"error": "Unexpected response format", "raw": alarms}
                 )
             
             # Filter and format alarms
@@ -182,7 +185,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             logger.error(f"Error getting alarms: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -210,7 +213,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(dpi_stats, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content=[{"error": "Unexpected response format"}]
+                    structured_content={"error": "Unexpected response format", "raw": events}
                 )
             
             # Format DPI stats with data formatting
@@ -219,9 +222,13 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 formatted_stat = format_data_values(stat)
                 
                 # Add human-readable summary
+                tx_raw = formatted_stat.get("tx_bytes_raw", 0) or 0
+                rx_raw = formatted_stat.get("rx_bytes_raw", 0) or 0
                 formatted_stat["summary"] = {
                     "application": stat.get("app", stat.get("cat", "Unknown")),
-                    "total_bytes": formatted_stat.get("tx_bytes", "0 B") + " / " + formatted_stat.get("rx_bytes", "0 B"),
+                    "tx": formatted_stat.get("tx_bytes", "0 B"),
+                    "rx": formatted_stat.get("rx_bytes", "0 B"),
+                    "total_bytes_raw": tx_raw + rx_raw,
                     "last_seen": format_timestamp(stat.get("time", 0))
                 }
                 
@@ -237,7 +244,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             logger.error(f"Error getting DPI stats: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -268,7 +275,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(rogue_aps, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content=[{"error": "Unexpected response format"}]
+                    structured_content={"error": "Unexpected response format", "raw": events}
                 )
             
             # Sort by signal strength (strongest first) and limit results
@@ -329,7 +336,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             logger.error(f"Error getting rogue APs: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -446,6 +453,18 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             # Normalize MAC address
             normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
             
+            if minutes <= 0:
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: minutes must be > 0")],
+                    structured_content=[{"error": "invalid_minutes"}]
+                )
+            for k, v in (("up", up_bandwidth), ("down", down_bandwidth), ("bytes_mb", quota)):
+                if v is not None and v < 0:
+                    return ToolResult(
+                        content=[TextContent(type="text", text=f"Error: {k} must be non-negative")],
+                        structured_content=[{"error": f"invalid_{k}"}]
+                    )
+            
             data = {
                 "cmd": "authorize-guest",
                 "mac": normalized_mac,
@@ -559,7 +578,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             logger.error(f"Error getting speed test results: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
     
     
@@ -594,18 +613,21 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if isinstance(events, dict) and "error" in events:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {events.get('error','unknown error')}")],
-                    structured_content=[events]
+                    structured_content={"error": events.get('error','unknown error'), "raw": events}
                 )
             
             if not isinstance(events, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content=[{"error": "Unexpected response format"}]
+                    structured_content={"error": "Unexpected response format", "raw": events}
                 )
             
             # Format IPS events for clean output
             formatted_events = []
-            for event in events[-limit:]:  # Get the most recent events
+            events_sorted = sorted(
+                events, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True
+            )[:limit]
+            for event in events_sorted:
                 formatted_event = {
                     "timestamp": format_timestamp(event.get("time", 0)),
                     "source_ip": event.get("src_ip", "Unknown"),
@@ -630,5 +652,5 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             logger.error(f"Error getting IPS events: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
