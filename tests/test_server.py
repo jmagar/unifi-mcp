@@ -115,7 +115,7 @@ async def test_server_tool_execution_with_mock_client(test_server):
 @pytest.mark.asyncio
 async def test_server_with_oauth_configuration():
     """Test server initialization with OAuth configuration."""
-    with patch.dict(os.environ, {"FASTMCP_SERVER_AUTH": "google"}):
+    with patch.dict(os.environ, {"FASTMCP_SERVER_AUTH": "fastmcp.server.auth.providers.google.GoogleProvider"}):
         with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client

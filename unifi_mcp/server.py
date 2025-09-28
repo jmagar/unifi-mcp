@@ -7,17 +7,15 @@ and server lifecycle management.
 
 import logging
 import os
-from typing import Optional
+from typing import Optional, Annotated
 from fastmcp import FastMCP
+from fastmcp.tools.tool import ToolResult
+from pydantic import Field
 
 from .config import UniFiConfig, ServerConfig
 from .client import UnifiControllerClient
-from .tools import (
-    register_device_tools,
-    register_client_tools,
-    register_network_tools,
-    register_monitoring_tools
-)
+from .models import UnifiAction, UnifiParams
+from .services import UnifiService
 from .resources import (
     register_device_resources,
     register_client_resources,
@@ -46,7 +44,7 @@ class UniFiMCPServer:
         auth_provider = os.getenv("FASTMCP_SERVER_AUTH")
         self._auth_enabled = False
         
-        if auth_provider == "google":
+        if auth_provider in ["google", "fastmcp.server.auth.providers.google.GoogleProvider"]:
             logger.info("Google OAuth authentication requested")
             # Validate required Google env vars
             client_id = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID")
@@ -92,6 +90,7 @@ class UniFiMCPServer:
             logger.info("No authentication configured - server will run without OAuth")
             self.mcp = FastMCP("UniFi Local Controller MCP Server")
         self.client: Optional[UnifiControllerClient] = None
+        self.unifi_service: Optional[UnifiService] = None
         
     async def initialize(self) -> None:
         """Initialize the UniFi client and register tools/resources."""
@@ -105,17 +104,15 @@ class UniFiMCPServer:
             logger.error(f"Failed to connect to UniFi controller: {e}")
             # Optionally: raise to abort startup
             raise
+
+        # Initialize unified service
+        self.unifi_service = UnifiService(self.client)
+
+        # Register unified tool
+        logger.info("Registering unified MCP tool...")
+        self._register_unified_tool()
         
-        # Register all tools
-        logger.info("Registering MCP tools...")
-        register_device_tools(self.mcp, self.client)
-        register_client_tools(self.mcp, self.client)
-        register_network_tools(self.mcp, self.client)
-        register_monitoring_tools(self.mcp, self.client)
-        
-        # Register authentication test tool if OAuth is enabled
-        if self._auth_enabled:
-            self._register_auth_tools()
+        # Note: Authentication test tool (get_user_info) is now handled by the unified tool
         
         # Register all resources
         logger.info("Registering MCP resources...")
@@ -128,57 +125,103 @@ class UniFiMCPServer:
         
         logger.info("UniFi MCP Server initialization complete")
     
-    def _register_auth_tools(self) -> None:
-        """Register authentication-related tools for testing OAuth."""
-        logger.info("Registering authentication test tools...")
-        
-        @self.mcp.tool
-        async def get_user_info() -> dict:
-            """Returns information about the authenticated Google user.
-            
-            This tool requires Google OAuth authentication and can be used to test
-            that the authentication system is working properly.
-            
+    def _register_unified_tool(self) -> None:
+        """Register the unified UniFi tool that handles all actions."""
+        logger.info("Registering unified UniFi tool...")
+
+        @self.mcp.tool()
+        async def unifi(
+            action: Annotated[str, Field(description="The action to perform. See UnifiAction enum for all available actions.")],
+            site_name: Annotated[str, Field(default="default", description="UniFi site name (not used by get_sites, get_controller_status, get_user_info)")] = "default",
+            mac: Annotated[Optional[str], Field(default=None, description="Device or client MAC address (any format, required for device/client operations)")] = None,
+            limit: Annotated[Optional[int], Field(default=None, description="Maximum number of results to return (default varies by action)")] = None,
+            connected_only: Annotated[Optional[bool], Field(default=None, description="Only return currently connected clients (get_clients only, default: True)")] = None,
+            active_only: Annotated[Optional[bool], Field(default=None, description="Only return active/unarchived items (get_alarms only, default: True)")] = None,
+            by_filter: Annotated[Optional[str], Field(default=None, description="Filter type for DPI stats: 'by_app' or 'by_cat' (get_dpi_stats only, default: 'by_app')")] = None,
+            name: Annotated[Optional[str], Field(default=None, description="New name for client (set_client_name only)")] = None,
+            note: Annotated[Optional[str], Field(default=None, description="Note for client (set_client_note only)")] = None,
+            minutes: Annotated[Optional[int], Field(default=None, description="Duration of guest access in minutes (authorize_guest only, default: 480 = 8 hours)")] = None,
+            up_bandwidth: Annotated[Optional[int], Field(default=None, description="Upload bandwidth limit in Kbps (authorize_guest only)")] = None,
+            down_bandwidth: Annotated[Optional[int], Field(default=None, description="Download bandwidth limit in Kbps (authorize_guest only)")] = None,
+            quota: Annotated[Optional[int], Field(default=None, description="Data quota in MB (authorize_guest only)")] = None,
+        ) -> ToolResult:
+            """Unified UniFi tool providing access to all device, client, network, and monitoring operations.
+
+            This consolidated tool replaces 31 individual tools with a single action-based interface.
+            All previous functionality is preserved while providing better type safety and efficiency.
+
+            Available Actions:
+            - Device Management: get_devices, get_device_by_mac, restart_device, locate_device
+            - Client Management: get_clients, reconnect_client, block_client, unblock_client, forget_client, set_client_name, set_client_note
+            - Network Configuration: get_sites, get_wlan_configs, get_network_configs, get_port_configs, get_port_forwarding_rules, get_firewall_rules, get_firewall_groups, get_static_routes
+            - Monitoring & Statistics: get_controller_status, get_events, get_alarms, get_dpi_stats, get_rogue_aps, start_spectrum_scan, get_spectrum_scan_state, authorize_guest, get_speedtest_results, get_ips_events
+            - Authentication: get_user_info
+
+            Args:
+                action: The action to perform (see above for available actions)
+                site_name: UniFi site name (default: "default")
+                mac: Device or client MAC address (required for device/client operations)
+                limit: Maximum number of results to return
+                connected_only: Only return currently connected clients (get_clients)
+                active_only: Only return active/unarchived items (get_alarms)
+                by_filter: Filter type for DPI stats: 'by_app' or 'by_cat' (get_dpi_stats)
+                name: New name for client (set_client_name)
+                note: Note for client (set_client_note)
+                minutes: Duration of guest access in minutes (authorize_guest)
+                up_bandwidth: Upload bandwidth limit in Kbps (authorize_guest)
+                down_bandwidth: Download bandwidth limit in Kbps (authorize_guest)
+                quota: Data quota in MB (authorize_guest)
+
             Returns:
-                dict: User information including email, name, Google ID, etc.
+                ToolResult with action response and structured data
             """
             try:
-                # Import here to avoid issues if not using authentication
-                from fastmcp.server.dependencies import get_access_token
-                
-                token = get_access_token()
-                # If get_access_token becomes async in future versions:
-                # token = await get_access_token()
-                # The GoogleProvider stores user data in token claims
-                from datetime import datetime, timezone
-                def _to_iso(ts):
-                    try:
-                        return datetime.fromtimestamp(int(ts), tz=timezone.utc).isoformat()
-                    except Exception:
-                        return ts
-                user_info = {
-                    "google_id": token.claims.get("sub"),
-                    "email": token.claims.get("email"),
-                    "name": token.claims.get("name"),
-                    "picture": token.claims.get("picture"),
-                    "locale": token.claims.get("locale"),
-                    "verified_email": token.claims.get("email_verified"),
-                    "token_issued_at": _to_iso(token.claims.get("iat")),
-                    "token_expires_at": _to_iso(token.claims.get("exp")),
-                    "authenticated": True,
-                }
-                
-                logger.debug("User authenticated.")
-                return user_info
-                
+                # Parse and validate action
+                try:
+                    unifi_action = UnifiAction(action)
+                except ValueError:
+                    available_actions = [action.value for action in UnifiAction]
+                    return ToolResult(
+                        content=[{
+                            "type": "text",
+                            "text": f"Invalid action '{action}'. Available actions: {', '.join(available_actions)}"
+                        }],
+                        structured_content={"error": f"Invalid action: {action}", "available_actions": available_actions}
+                    )
+
+                # Create and validate parameters
+                params = UnifiParams(
+                    action=unifi_action,
+                    site_name=site_name,
+                    mac=mac,
+                    limit=limit,
+                    connected_only=connected_only,
+                    active_only=active_only,
+                    by_filter=by_filter,
+                    name=name,
+                    note=note,
+                    minutes=minutes,
+                    up_bandwidth=up_bandwidth,
+                    down_bandwidth=down_bandwidth,
+                    quota=quota
+                )
+
+                # Execute action through service layer
+                if not self.unifi_service:
+                    return ToolResult(
+                        content=[{"type": "text", "text": "Error: Service not initialized"}],
+                        structured_content={"error": "Service not initialized"}
+                    )
+                return await self.unifi_service.execute_action(params)
+
             except Exception as e:
-                logger.error(f"Error getting user info: {e}")
-                return {
-                    "error": f"Failed to get user info: {str(e)}",
-                    "authenticated": False
-                }
-        
-        logger.info("Authentication test tools registered successfully")
+                logger.error(f"Error in unified UniFi tool: {e}")
+                return ToolResult(
+                    content=[{"type": "text", "text": f"Error: {str(e)}"}],
+                    structured_content={"error": str(e)}
+                )
+
+        logger.info("Unified UniFi tool registered successfully")
     
     async def cleanup(self) -> None:
         """Cleanup server resources."""
