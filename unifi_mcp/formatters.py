@@ -520,6 +520,202 @@ def format_networks_list(networks: List[Dict[str, Any]]) -> str:
     return f"Network Configurations ({len(networks)} total): " + " | ".join(network_texts)
 
 
+# --- Additional token‑efficient formatters for tools ---
+
+def format_port_forwarding_list(rules: List[Dict[str, Any]]) -> str:
+    """Format port forwarding rules into a compact list with symbols.
+
+    Example:
+    Port Forwarding Rules (4 total)
+      ✅ web-https: TCP 443 -> 10.0.0.2:443 (log: ❌)
+      ✅ ssh: TCP 2002 -> 10.0.0.5:22 (log: ✅)
+    """
+    if not rules:
+        return "Port Forwarding Rules (0 total)\n  -"
+
+    lines: List[str] = [f"Port Forwarding Rules ({len(rules)} total)"]
+    for r in rules:
+        enabled = "✅" if r.get("enabled") else "❌"
+        proto = (r.get("protocol") or r.get("proto") or "").upper()
+        ext = r.get("external_port", r.get("dst_port", "?"))
+        ip = r.get("internal_ip", r.get("fwd", "?"))
+        port = r.get("internal_port", r.get("fwd_port", "?"))
+        log = "✅" if r.get("log") else "❌"
+        name = r.get("name", "Unnamed Rule")[:40]
+        lines.append(f"  {enabled} {name}: {proto} {ext} -> {ip}:{port} (log: {log})")
+    return "\n".join(lines)
+
+
+def format_firewall_rules_list(rules: List[Dict[str, Any]]) -> str:
+    """Format firewall rules compactly with key fields and symbols."""
+    if not rules:
+        return "Firewall Rules (0 total)\n  -"
+    lines: List[str] = [f"Firewall Rules ({len(rules)} total)"]
+    # Header
+    lines.append(f"  {'En':<2} {'Act':<6} {'Proto':<5} {'Src':<18} {'SPort':<7} {'Dst':<18} {'DPort':<7} {'Log':<3}")
+    lines.append(f"  {'-'*2:<2} {'-'*6:<6} {'-'*5:<5} {'-'*18:<18} {'-'*7:<7} {'-'*18:<18} {'-'*7:<7} {'-'*3:<3}")
+    for r in rules:
+        en = "✓" if r.get("enabled") else "✗"
+        act = str(r.get("action", "?")).lower()[:6]
+        proto = str(r.get("protocol", r.get("proto", "all")))[:5]
+        src = str(r.get("src_address", r.get("src", "any")))[:18]
+        sport = str(r.get("src_port", "any"))[:7]
+        dst = str(r.get("dst_address", "any"))[:18]
+        dport = str(r.get("dst_port", "any"))[:7]
+        log = "✓" if r.get("logging") or r.get("log") else "✗"
+        lines.append(f"  {en:<2} {act:<6} {proto:<5} {src:<18} {sport:<7} {dst:<18} {dport:<7} {log:<3}")
+    return "\n".join(lines)
+
+
+def format_firewall_groups_list(groups: List[Dict[str, Any]]) -> str:
+    """Format firewall groups with counts."""
+    if not groups:
+        return "Firewall Groups (0 total)\n  -"
+    lines: List[str] = [f"Firewall Groups ({len(groups)} total)"]
+    lines.append(f"  {'Name':<28} {'Type':<10} {'Members':<7} {'Desc':<24}")
+    lines.append(f"  {'-'*28:<28} {'-'*10:<10} {'-'*7:<7} {'-'*24:<24}")
+    for g in groups:
+        name = str(g.get("name", "Unnamed Group"))[:28]
+        gtype = str(g.get("group_type", "unknown"))[:10]
+        cnt = int(g.get("member_count", len(g.get("group_members", [])) or 0))
+        desc = str(g.get("description", ""))[:24]
+        lines.append(f"  {name:<28} {gtype:<10} {cnt:<7} {desc:<24}")
+    return "\n".join(lines)
+
+
+def format_static_routes_list(routes: List[Dict[str, Any]]) -> str:
+    """Format static routes compactly."""
+    if not routes:
+        return "Static Routes (0 total)\n  -"
+    lines: List[str] = [f"Static Routes ({len(routes)} total)"]
+    lines.append(f"  {'En':<2} {'Destination':<22} {'GW':<16} {'Iface':<8} {'Dist':<4}")
+    lines.append(f"  {'-'*2:<2} {'-'*22:<22} {'-'*16:<16} {'-'*8:<8} {'-'*4:<4}")
+    for r in routes:
+        en = "✓" if r.get("enabled") else "✗"
+        dest = str(r.get("destination", r.get("static-route_network", "?")))[:22]
+        gw = str(r.get("gateway", r.get("static-route_nexthop", "?")))[:16]
+        iface = str(r.get("interface", r.get("static-route_interface", "auto")))[:8]
+        dist = str(r.get("distance", r.get("static-route_distance", "-")))[:4]
+        lines.append(f"  {en:<2} {dest:<22} {gw:<16} {iface:<8} {dist:<4}")
+    return "\n".join(lines)
+
+
+def format_events_list(events: List[Dict[str, Any]]) -> str:
+    """Format controller events with a header and compact lines."""
+    if not events:
+        return "Controller Events (0)\n  -"
+    lines: List[str] = [f"Controller Events ({len(events)} shown)"]
+    # Show first 10 for brevity in text; full list remains in structured content
+    preview = events[:10]
+    for e in preview:
+        ts = format_timestamp(e.get("timestamp") or e.get("time") or "")
+        typ = e.get("type", e.get("key", "?"))
+        msg = str(e.get("message", e.get("msg", "")))[:80]
+        lines.append(f"  • {ts} | {typ}: {msg}")
+    if len(events) > len(preview):
+        lines.append(f"  ... and {len(events) - len(preview)} more")
+    return "\n".join(lines)
+
+
+def format_alarms_list(alarms: List[Dict[str, Any]]) -> str:
+    """Format alarms with active indicator and summary."""
+    if not alarms:
+        return "Controller Alarms (0)\n  -"
+    lines: List[str] = [f"Controller Alarms ({len(alarms)} shown)"]
+    preview = alarms[:10]
+    for a in preview:
+        act = "⚠️" if not a.get("archived") else "🗂"
+        ts = format_timestamp(a.get("timestamp", ""))
+        sev = str(a.get("severity", "")).title()[:10]
+        msg = str(a.get("message", "")).strip()[:80]
+        lines.append(f"  {act} {ts} | {sev}: {msg}")
+    if len(alarms) > len(preview):
+        lines.append(f"  ... and {len(alarms) - len(preview)} more")
+    return "\n".join(lines)
+
+
+def format_dpi_stats_list(stats: List[Dict[str, Any]]) -> str:
+    """Format DPI stats showing top apps/categories with totals."""
+    if not stats:
+        return "DPI Statistics (0)\n  -"
+    lines: List[str] = [f"DPI Statistics ({len(stats)} items)"]
+    header_added = False
+    count = 0
+    for s in stats:
+        summ = s.get("summary", {})
+        app = str(summ.get("application", s.get("app", s.get("cat", "Unknown"))))[:22]
+        tx = s.get("tx_bytes") or s.get("tx_bytes_raw") or 0
+        rx = s.get("rx_bytes") or s.get("rx_bytes_raw") or 0
+        # Prefer already formatted values if present
+        txf = s.get("tx_bytes") if isinstance(s.get("tx_bytes"), str) else format_bytes(tx)
+        rxf = s.get("rx_bytes") if isinstance(s.get("rx_bytes"), str) else format_bytes(rx)
+        total = format_bytes((tx or 0) + (rx or 0))
+        if not header_added:
+            lines.append(f"  {'Application':<22} {'TX':<9} {'RX':<9} {'Total':<9}")
+            lines.append(f"  {'-'*22:<22} {'-'*9:<9} {'-'*9:<9} {'-'*9:<9}")
+            header_added = True
+        lines.append(f"  {app:<22} {txf:<9} {rxf:<9} {total:<9}")
+        count += 1
+        if count >= 10:
+            break
+    if len(stats) > count:
+        lines.append(f"  ... and {len(stats) - count} more")
+    return "\n".join(lines)
+
+
+def format_rogue_aps_list(aps: List[Dict[str, Any]]) -> str:
+    """Format rogue APs with signal and channel."""
+    if not aps:
+        return "Rogue APs (0)\n  -"
+    lines: List[str] = [f"Rogue APs ({len(aps)} shown)"]
+    preview = aps[:10]
+    for ap in preview:
+        ssid = ap.get("ssid", ap.get("essid", "Hidden"))[:24]
+        bssid = ap.get("bssid", "?")
+        ch = ap.get("channel", "?")
+        sig = ap.get("signal_strength", ap.get("rssi", "?"))
+        threat = ap.get("threat_level", "?")
+        lines.append(f"  • {ssid:<24} ch {ch:<3} RSSI {sig:<6} ({threat}) {bssid}")
+    if len(aps) > len(preview):
+        lines.append(f"  ... and {len(aps) - len(preview)} more")
+    return "\n".join(lines)
+
+
+def format_speedtests_list(results: List[Dict[str, Any]]) -> str:
+    """Format speed tests with concise lines."""
+    if not results:
+        return "Speed Tests (0)\n  -"
+    lines: List[str] = [f"Speed Tests ({len(results)} shown)"]
+    preview = results[:10]
+    for r in preview:
+        ts = format_timestamp(r.get("timestamp", ""))
+        dl = r.get("download_mbps", 0)
+        ul = r.get("upload_mbps", 0)
+        lat = r.get("latency_ms", r.get("ping_ms", 0))
+        lines.append(f"  • {ts} | ↓ {dl} Mbps ↑ {ul} Mbps | {lat} ms")
+    if len(results) > len(preview):
+        lines.append(f"  ... and {len(results) - len(preview)} more")
+    return "\n".join(lines)
+
+
+def format_ips_events_list(events: List[Dict[str, Any]]) -> str:
+    """Format IPS/IDS events compactly."""
+    if not events:
+        return "IPS Events (0)\n  -"
+    lines: List[str] = [f"IPS Events ({len(events)} shown)"]
+    preview = events[:10]
+    for e in preview:
+        ts = format_timestamp(e.get("timestamp", ""))
+        sig = str(e.get("signature", "?"))[:36]
+        sev = e.get("severity", "?")
+        src = e.get("source_ip", e.get("src_ip", "?"))
+        dst = e.get("destination_ip", e.get("dst_ip", "?"))
+        lines.append(f"  • {ts} [{sev}] {sig} {src} → {dst}")
+    if len(events) > len(preview):
+        lines.append(f"  ... and {len(events) - len(preview)} more")
+    return "\n".join(lines)
+
+
 def format_wlan_text(wlan: Dict[str, Any]) -> str:
     """Format WLAN config into clean text representation."""
     name = wlan.get("name", "Unknown WLAN")
