@@ -1,6 +1,6 @@
 """Type definitions for UniFi API responses and data structures."""
 
-from typing import TypedDict, Union, List, Optional, Literal
+from typing import TypedDict, Union, List, Optional
 
 
 # Base UniFi API Response
