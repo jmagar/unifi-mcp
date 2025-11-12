@@ -5,6 +5,7 @@ Handles all device management operations including listing, control, and monitor
 """
 
 import logging
+from typing import cast, Dict, Any
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -63,10 +64,14 @@ class DeviceService(BaseService):
             error_result = self.check_list_response(devices, params.action)
             if error_result:
                 return error_result
+            
+            # Type narrowing: after check_list_response, we know it's a list
+            assert isinstance(devices, list), "Expected list of devices"
 
             # Format each device for clean output
             formatted_devices = []
             for device in devices:
+                device = cast(Dict[str, Any], device)
                 try:
                     formatted_device = format_device_summary(device)
                     formatted_devices.append(formatted_device)
@@ -103,12 +108,16 @@ class DeviceService(BaseService):
             if error_result:
                 return error_result
 
+            # Type narrowing: after check_list_response, we know it's a list
+            assert isinstance(devices, list), "Expected list of devices"
+            
             # Normalize MAC address for comparison (validated by pydantic)
             assert params.mac is not None, "MAC address required for this action"
             normalized_mac = self.normalize_mac(params.mac)
 
             # Find matching device
             for device in devices:
+                device = cast(Dict[str, Any], device)
                 device_mac = self.normalize_mac(device.get("mac", ""))
                 if device_mac == normalized_mac:
                     formatted = format_device_summary(device)
