@@ -5,6 +5,7 @@ Provides shared functionality and common patterns for all domain services.
 """
 
 import logging
+import re
 from abc import ABC
 from typing import Any, Optional
 from fastmcp.tools.tool import ToolResult
@@ -37,14 +38,25 @@ class BaseService(ABC):
         """Normalize MAC address to consistent format.
 
         Converts any MAC address format to lowercase colon-separated format.
+        Validates the MAC address format.
 
         Args:
             mac: MAC address in any format (xx:xx:xx:xx:xx:xx, xx-xx-xx-xx-xx-xx, etc.)
 
         Returns:
             Normalized MAC address in xx:xx:xx:xx:xx:xx format
+            
+        Raises:
+            ValueError: If the MAC address format is invalid
         """
-        return mac.strip().lower().replace("-", ":").replace(".", ":")
+        # Normalize to colon-separated format
+        normalized = mac.strip().lower().replace("-", ":").replace(".", ":")
+        
+        # Validate MAC address format (6 groups of 2 hex digits)
+        if not re.match(r'^([0-9a-f]{2}:){5}[0-9a-f]{2}$', normalized):
+            raise ValueError(f"Invalid MAC address format: {mac}")
+        
+        return normalized
 
     @staticmethod
     def create_error_result(message: str, raw_data: Any = None) -> ToolResult:
