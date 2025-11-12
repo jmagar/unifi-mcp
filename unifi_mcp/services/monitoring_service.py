@@ -4,6 +4,7 @@ Monitoring service for UniFi MCP Server.
 Handles all monitoring and statistics operations including controller status,
 events, alarms, security monitoring, and performance metrics.
 """
+from typing import cast, Dict, Any
 
 import logging
 import time
@@ -79,6 +80,9 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
                     structured_content={"error": result.get('error','unknown error'), "raw": result}
                 )
+            
+            # Type narrowing: result should be a dict here
+            assert isinstance(result, dict), "Expected dict response from controller status"
 
             resp = {
                 "status": "online",
@@ -332,7 +336,7 @@ class MonitoringService(BaseService):
                 summary_text = header + "\n" + summary_text
             return self.create_success_result(
                 text=summary_text,
-                data=formatted_rogues,
+                data=cast(list[dict[str, Any]], formatted_rogues),
                 success_message=f"Retrieved {len(text_items)} rogue access points"
             )
 

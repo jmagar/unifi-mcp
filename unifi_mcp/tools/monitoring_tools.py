@@ -46,6 +46,9 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                     content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
                     structured_content={"error": result.get('error','unknown error'), "raw": result}
                 )
+            
+            # Type narrowing: result should be a dict here
+            assert isinstance(result, dict), "Expected dict response from controller status"
 
             resp = {
                 "status": "online",
