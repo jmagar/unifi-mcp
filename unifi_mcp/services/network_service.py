@@ -1,3 +1,4 @@
+from typing import cast, Dict, Any
 """
 Network service for UniFi MCP Server.
 
@@ -114,10 +115,17 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(wlans, params.action)
             if error_result:
                 return error_result
+                
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(wlans, list), "Expected list response"
+            
+            # Type narrowing: after check_list_response, we know it's a list
+            assert isinstance(wlans, list), "Expected list of WLANs"
 
             # Format WLAN configs for clean output
             formatted_wlans = []
             for wlan in wlans:
+                wlan = cast(Dict[str, Any], wlan)
                 formatted_wlan = {
                     "name": wlan.get("name", "Unknown WLAN"),
                     # SSID is typically under 'ssid' (fallback to profile 'name')
@@ -156,10 +164,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(networks, params.action)
             if error_result:
                 return error_result
+                
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(networks, list), "Expected list response"
 
             # Format network configs for clean output
             formatted_networks = []
             for network in networks:
+                network = cast(Dict[str, Any], network)
                 formatted_network = {
                     "name": network.get("name", "Unknown Network"),
                     "purpose": network.get("purpose", "Unknown"),
@@ -198,6 +210,9 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(ports, params.action)
             if error_result:
                 return error_result
+                
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(ports, list), "Expected list response"
 
             # Format port configs for clean output
             formatted_ports = []
@@ -252,10 +267,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(rules, params.action)
             if error_result:
                 return error_result
+                
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(rules, list), "Expected list response"
 
             # Format port forwarding rules for clean output
             formatted_rules = []
             for rule in rules:
+                rule = cast(Dict[str, Any], rule)
                 formatted_rule = {
                     "name": rule.get("name", "Unknown Rule"),
                     "enabled": rule.get("enabled", False),
@@ -305,6 +324,7 @@ class NetworkService(BaseService):
             # Format firewall rules for clean output
             formatted_rules = []
             for rule in rules:
+                rule = cast(Dict[str, Any], rule)
                 formatted_rule = {
                     "name": rule.get("name", "Unnamed Rule"),
                     "enabled": rule.get("enabled", False),
@@ -345,10 +365,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(groups, params.action)
             if error_result:
                 return error_result
+                
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(groups, list), "Expected list response"
 
             # Format firewall groups for clean output
             formatted_groups = []
             for group in groups:
+                group = cast(Dict[str, Any], group)
                 formatted_group = {
                     "name": group.get("name", "Unnamed Group"),
                     "group_type": group.get("group_type", "unknown"),
@@ -381,10 +405,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(routes, params.action)
             if error_result:
                 return error_result
+                
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(routes, list), "Expected list response"
 
             # Format static routes for clean output
             formatted_routes = []
             for route in routes:
+                route = cast(Dict[str, Any], route)
                 formatted_route = {
                     "name": route.get("name", "Unnamed Route"),
                     "enabled": route.get("enabled", False),
