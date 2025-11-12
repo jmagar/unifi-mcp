@@ -112,7 +112,7 @@ class DeviceService(BaseService):
                 if device_mac == normalized_mac:
                     formatted = format_device_summary(device)
                     lines = [
-                        f"Device Details",
+                        "Device Details",
                         f"  {formatted.get('name','Unknown')} | {formatted.get('model','Unknown')} ({formatted.get('type','Device')})",
                         f"  Status: {formatted.get('status','Unknown')} | IP: {formatted.get('ip','Unknown')} | Uptime: {formatted.get('uptime','Unknown')}",
                         f"  MAC: {formatted.get('mac','').upper()} | Version: {formatted.get('version','Unknown')}"

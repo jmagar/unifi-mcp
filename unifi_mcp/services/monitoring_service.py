@@ -214,7 +214,8 @@ class MonitoringService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-            by_filter = params.by_filter or defaults.get('by_filter', 'by_app')
+            # by_filter option preserved for future use if needed
+            # by_filter = params.by_filter or defaults.get('by_filter', 'by_app')
 
             dpi_stats = await self.client.get_dpi_stats(site_name)
 

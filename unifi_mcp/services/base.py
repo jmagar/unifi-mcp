@@ -6,7 +6,7 @@ Provides shared functionality and common patterns for all domain services.
 
 import logging
 from abc import ABC
-from typing import Any, Dict
+from typing import Any, Optional
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -66,7 +66,7 @@ class BaseService(ABC):
     def create_success_result(
         text: str,
         data: Any,
-        success_message: str = None
+        success_message: Optional[str] = None
     ) -> ToolResult:
         """Create standardized success ToolResult.
 
@@ -120,7 +120,7 @@ class BaseService(ABC):
 
         return True, ""
 
-    def check_list_response(self, response: Any, action: UnifiAction) -> ToolResult:
+    def check_list_response(self, response: Any, action: UnifiAction) -> Optional[ToolResult]:
         """Check if response is a valid list and handle common error cases.
 
         Args:
@@ -146,7 +146,7 @@ class BaseService(ABC):
         response: Any,
         action: UnifiAction,
         formatter_func=None,
-        success_text: str = None
+        success_text: Optional[str] = None
     ) -> ToolResult:
         """Format action result with consistent error handling.
 

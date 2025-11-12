@@ -8,7 +8,6 @@ import logging
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
 from .device_service import DeviceService
 from .client_service import ClientService
 from .network_service import NetworkService
