@@ -72,7 +72,7 @@ class UnifiControllerClient:
                 login_data = {"username": self.config.username, "password": self.config.password}
             else:
                 login_url = f"{self.config.controller_url}{self.api_base}/login"
-                login_data = {
+                login_data: dict[str, Union[str, bool]] = {
                     "username": self.config.username,
                     "password": self.config.password,
                     "remember": True,
