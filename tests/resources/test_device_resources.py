@@ -5,7 +5,7 @@ Following FastMCP testing patterns for resource functionality.
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from inline_snapshot import snapshot
 
 from fastmcp import FastMCP, Client
@@ -347,9 +347,9 @@ class TestDeviceResourcesIntegration:
                     
                     # If we got device data, try to find a MAC and test individual lookup
                     if devices_content and len(devices_content) > 0:
-                        devices_text = devices_content[0].text
                         # This is a simplified test - in practice would parse the content
                         # for actual MAC addresses from the device list
+                        _ = devices_content[0].text
                         
                         # Test with a common MAC format (would need real MAC from devices)
                         # For now, just test that the resource handler works

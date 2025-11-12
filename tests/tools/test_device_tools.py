@@ -5,7 +5,7 @@ Following FastMCP testing patterns with in-memory testing and tool validation.
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from inline_snapshot import snapshot
 
 from fastmcp import FastMCP, Client

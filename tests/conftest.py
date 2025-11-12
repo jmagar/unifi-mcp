@@ -4,12 +4,13 @@ Shared test fixtures and configuration for UniFi MCP Server tests.
 Following FastMCP testing patterns for reusable test resources.
 """
 
+import json
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock, Mock, patch
 from typing import Dict, Any, List, Optional
 import httpx
-from fastmcp import FastMCP, Client
+from fastmcp import FastMCP
 
 from unifi_mcp.config import UniFiConfig, ServerConfig
 from unifi_mcp.client import UnifiControllerClient

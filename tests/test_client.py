@@ -7,7 +7,6 @@ Following FastMCP testing patterns with comprehensive authentication flow testin
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 import httpx
-import json
 from inline_snapshot import snapshot
 
 from unifi_mcp.client import UnifiControllerClient

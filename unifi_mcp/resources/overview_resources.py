@@ -86,7 +86,6 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 # Add note about time-series data
                 summary += f"*Data from {len(dashboard)} time points - showing latest measurements*"
                 
-                latest = dashboard[-1]
                 # Filter dashboard to essential metrics
                 filtered_dashboard = {
                     "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
@@ -225,7 +224,6 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 # Add note about time-series data
                 summary += f"*Data from {len(dashboard)} time points - showing latest measurements*"
                 
-                latest = dashboard[-1]
                 # Filter dashboard to essential metrics
                 filtered_dashboard = {
                     "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),

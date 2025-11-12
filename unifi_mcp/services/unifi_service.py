@@ -8,7 +8,6 @@ import logging
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
 from .device_service import DeviceService
 from .client_service import ClientService
 from .network_service import NetworkService
@@ -114,6 +113,13 @@ class UnifiService:
             token = get_access_token()
             # If get_access_token becomes async in future versions:
             # token = await get_access_token()
+            
+            if token is None:
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: Not authenticated")],
+                    structured_content={"authenticated": False, "error": "No authentication token found"}
+                )
+            
             # The GoogleProvider stores user data in token claims
             user_info = {
                 "google_id": token.claims.get("sub"),

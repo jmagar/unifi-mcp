@@ -9,7 +9,7 @@ import logging
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import format_timestamp, format_data_values, format_bytes
+from ..formatters import format_timestamp, format_data_values
 
 logger = logging.getLogger(__name__)
 

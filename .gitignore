@@ -10,7 +10,12 @@ wheels/
 # Virtual environments
 .venv
 .venv-backend
+
+# Environment files
 .env
+.env.local
+
+# Log and PID files
 *.log
 *.pid
 

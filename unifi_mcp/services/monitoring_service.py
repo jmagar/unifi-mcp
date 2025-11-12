@@ -4,6 +4,7 @@ Monitoring service for UniFi MCP Server.
 Handles all monitoring and statistics operations including controller status,
 events, alarms, security monitoring, and performance metrics.
 """
+from typing import cast, Any
 
 import logging
 import time
@@ -79,6 +80,9 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
                     structured_content={"error": result.get('error','unknown error'), "raw": result}
                 )
+            
+            # Type narrowing: result should be a dict here
+            assert isinstance(result, dict), "Expected dict response from controller status"
 
             resp = {
                 "status": "online",
@@ -214,7 +218,8 @@ class MonitoringService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-            by_filter = params.by_filter or defaults.get('by_filter', 'by_app')
+            # by_filter option preserved for future use if needed
+            # by_filter = params.by_filter or defaults.get('by_filter', 'by_app')
 
             dpi_stats = await self.client.get_dpi_stats(site_name)
 
@@ -331,7 +336,7 @@ class MonitoringService(BaseService):
                 summary_text = header + "\n" + summary_text
             return self.create_success_result(
                 text=summary_text,
-                data=formatted_rogues,
+                data=cast(list[dict[str, Any]], formatted_rogues),
                 success_message=f"Retrieved {len(text_items)} rogue access points"
             )
 
@@ -349,6 +354,10 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             data = {
@@ -388,6 +397,10 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             result = await self.client._make_request("GET", f"/stat/spectrum-scan/{normalized_mac}", site_name=site_name)
@@ -419,6 +432,10 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             minutes = params.minutes or defaults.get('minutes', 480)

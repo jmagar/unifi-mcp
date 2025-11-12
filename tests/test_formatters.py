@@ -4,7 +4,6 @@ Tests for UniFi MCP formatters module.
 Following FastMCP testing patterns for data formatting functionality.
 """
 
-import pytest
 from inline_snapshot import snapshot
 
 from unifi_mcp.formatters import (

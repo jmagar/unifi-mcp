@@ -5,7 +5,6 @@ Provides tools for listing, managing, and controlling UniFi devices.
 """
 
 import logging
-from typing import Any, Dict, List
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
@@ -110,7 +109,7 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 if device_mac == normalized_mac:
                     formatted = format_device_summary(device)
                     lines = [
-                        f"Device Details",
+                        "Device Details",
                         f"  {formatted.get('name','Unknown')} | {formatted.get('model','Unknown')} ({formatted.get('type','Device')})",
                         f"  Status: {formatted.get('status','Unknown')} | IP: {formatted.get('ip','Unknown')} | Uptime: {formatted.get('uptime','Unknown')}",
                         f"  MAC: {formatted.get('mac','').upper()} | Version: {formatted.get('version','Unknown')}"

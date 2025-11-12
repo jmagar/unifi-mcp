@@ -5,6 +5,7 @@ Handles all device management operations including listing, control, and monitor
 """
 
 import logging
+from typing import cast, Dict, Any
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -63,10 +64,14 @@ class DeviceService(BaseService):
             error_result = self.check_list_response(devices, params.action)
             if error_result:
                 return error_result
+            
+            # Type narrowing: after check_list_response, we know it's a list
+            assert isinstance(devices, list), "Expected list of devices"
 
             # Format each device for clean output
             formatted_devices = []
             for device in devices:
+                device = cast(Dict[str, Any], device)
                 try:
                     formatted_device = format_device_summary(device)
                     formatted_devices.append(formatted_device)
@@ -103,16 +108,21 @@ class DeviceService(BaseService):
             if error_result:
                 return error_result
 
-            # Normalize MAC address for comparison
+            # Type narrowing: after check_list_response, we know it's a list
+            assert isinstance(devices, list), "Expected list of devices"
+            
+            # Normalize MAC address for comparison (validated by pydantic)
+            assert params.mac is not None, "MAC address required for this action"
             normalized_mac = self.normalize_mac(params.mac)
 
             # Find matching device
             for device in devices:
+                device = cast(Dict[str, Any], device)
                 device_mac = self.normalize_mac(device.get("mac", ""))
                 if device_mac == normalized_mac:
                     formatted = format_device_summary(device)
                     lines = [
-                        f"Device Details",
+                        "Device Details",
                         f"  {formatted.get('name','Unknown')} | {formatted.get('model','Unknown')} ({formatted.get('type','Device')})",
                         f"  Status: {formatted.get('status','Unknown')} | IP: {formatted.get('ip','Unknown')} | Uptime: {formatted.get('uptime','Unknown')}",
                         f"  MAC: {formatted.get('mac','').upper()} | Version: {formatted.get('version','Unknown')}"
@@ -133,7 +143,9 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-
+            
+            # MAC is required and validated by pydantic
+            assert params.mac is not None, "MAC address required for restart_device"
             result = await self.client.restart_device(params.mac, site_name)
 
             # Validate response
@@ -160,7 +172,9 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-
+            
+            # MAC is required and validated by pydantic
+            assert params.mac is not None, "MAC address required for locate_device"
             result = await self.client.locate_device(params.mac, site_name)
 
             # Check for error in response
