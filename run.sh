@@ -51,9 +51,16 @@ fi
 
 echo "Starting UniFi MCP Server (modular version)..."
 
-# Sync dependencies
-echo "Syncing dependencies..."
-uv sync
+# Sync dependencies if uv is available
+if command -v uv &> /dev/null; then
+    echo "Syncing dependencies with uv..."
+    uv sync
+elif command -v python3 &> /dev/null; then
+    echo "uv not found, using python3 directly..."
+else
+    echo "Error: Neither uv nor python3 found. Please install Python 3.11+ or uv."
+    exit 1
+fi
 
 # Run the modular server in background with proper daemonization
 echo "Starting server in background..."
@@ -61,7 +68,15 @@ echo "Starting server in background..."
 mkdir -p "$(dirname "$LOG_FILE")"
 # Create log file immediately
 touch "$LOG_FILE"
-setsid nohup uv run python -m unifi_mcp.main > "$LOG_FILE" 2>&1 &
+
+# Choose the right python command
+if command -v uv &> /dev/null; then
+    PYTHON_CMD="uv run python"
+else
+    PYTHON_CMD="python3"
+fi
+
+setsid nohup $PYTHON_CMD -m unifi_mcp.main > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
 echo "Server started with PID: $SERVER_PID (saved to $PID_FILE)"
