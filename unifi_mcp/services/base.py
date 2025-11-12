@@ -6,8 +6,7 @@ Provides shared functionality and common patterns for all domain services.
 
 import logging
 from abc import ABC
-from typing import Any
-
+from typing import Any, Optional
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -18,7 +17,7 @@ from ..models.params import UnifiParams
 logger = logging.getLogger(__name__)
 
 
-class BaseService(ABC):  # noqa: B024
+class BaseService(ABC):
     """Base service providing shared functionality for all domain services.
 
     This class centralizes common patterns like MAC address normalization,
@@ -48,18 +47,6 @@ class BaseService(ABC):  # noqa: B024
         return mac.strip().lower().replace("-", ":").replace(".", ":")
 
     @staticmethod
-    def require_mac(params: UnifiParams) -> str:
-        """Return a required MAC parameter or raise a ValueError."""
-        if not params.mac:
-            raise ValueError(f"{params.action.value} requires a MAC address")
-        return params.mac
-
-    @staticmethod
-    def dict_items(items: list[Any]) -> list[dict[str, Any]]:
-        """Keep only dict items from a loosely typed controller response list."""
-        return [item for item in items if isinstance(item, dict)]
-
-    @staticmethod
     def create_error_result(message: str, raw_data: Any = None) -> ToolResult:
         """Create standardized error ToolResult.
 
@@ -70,13 +57,16 @@ class BaseService(ABC):  # noqa: B024
         Returns:
             ToolResult with error information
         """
-        return ToolResult(content=[TextContent(type="text", text=f"Error: {message}")], structured_content={"error": message, "raw": raw_data})
+        return ToolResult(
+            content=[TextContent(type="text", text=f"Error: {message}")],
+            structured_content={"error": message, "raw": raw_data}
+        )
 
     @staticmethod
     def create_success_result(
         text: str,
         data: Any,
-        success_message: str | None = None,
+        success_message: Optional[str] = None
     ) -> ToolResult:
         """Create standardized success ToolResult.
 
@@ -90,11 +80,22 @@ class BaseService(ABC):  # noqa: B024
         """
         structured_content = data
         if success_message and isinstance(data, dict):
-            structured_content = {"success": True, "message": success_message, **data}
+            structured_content = {
+                "success": True,
+                "message": success_message,
+                **data
+            }
         elif success_message:
-            structured_content = {"success": True, "message": success_message, "data": data}
+            structured_content = {
+                "success": True,
+                "message": success_message,
+                "data": data
+            }
 
-        return ToolResult(content=[TextContent(type="text", text=text)], structured_content=structured_content)
+        return ToolResult(
+            content=[TextContent(type="text", text=text)],
+            structured_content=structured_content
+        )
 
     def validate_response(self, response: Any, action: UnifiAction) -> tuple[bool, str]:
         """Validate API response for common error patterns.
@@ -119,7 +120,7 @@ class BaseService(ABC):  # noqa: B024
 
         return True, ""
 
-    def check_list_response(self, response: Any, action: UnifiAction) -> ToolResult | None:
+    def check_list_response(self, response: Any, action: UnifiAction) -> Optional[ToolResult]:
         """Check if response is a valid list and handle common error cases.
 
         Args:
@@ -145,7 +146,7 @@ class BaseService(ABC):  # noqa: B024
         response: Any,
         action: UnifiAction,
         formatter_func=None,
-        success_text: str | None = None,
+        success_text: Optional[str] = None
     ) -> ToolResult:
         """Format action result with consistent error handling.
 
@@ -171,7 +172,7 @@ class BaseService(ABC):  # noqa: B024
                 return self.create_success_result(text, formatted_data)
             except Exception as e:
                 logger.error(f"Error formatting response for {action.value}: {e}")
-                return self.create_error_result(f"Formatting error: {e!s}", response)
+                return self.create_error_result(f"Formatting error: {str(e)}", response)
 
         # Return raw response if no formatter
         text = success_text or f"{action.value} completed"
@@ -189,4 +190,6 @@ class BaseService(ABC):  # noqa: B024
         Returns:
             ToolResult with action response
         """
-        return self.create_error_result(f"Action {params.action} not implemented in {self.__class__.__name__}")
+        return self.create_error_result(
+            f"Action {params.action} not implemented in {self.__class__.__name__}"
+        )

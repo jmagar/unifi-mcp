@@ -6,33 +6,32 @@ Provides structured access to events, alarms, statistics, and system information
 
 import json
 import logging
-
 from fastmcp import FastMCP
 
 from ..client import UnifiControllerClient
-from ..formatters import format_data_values, format_timestamp
+from ..formatters import format_timestamp, format_data_values
 
 logger = logging.getLogger(__name__)
 
 
 def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -> None:
     """Register all monitoring and statistics MCP resources."""
-
+    
     @mcp.resource("unifi://events")
     async def resource_events():
         """Get recent events with clean formatting (default site)."""
         try:
             events = await client.get_events("default", 100)
-
+            
             if isinstance(events, dict) and "error" in events:
                 return f"Error retrieving events: {events['error']}"
-
+            
             if not isinstance(events, list):
                 return "Error: Unexpected response format"
-
+            
             if not events:
                 return "**UniFi Events**\n\nNo recent events found."
-
+            
             # Format recent events with timestamps and messages
             recent_events = events[-15:]
             event_texts = []
@@ -43,108 +42,102 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 user = event.get("user", "System")
                 event_texts.append(f"{time_str}: {key} - {msg} ({user})")
             # Filter events to essential info
-            filtered_events = [
-                {
-                    "time": format_timestamp(event.get("time", 0)),
-                    "key": event.get("key", "Unknown"),
-                    "message": event.get("msg", "No message"),
-                    "user": event.get("user", "System"),
-                    "subsystem": event.get("subsystem", "Unknown"),
-                }
-                for event in events[-15:]
-            ]  # Latest 15 events
+            filtered_events = [{
+                "time": format_timestamp(event.get("time", 0)),
+                "key": event.get("key", "Unknown"),
+                "message": event.get("msg", "No message"),
+                "user": event.get("user", "System"),
+                "subsystem": event.get("subsystem", "Unknown")
+            } for event in events[-15:]]  # Latest 15 events
             return json.dumps(filtered_events, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in events resource: {e}")
-            return f"Error retrieving events: {e!s}"
-
+            return f"Error retrieving events: {str(e)}"
+    
+    
     @mcp.resource("unifi://events/{site_name}")
     async def resource_site_events(site_name: str):
         """Get recent events with clean formatting for specific site."""
         try:
             events = await client.get_events(site_name, 100)
-
+            
             if isinstance(events, dict) and "error" in events:
                 return f"Error retrieving events for site {site_name}: {events['error']}"
-
+            
             if not isinstance(events, list):
                 return "Error: Unexpected response format"
-
+            
             if not events:
                 return f"**UniFi Events - {site_name}**\n\nNo recent events found."
-
+            
             # Filter events to essential info
-            filtered_events = [
-                {
-                    "time": format_timestamp(event.get("time", 0)),
-                    "key": event.get("key", "Unknown"),
-                    "message": event.get("msg", "No message"),
-                    "user": event.get("user", "System"),
-                    "subsystem": event.get("subsystem", "Unknown"),
-                }
-                for event in events[-15:]
-            ]  # Latest 15 events
+            filtered_events = [{
+                "time": format_timestamp(event.get("time", 0)),
+                "key": event.get("key", "Unknown"),
+                "message": event.get("msg", "No message"),
+                "user": event.get("user", "System"),
+                "subsystem": event.get("subsystem", "Unknown")
+            } for event in events[-15:]]  # Latest 15 events
             return json.dumps(filtered_events, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in site events resource for {site_name}: {e}")
-            return f"Error retrieving events for site {site_name}: {e!s}"
-
+            return f"Error retrieving events for site {site_name}: {str(e)}"
+    
+    
     @mcp.resource("unifi://alarms")
     async def resource_alarms():
         """Get active alarms with clean formatting (default site)."""
         try:
             alarms = await client.get_alarms("default")
-
+            
             if isinstance(alarms, dict) and "error" in alarms:
                 return f"Error retrieving alarms: {alarms['error']}"
-
+            
             if not isinstance(alarms, list):
                 return "Error: Unexpected response format"
-
+            
             # Filter active alarms only
             active_alarms = [alarm for alarm in alarms if not alarm.get("archived", False)]
-
+            
             # Filter alarms to essential info
             active_alarms = [alarm for alarm in alarms if not alarm.get("archived", False)]
-            filtered_alarms = [
-                {
-                    "time": format_timestamp(alarm.get("time", 0)),
-                    "key": alarm.get("key", "Unknown"),
-                    "message": alarm.get("msg", "No message"),
-                    "severity": alarm.get("catname", "Unknown"),
-                    "device": alarm.get("ap", alarm.get("gw", alarm.get("sw", "Unknown"))),
-                    "handled": alarm.get("handled", False),
-                }
-                for alarm in active_alarms[:10]
-            ]  # Latest 10 alarms
+            filtered_alarms = [{
+                "time": format_timestamp(alarm.get("time", 0)),
+                "key": alarm.get("key", "Unknown"),
+                "message": alarm.get("msg", "No message"),
+                "severity": alarm.get("catname", "Unknown"),
+                "device": alarm.get("ap", alarm.get("gw", alarm.get("sw", "Unknown"))),
+                "handled": alarm.get("handled", False)
+            } for alarm in active_alarms[:10]]  # Latest 10 alarms
             return json.dumps(filtered_alarms, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in alarms resource: {e}")
-            return f"Error retrieving alarms: {e!s}"
-
+            return f"Error retrieving alarms: {str(e)}"
+    
+    
     @mcp.resource("unifi://alarms/{site_name}")
     async def resource_site_alarms(site_name: str):
         """Get active alarms with clean formatting for specific site."""
         try:
             alarms = await client.get_alarms(site_name)
-
+            
             if isinstance(alarms, dict) and "error" in alarms:
                 return f"Error retrieving alarms for site {site_name}: {alarms['error']}"
-
+            
             if not isinstance(alarms, list):
                 return "Error: Unexpected response format"
-
+            
             # Filter active alarms only
             active_alarms = [alarm for alarm in alarms if not alarm.get("archived", False)]
-
+            
             if not active_alarms:
                 return f"**UniFi Active Alarms - {site_name}**\n\n😊 No active alarms - all clear!"
-
+            
             summary = f"**UniFi Active Alarms - {site_name}** ({len(active_alarms)} active)\n\n"
-
+            
             # Limit to 10 most recent alarms
             for alarm in active_alarms[:10]:
                 timestamp = format_timestamp(alarm.get("time", 0))
@@ -153,17 +146,17 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 severity = alarm.get("catname", "Unknown")
                 device = alarm.get("ap", alarm.get("gw", alarm.get("sw", "Unknown")))
                 handled = alarm.get("handled", False)
-
+                
                 # Determine alarm icon based on severity
                 if severity.lower() in ["critical", "high"]:
                     icon = "🚨"
                 elif severity.lower() in ["medium", "warning"]:
                     icon = "⚠️"
                 elif severity.lower() in ["low", "info"]:
-                    icon = "ℹ️"  # noqa: RUF001
+                    icon = "ℹ️"
                 else:
                     icon = "🚨"
-
+                
                 summary += f"{icon} **{alarm_type}** ({severity})\n"
                 summary += f"  • Time: {timestamp}\n"
                 summary += f"  • Device: {device}\n"
@@ -173,53 +166,51 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 else:
                     summary += "  • Status: 🔴 Unhandled\n"
                 summary += "\n"
-
+            
             if len(active_alarms) > 10:
                 summary += f"... and {len(active_alarms) - 10} more active alarms\n"
-
+            
             # Filter alarms to essential info
             active_alarms = [alarm for alarm in alarms if not alarm.get("archived", False)]
-            filtered_alarms = [
-                {
-                    "time": format_timestamp(alarm.get("time", 0)),
-                    "key": alarm.get("key", "Unknown"),
-                    "message": alarm.get("msg", "No message"),
-                    "severity": alarm.get("catname", "Unknown"),
-                    "device": alarm.get("ap", alarm.get("gw", alarm.get("sw", "Unknown"))),
-                    "handled": alarm.get("handled", False),
-                }
-                for alarm in active_alarms[:10]
-            ]  # Latest 10 alarms
+            filtered_alarms = [{
+                "time": format_timestamp(alarm.get("time", 0)),
+                "key": alarm.get("key", "Unknown"),
+                "message": alarm.get("msg", "No message"),
+                "severity": alarm.get("catname", "Unknown"),
+                "device": alarm.get("ap", alarm.get("gw", alarm.get("sw", "Unknown"))),
+                "handled": alarm.get("handled", False)
+            } for alarm in active_alarms[:10]]  # Latest 10 alarms
             return json.dumps(filtered_alarms, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in site alarms resource for {site_name}: {e}")
-            return f"Error retrieving alarms for site {site_name}: {e!s}"
-
+            return f"Error retrieving alarms for site {site_name}: {str(e)}"
+    
+    
     @mcp.resource("unifi://health")
     async def resource_health():
         """Get site health status with clean formatting (default site)."""
         try:
             health = await client.get_site_health("default")
-
+            
             if isinstance(health, dict) and "error" in health:
                 return f"Error retrieving health status: {health['error']}"
-
+            
             if not isinstance(health, list):
                 return "Error: Unexpected response format"
-
+            
             if not health:
                 return "**UniFi Site Health**\n\nNo health data available."
-
+            
             summary = "**UniFi Site Health Status**\n\n"
-
+            
             for subsystem in health:
                 subsystem_name = subsystem.get("subsystem", "Unknown")
                 status = subsystem.get("status", "Unknown")
                 num_ok = subsystem.get("num_adopted", 0)
                 num_pending = subsystem.get("num_pending", 0)
                 num_disconnected = subsystem.get("num_disconnected", 0)
-
+                
                 # Determine status icon
                 if status.lower() == "ok":
                     icon = "✅"
@@ -229,7 +220,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     icon = "❌"
                 else:
                     icon = "❓"
-
+                
                 # Map subsystem names to friendly names
                 if subsystem_name == "wlan":
                     friendly_name = "Wireless Networks"
@@ -241,7 +232,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     friendly_name = "VPN Services"
                 else:
                     friendly_name = subsystem_name.replace("_", "/").title()
-
+                
                 summary += f"{icon} **{friendly_name}**: {status.title()}\n"
                 if num_ok > 0:
                     summary += f"  • Online: {num_ok}\n"
@@ -250,48 +241,46 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 if num_disconnected > 0:
                     summary += f"  • Disconnected: {num_disconnected}\n"
                 summary += "\n"
-
+            
             # Filter health to essential info
-            filtered_health = [
-                {
-                    "subsystem": subsys.get("subsystem", "Unknown"),
-                    "status": subsys.get("status", "Unknown"),
-                    "num_adopted": subsys.get("num_adopted", 0),
-                    "num_pending": subsys.get("num_pending", 0),
-                    "num_disconnected": subsys.get("num_disconnected", 0),
-                }
-                for subsys in health
-            ]
+            filtered_health = [{
+                "subsystem": subsys.get("subsystem", "Unknown"),
+                "status": subsys.get("status", "Unknown"),
+                "num_adopted": subsys.get("num_adopted", 0),
+                "num_pending": subsys.get("num_pending", 0),
+                "num_disconnected": subsys.get("num_disconnected", 0)
+            } for subsys in health]
             return json.dumps(filtered_health, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in health resource: {e}")
-            return f"Error retrieving health status: {e!s}"
-
+            return f"Error retrieving health status: {str(e)}"
+    
+    
     @mcp.resource("unifi://health/{site_name}")
     async def resource_site_health(site_name: str):
         """Get site health status with clean formatting for specific site."""
         try:
             health = await client.get_site_health(site_name)
-
+            
             if isinstance(health, dict) and "error" in health:
                 return f"Error retrieving health status for site {site_name}: {health['error']}"
-
+            
             if not isinstance(health, list):
                 return "Error: Unexpected response format"
-
+            
             if not health:
                 return f"**UniFi Site Health - {site_name}**\n\nNo health data available."
-
+            
             summary = f"**UniFi Site Health Status - {site_name}**\n\n"
-
+            
             for subsystem in health:
                 subsystem_name = subsystem.get("subsystem", "Unknown")
                 status = subsystem.get("status", "Unknown")
                 num_ok = subsystem.get("num_adopted", 0)
                 num_pending = subsystem.get("num_pending", 0)
                 num_disconnected = subsystem.get("num_disconnected", 0)
-
+                
                 # Determine status icon
                 if status.lower() == "ok":
                     icon = "✅"
@@ -301,7 +290,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     icon = "❌"
                 else:
                     icon = "❓"
-
+                
                 # Map subsystem names to friendly names
                 if subsystem_name == "wlan":
                     friendly_name = "Wireless Networks"
@@ -313,7 +302,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     friendly_name = "VPN Services"
                 else:
                     friendly_name = subsystem_name.replace("_", "/").title()
-
+                
                 summary += f"{icon} **{friendly_name}**: {status.title()}\n"
                 if num_ok > 0:
                     summary += f"  • Online: {num_ok}\n"
@@ -322,54 +311,54 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 if num_disconnected > 0:
                     summary += f"  • Disconnected: {num_disconnected}\n"
                 summary += "\n"
-
+            
             # Filter health to essential info
-            filtered_health = [
-                {
-                    "subsystem": subsys.get("subsystem", "Unknown"),
-                    "status": subsys.get("status", "Unknown"),
-                    "num_adopted": subsys.get("num_adopted", 0),
-                    "num_pending": subsys.get("num_pending", 0),
-                    "num_disconnected": subsys.get("num_disconnected", 0),
-                }
-                for subsys in health
-            ]
+            filtered_health = [{
+                "subsystem": subsys.get("subsystem", "Unknown"),
+                "status": subsys.get("status", "Unknown"),
+                "num_adopted": subsys.get("num_adopted", 0),
+                "num_pending": subsys.get("num_pending", 0),
+                "num_disconnected": subsys.get("num_disconnected", 0)
+            } for subsys in health]
             return json.dumps(filtered_health, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in site health resource for {site_name}: {e}")
-            return f"Error retrieving health status for site {site_name}: {e!s}"
-
+            return f"Error retrieving health status for site {site_name}: {str(e)}"
+    
+    
     @mcp.resource("unifi://stats/dpi")
     async def resource_dpi_stats():
         """Get DPI statistics with clean formatting (default site)."""
         try:
             dpi_stats = await client.get_dpi_stats("default")
-
+            
             if isinstance(dpi_stats, dict) and "error" in dpi_stats:
                 return f"Error retrieving DPI stats: {dpi_stats['error']}"
-
+            
             if not isinstance(dpi_stats, list):
                 return "Error: Unexpected response format"
-
+            
             if not dpi_stats:
                 return "**UniFi DPI Statistics**\n\nNo DPI data available."
-
+            
             # Sort by total bytes (tx + rx) and limit to top 10
-            sorted_stats = sorted(dpi_stats, key=lambda x: (x.get("tx_bytes", 0) + x.get("rx_bytes", 0)), reverse=True)[:10]
-
+            sorted_stats = sorted(dpi_stats, 
+                                key=lambda x: (x.get('tx_bytes', 0) + x.get('rx_bytes', 0)), 
+                                reverse=True)[:10]
+            
             summary = f"**UniFi DPI Statistics** (Top {len(sorted_stats)} applications)\n\n"
-
+            
             for stat in sorted_stats:
                 app_name = stat.get("app", stat.get("cat", "Unknown Application"))
-                tx_bytes = stat.get("tx_bytes", 0)
-                rx_bytes = stat.get("rx_bytes", 0)
+                tx_bytes = stat.get('tx_bytes', 0)
+                rx_bytes = stat.get('rx_bytes', 0)
                 total_bytes = tx_bytes + rx_bytes
                 last_seen = format_timestamp(stat.get("time", 0))
-
+                
                 # Format bytes for display
                 formatted_stat = format_data_values({"total": total_bytes, "tx": tx_bytes, "rx": rx_bytes})
-
+                
                 # Determine app icon based on name
                 app_lower = app_name.lower()
                 if "web" in app_lower or "http" in app_lower:
@@ -386,62 +375,62 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     icon = "📁"
                 else:
                     icon = "📊"
-
+                
                 summary += f"{icon} **{app_name}**\n"
                 summary += f"  • Total Data: {formatted_stat.get('total', '0 B')}\n"
                 summary += f"  • Upload: {formatted_stat.get('tx', '0 B')} / Download: {formatted_stat.get('rx', '0 B')}\n"
                 if last_seen != "Unknown":
                     summary += f"  • Last Seen: {last_seen}\n"
                 summary += "\n"
-
+            
             # Filter DPI stats to essential info - top 10 by total bytes
-            sorted_stats = sorted(dpi_stats, key=lambda x: (x.get("tx_bytes", 0) + x.get("rx_bytes", 0)), reverse=True)[:10]
-            filtered_stats = [
-                {
-                    "app": stat.get("app", stat.get("cat", "Unknown Application")),
-                    "tx_bytes": stat.get("tx_bytes", 0),
-                    "rx_bytes": stat.get("rx_bytes", 0),
-                    "total_bytes": stat.get("tx_bytes", 0) + stat.get("rx_bytes", 0),
-                    "last_seen": format_timestamp(stat.get("time", 0)),
-                }
-                for stat in sorted_stats
-            ]
+            sorted_stats = sorted(dpi_stats, key=lambda x: (x.get('tx_bytes', 0) + x.get('rx_bytes', 0)), reverse=True)[:10]
+            filtered_stats = [{
+                "app": stat.get("app", stat.get("cat", "Unknown Application")),
+                "tx_bytes": stat.get('tx_bytes', 0),
+                "rx_bytes": stat.get('rx_bytes', 0),
+                "total_bytes": stat.get('tx_bytes', 0) + stat.get('rx_bytes', 0),
+                "last_seen": format_timestamp(stat.get("time", 0))
+            } for stat in sorted_stats]
             return json.dumps(filtered_stats, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in DPI stats resource: {e}")
-            return f"Error retrieving DPI stats: {e!s}"
-
+            return f"Error retrieving DPI stats: {str(e)}"
+    
+    
     @mcp.resource("unifi://stats/dpi/{site_name}")
     async def resource_site_dpi_stats(site_name: str):
         """Get DPI statistics with clean formatting for specific site."""
         try:
             dpi_stats = await client.get_dpi_stats(site_name)
-
+            
             if isinstance(dpi_stats, dict) and "error" in dpi_stats:
                 return f"Error retrieving DPI stats for site {site_name}: {dpi_stats['error']}"
-
+            
             if not isinstance(dpi_stats, list):
                 return "Error: Unexpected response format"
-
+            
             if not dpi_stats:
                 return f"**UniFi DPI Statistics - {site_name}**\n\nNo DPI data available."
-
+            
             # Sort by total bytes (tx + rx) and limit to top 10
-            sorted_stats = sorted(dpi_stats, key=lambda x: (x.get("tx_bytes", 0) + x.get("rx_bytes", 0)), reverse=True)[:10]
-
+            sorted_stats = sorted(dpi_stats, 
+                                key=lambda x: (x.get('tx_bytes', 0) + x.get('rx_bytes', 0)), 
+                                reverse=True)[:10]
+            
             summary = f"**UniFi DPI Statistics - {site_name}** (Top {len(sorted_stats)} applications)\n\n"
-
+            
             for stat in sorted_stats:
                 app_name = stat.get("app", stat.get("cat", "Unknown Application"))
-                tx_bytes = stat.get("tx_bytes", 0)
-                rx_bytes = stat.get("rx_bytes", 0)
+                tx_bytes = stat.get('tx_bytes', 0)
+                rx_bytes = stat.get('rx_bytes', 0)
                 total_bytes = tx_bytes + rx_bytes
                 last_seen = format_timestamp(stat.get("time", 0))
-
+                
                 # Format bytes for display
                 formatted_stat = format_data_values({"total": total_bytes, "tx": tx_bytes, "rx": rx_bytes})
-
+                
                 # Determine app icon based on name
                 app_lower = app_name.lower()
                 if "web" in app_lower or "http" in app_lower:
@@ -458,48 +447,46 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     icon = "📁"
                 else:
                     icon = "📊"
-
+                
                 summary += f"{icon} **{app_name}**\n"
                 summary += f"  • Total Data: {formatted_stat.get('total', '0 B')}\n"
                 summary += f"  • Upload: {formatted_stat.get('tx', '0 B')} / Download: {formatted_stat.get('rx', '0 B')}\n"
                 if last_seen != "Unknown":
                     summary += f"  • Last Seen: {last_seen}\n"
                 summary += "\n"
-            # Filter DPI stats to essential info - top 10 by total bytes
-            sorted_stats = sorted(dpi_stats, key=lambda x: (x.get("tx_bytes", 0) + x.get("rx_bytes", 0)), reverse=True)[:10]
-            filtered_stats = [
-                {
-                    "app": stat.get("app", stat.get("cat", "Unknown Application")),
-                    "tx_bytes": stat.get("tx_bytes", 0),
-                    "rx_bytes": stat.get("rx_bytes", 0),
-                    "total_bytes": stat.get("tx_bytes", 0) + stat.get("rx_bytes", 0),
-                    "last_seen": format_timestamp(stat.get("time", 0)),
-                }
-                for stat in sorted_stats
-            ]
+            # Filter DPI stats to essential info - top 10 by total bytes  
+            sorted_stats = sorted(dpi_stats, key=lambda x: (x.get('tx_bytes', 0) + x.get('rx_bytes', 0)), reverse=True)[:10]
+            filtered_stats = [{
+                "app": stat.get("app", stat.get("cat", "Unknown Application")),
+                "tx_bytes": stat.get('tx_bytes', 0),
+                "rx_bytes": stat.get('rx_bytes', 0),
+                "total_bytes": stat.get('tx_bytes', 0) + stat.get('rx_bytes', 0),
+                "last_seen": format_timestamp(stat.get("time", 0))
+            } for stat in sorted_stats]
             return json.dumps(filtered_stats, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in site DPI stats resource for {site_name}: {e}")
-            return f"Error retrieving DPI stats for site {site_name}: {e!s}"
-
+            return f"Error retrieving DPI stats for site {site_name}: {str(e)}"
+    
+    
     @mcp.resource("unifi://rogue-aps")
     async def resource_rogue_aps():
         """Get detected rogue access points with clean formatting (default site)."""
         try:
             rogue_aps = await client.get_rogue_aps("default")
-
+            
             if isinstance(rogue_aps, dict) and "error" in rogue_aps:
                 return f"Error retrieving rogue APs: {rogue_aps['error']}"
-
+            
             if not isinstance(rogue_aps, list):
                 return "Error: Unexpected response format"
-
+            
             if not rogue_aps:
                 return "**UniFi Rogue Access Points**\n\n😊 No rogue access points detected - network is secure!"
-
+            
             summary = f"**UniFi Rogue Access Points** ({len(rogue_aps)} detected)\n\n"
-
+            
             # Limit to 10 most recent detections
             for rogue in rogue_aps[:10]:
                 ssid = rogue.get("essid", "[Hidden Network]")
@@ -510,7 +497,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 first_seen = format_timestamp(rogue.get("first_seen", 0))
                 last_seen = format_timestamp(rogue.get("last_seen", 0))
                 detected_by = rogue.get("ap_mac", "Unknown")
-
+                
                 # Determine security icon
                 if security.lower() in ["wpa2", "wpa3", "wpa"]:
                     sec_icon = "🔒"
@@ -518,9 +505,9 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     sec_icon = "🔓"
                 else:
                     sec_icon = "❓"
-
+                
                 # Determine signal strength icon
-                if isinstance(rssi, int | float):
+                if isinstance(rssi, (int, float)):
                     if rssi > -50:
                         signal_icon = "📦"
                     elif rssi > -70:
@@ -529,7 +516,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                         signal_icon = "📤"
                 else:
                     signal_icon = "❓"
-
+                
                 summary += f"🚨 **{ssid}** {sec_icon}\n"
                 summary += f"  • BSSID: {bssid}\n"
                 summary += f"  • Channel: {channel}\n"
@@ -538,47 +525,45 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 summary += f"  • First Seen: {first_seen}\n"
                 summary += f"  • Last Seen: {last_seen}\n"
                 summary += f"  • Detected By: {detected_by}\n\n"
-
+            
             if len(rogue_aps) > 10:
                 summary += f"... and {len(rogue_aps) - 10} more rogue APs\n"
-
+            
             # Filter rogue APs to essential info
-            filtered_rogues = [
-                {
-                    "ssid": rogue.get("essid", "[Hidden Network]"),
-                    "bssid": rogue.get("bssid", "Unknown"),
-                    "channel": rogue.get("channel", "Unknown"),
-                    "rssi": rogue.get("rssi", "Unknown"),
-                    "security": rogue.get("security", "Unknown"),
-                    "first_seen": format_timestamp(rogue.get("first_seen", 0)),
-                    "last_seen": format_timestamp(rogue.get("last_seen", 0)),
-                    "detected_by": rogue.get("ap_mac", "Unknown"),
-                }
-                for rogue in rogue_aps[:10]
-            ]  # Latest 10 rogue APs
+            filtered_rogues = [{
+                "ssid": rogue.get("essid", "[Hidden Network]"),
+                "bssid": rogue.get("bssid", "Unknown"),
+                "channel": rogue.get("channel", "Unknown"),
+                "rssi": rogue.get("rssi", "Unknown"),
+                "security": rogue.get("security", "Unknown"),
+                "first_seen": format_timestamp(rogue.get("first_seen", 0)),
+                "last_seen": format_timestamp(rogue.get("last_seen", 0)),
+                "detected_by": rogue.get("ap_mac", "Unknown")
+            } for rogue in rogue_aps[:10]]  # Latest 10 rogue APs
             return json.dumps(filtered_rogues, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in rogue APs resource: {e}")
-            return f"Error retrieving rogue APs: {e!s}"
-
+            return f"Error retrieving rogue APs: {str(e)}"
+    
+    
     @mcp.resource("unifi://rogue-aps/{site_name}")
     async def resource_site_rogue_aps(site_name: str):
         """Get detected rogue access points with clean formatting for specific site."""
         try:
             rogue_aps = await client.get_rogue_aps(site_name)
-
+            
             if isinstance(rogue_aps, dict) and "error" in rogue_aps:
                 return f"Error retrieving rogue APs for site {site_name}: {rogue_aps['error']}"
-
+            
             if not isinstance(rogue_aps, list):
                 return "Error: Unexpected response format"
-
+            
             if not rogue_aps:
                 return f"**UniFi Rogue Access Points - {site_name}**\n\n😊 No rogue access points detected - network is secure!"
-
+            
             summary = f"**UniFi Rogue Access Points - {site_name}** ({len(rogue_aps)} detected)\n\n"
-
+            
             # Limit to 10 most recent detections
             for rogue in rogue_aps[:10]:
                 ssid = rogue.get("essid", "[Hidden Network]")
@@ -589,7 +574,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 first_seen = format_timestamp(rogue.get("first_seen", 0))
                 last_seen = format_timestamp(rogue.get("last_seen", 0))
                 detected_by = rogue.get("ap_mac", "Unknown")
-
+                
                 # Determine security icon
                 if security.lower() in ["wpa2", "wpa3", "wpa"]:
                     sec_icon = "🔒"
@@ -597,9 +582,9 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     sec_icon = "🔓"
                 else:
                     sec_icon = "❓"
-
+                
                 # Determine signal strength icon
-                if isinstance(rssi, int | float):
+                if isinstance(rssi, (int, float)):
                     if rssi > -50:
                         signal_icon = "📦"
                     elif rssi > -70:
@@ -608,7 +593,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                         signal_icon = "📤"
                 else:
                     signal_icon = "❓"
-
+                
                 summary += f"🚨 **{ssid}** {sec_icon}\n"
                 summary += f"  • BSSID: {bssid}\n"
                 summary += f"  • Channel: {channel}\n"
@@ -617,62 +602,60 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 summary += f"  • First Seen: {first_seen}\n"
                 summary += f"  • Last Seen: {last_seen}\n"
                 summary += f"  • Detected By: {detected_by}\n\n"
-
+            
             if len(rogue_aps) > 10:
                 summary += f"... and {len(rogue_aps) - 10} more rogue APs\n"
             # Filter rogue APs to essential info
-            filtered_rogues = [
-                {
-                    "ssid": rogue.get("essid", "[Hidden Network]"),
-                    "bssid": rogue.get("bssid", "Unknown"),
-                    "channel": rogue.get("channel", "Unknown"),
-                    "rssi": rogue.get("rssi", "Unknown"),
-                    "security": rogue.get("security", "Unknown"),
-                    "first_seen": format_timestamp(rogue.get("first_seen", 0)),
-                    "last_seen": format_timestamp(rogue.get("last_seen", 0)),
-                    "detected_by": rogue.get("ap_mac", "Unknown"),
-                }
-                for rogue in rogue_aps[:10]
-            ]  # Latest 10 rogue APs
+            filtered_rogues = [{
+                "ssid": rogue.get("essid", "[Hidden Network]"),
+                "bssid": rogue.get("bssid", "Unknown"),
+                "channel": rogue.get("channel", "Unknown"),
+                "rssi": rogue.get("rssi", "Unknown"),
+                "security": rogue.get("security", "Unknown"),
+                "first_seen": format_timestamp(rogue.get("first_seen", 0)),
+                "last_seen": format_timestamp(rogue.get("last_seen", 0)),
+                "detected_by": rogue.get("ap_mac", "Unknown")
+            } for rogue in rogue_aps[:10]]  # Latest 10 rogue APs
             return json.dumps(filtered_rogues, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Error in site rogue APs resource for {site_name}: {e}")
-            return f"Error retrieving rogue APs for site {site_name}: {e!s}"
-
+            return f"Error retrieving rogue APs for site {site_name}: {str(e)}"
+    
+    
     @mcp.resource("unifi://sysinfo")
     async def resource_sysinfo():
         """Get controller system information with clean formatting."""
         try:
             sysinfo = await client._make_request("GET", "/stat/sysinfo", site_name="default")
-
+            
             if isinstance(sysinfo, dict) and "error" in sysinfo:
                 return f"Error retrieving system info: {sysinfo['error']}"
-
+            
             if not isinstance(sysinfo, dict):
                 return "Error: Unexpected response format"
-
+            
             summary = "**UniFi Controller System Information**\n\n"
-
+            
             # Basic system info
             hostname = sysinfo.get("hostname", "Unknown")
             version = sysinfo.get("version", "Unknown")
             uptime = sysinfo.get("uptime", 0)
             timezone = sysinfo.get("timezone", "Unknown")
-
+            
             # Format uptime
-            if isinstance(uptime, int | float):
+            if isinstance(uptime, (int, float)):
                 days = int(uptime // 86400)
                 hours = int((uptime % 86400) // 3600)
                 uptime_str = f"{days} days, {hours} hours"
             else:
                 uptime_str = "Unknown"
-
+            
             summary += "🖥️ **Controller Information**\n"
             summary += f"  • Hostname: {hostname}\n"
             summary += f"  • Version: {version}\n"
             summary += f"  • Uptime: {uptime_str}\n"
             summary += f"  • Timezone: {timezone}\n\n"
-
+            
             # Memory info if available
             if "mem_total" in sysinfo or "mem_used" in sysinfo:
                 mem_total = sysinfo.get("mem_total", 0)
@@ -680,21 +663,19 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 if mem_total > 0:
                     mem_percent = (mem_used / mem_total) * 100
                     mem_free = mem_total - mem_used
-
+                    
                     # Format memory values
-                    formatted_mem = format_data_values(
-                        {
-                            "total": mem_total * 1024,  # Convert KB to bytes
-                            "used": mem_used * 1024,
-                            "free": mem_free * 1024,
-                        }
-                    )
-
+                    formatted_mem = format_data_values({
+                        "total": mem_total * 1024,  # Convert KB to bytes
+                        "used": mem_used * 1024,
+                        "free": mem_free * 1024
+                    })
+                    
                     summary += "💾 **Memory Usage**\n"
                     summary += f"  • Total: {formatted_mem.get('total', 'Unknown')}\n"
                     summary += f"  • Used: {formatted_mem.get('used', 'Unknown')} ({mem_percent:.1f}%)\n"
                     summary += f"  • Free: {formatted_mem.get('free', 'Unknown')}\n\n"
-
+            
             # Load average if available
             loadavg = sysinfo.get("loadavg_1", None)
             if loadavg is not None:
@@ -705,7 +686,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 if "loadavg_15" in sysinfo:
                     summary += f"  • 15-minute average: {sysinfo['loadavg_15']}\n"
                 summary += "\n"
-
+            
             # Additional info if available
             if "board_rev" in sysinfo:
                 summary += "🔧 **Hardware**\n"
@@ -713,16 +694,16 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 if "cpu_cores" in sysinfo:
                     summary += f"  • CPU Cores: {sysinfo['cpu_cores']}\n"
                 summary += "\n"
-
+            
             # Filter system info to essential details
             uptime = sysinfo.get("uptime", 0)
-            if isinstance(uptime, int | float):
+            if isinstance(uptime, (int, float)):
                 days = int(uptime // 86400)
                 hours = int((uptime % 86400) // 3600)
                 uptime_str = f"{days} days, {hours} hours"
             else:
                 uptime_str = "Unknown"
-
+                
             filtered_sysinfo = {
                 "hostname": sysinfo.get("hostname", "Unknown"),
                 "version": sysinfo.get("version", "Unknown"),
@@ -731,31 +712,32 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 "mem_total_mb": int(sysinfo.get("mem_total", 0) / 1024) if sysinfo.get("mem_total") else 0,
                 "mem_used_mb": int(sysinfo.get("mem_used", 0) / 1024) if sysinfo.get("mem_used") else 0,
                 "loadavg_1min": sysinfo.get("loadavg_1", "Unknown"),
-                "cpu_cores": sysinfo.get("cpu_cores", "Unknown"),
+                "cpu_cores": sysinfo.get("cpu_cores", "Unknown")
             }
             return json.dumps(filtered_sysinfo, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in sysinfo resource: {e}")
-            return f"Error retrieving system info: {e!s}"
-
+            return f"Error retrieving system info: {str(e)}"
+    
+    
     @mcp.resource("unifi://admins")
     async def resource_admins():
         """Get administrator accounts with clean formatting."""
         try:
             admins = await client._make_request("GET", "/stat/admin", site_name="")
-
+            
             if isinstance(admins, dict) and "error" in admins:
                 return f"Error retrieving admin accounts: {admins['error']}"
-
+            
             if not isinstance(admins, list):
                 return "Error: Unexpected response format"
-
+            
             if not admins:
                 return "**UniFi Administrator Accounts**\n\nNo administrator accounts found."
-
+            
             summary = f"**UniFi Administrator Accounts** ({len(admins)} total)\n\n"
-
+            
             for admin in admins:
                 name = admin.get("name", "Unknown")
                 email = admin.get("email", "Unknown")
@@ -765,7 +747,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 last_login_by = admin.get("last_login_by", "Unknown")
                 last_login_time = format_timestamp(admin.get("last_login_time", 0))
                 email_alerts = admin.get("email_alert_enabled", False)
-
+                
                 # Determine admin icon based on role
                 if is_super:
                     icon = "👑"
@@ -773,7 +755,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     icon = "👨‍💻"
                 else:
                     icon = "👤"
-
+                
                 summary += f"{icon} **{name}** ({role})\n"
                 summary += f"  • Email: {email}\n"
                 if is_super:
@@ -788,21 +770,18 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     summary += "  • Email Alerts: ❌ Disabled\n"
                 summary += "\n"
             # Filter admin accounts to essential info
-            filtered_admins = [
-                {
-                    "name": admin.get("name", "Unknown"),
-                    "email": admin.get("email", "Unknown"),
-                    "role": admin.get("role", "Unknown"),
-                    "is_super": admin.get("is_super", False),
-                    "requires_new_password": admin.get("requires_new_password", False),
-                    "last_login_time": format_timestamp(admin.get("last_login_time", 0)),
-                    "last_login_by": admin.get("last_login_by", "Unknown"),
-                    "email_alerts_enabled": admin.get("email_alert_enabled", False),
-                }
-                for admin in admins
-            ]
+            filtered_admins = [{
+                "name": admin.get("name", "Unknown"),
+                "email": admin.get("email", "Unknown"),
+                "role": admin.get("role", "Unknown"),
+                "is_super": admin.get("is_super", False),
+                "requires_new_password": admin.get("requires_new_password", False),
+                "last_login_time": format_timestamp(admin.get("last_login_time", 0)),
+                "last_login_by": admin.get("last_login_by", "Unknown"),
+                "email_alerts_enabled": admin.get("email_alert_enabled", False)
+            } for admin in admins]
             return json.dumps(filtered_admins, indent=2, ensure_ascii=False)
-
+            
         except Exception as e:
             logger.error(f"Error in admins resource: {e}")
-            return f"Error retrieving admin accounts: {e!s}"
+            return f"Error retrieving admin accounts: {str(e)}"
