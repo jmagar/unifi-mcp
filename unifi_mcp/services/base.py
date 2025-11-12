@@ -7,13 +7,14 @@ Provides shared functionality and common patterns for all domain services.
 import logging
 import re
 from abc import ABC
-from typing import Any, Optional
+from typing import Optional, Callable, Union
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 from ..client import UnifiControllerClient
 from ..models.enums import UnifiAction
 from ..models.params import UnifiParams
+from ..types import JSONValue, ErrorResponse, UniFiData
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ class BaseService(ABC):
         return normalized
 
     @staticmethod
-    def create_error_result(message: str, raw_data: Any = None) -> ToolResult:
+    def create_error_result(message: str, raw_data: Optional[Union[UniFiData, ErrorResponse, dict[str, JSONValue]]] = None) -> ToolResult:
         """Create standardized error ToolResult.
 
         Args:
@@ -77,7 +78,7 @@ class BaseService(ABC):
     @staticmethod
     def create_success_result(
         text: str,
-        data: Any,
+        data: Union[UniFiData, dict[str, JSONValue], list[dict[str, JSONValue]], JSONValue],
         success_message: Optional[str] = None
     ) -> ToolResult:
         """Create standardized success ToolResult.
@@ -90,7 +91,7 @@ class BaseService(ABC):
         Returns:
             ToolResult with success information
         """
-        structured_content = data
+        structured_content: Union[dict[str, JSONValue], UniFiData, list[dict[str, JSONValue]], JSONValue] = data
         if success_message and isinstance(data, dict):
             structured_content = {
                 "success": True,
@@ -109,7 +110,7 @@ class BaseService(ABC):
             structured_content=structured_content
         )
 
-    def validate_response(self, response: Any, action: UnifiAction) -> tuple[bool, str]:
+    def validate_response(self, response: Union[UniFiData, ErrorResponse, dict[str, JSONValue]], action: UnifiAction) -> tuple[bool, str]:
         """Validate API response for common error patterns.
 
         Args:
@@ -121,18 +122,20 @@ class BaseService(ABC):
         """
         if isinstance(response, dict):
             if "error" in response:
-                return False, response.get("error", "unknown error")
+                error_val = response.get("error", "unknown error")
+                return False, str(error_val) if error_val is not None else "unknown error"
 
             # Check UniFi API response code
             meta = response.get("meta", {})
-            rc = meta.get("rc")
-            if rc and rc != "ok":
-                msg = meta.get("msg", "Controller returned failure")
-                return False, msg
+            if isinstance(meta, dict):
+                rc = meta.get("rc")
+                if rc and rc != "ok":
+                    msg = meta.get("msg", "Controller returned failure")
+                    return False, str(msg) if msg is not None else "Controller returned failure"
 
         return True, ""
 
-    def check_list_response(self, response: Any, action: UnifiAction) -> Optional[ToolResult]:
+    def check_list_response(self, response: Union[UniFiData, ErrorResponse, dict[str, JSONValue]], action: UnifiAction) -> Optional[ToolResult]:
         """Check if response is a valid list and handle common error cases.
 
         Args:
@@ -144,20 +147,21 @@ class BaseService(ABC):
         """
         # Check for error dict
         if isinstance(response, dict) and "error" in response:
-            return self.create_error_result(response.get("error", "unknown error"), response)
+            error_val = response.get("error", "unknown error")
+            return self.create_error_result(str(error_val) if error_val is not None else "unknown error", response)
 
         # Check if response is expected list format
         if not isinstance(response, list):
             error_msg = f"Unexpected response format: expected list, got {type(response).__name__}"
-            return self.create_error_result(error_msg, response)
+            return self.create_error_result(error_msg, None)
 
         return None
 
     def format_action_result(
         self,
-        response: Any,
+        response: Union[UniFiData, ErrorResponse, dict[str, JSONValue]],
         action: UnifiAction,
-        formatter_func=None,
+        formatter_func: Optional[Callable[[Union[UniFiData, dict[str, JSONValue]]], Union[dict[str, JSONValue], list[dict[str, JSONValue]], str]]] = None,
         success_text: Optional[str] = None
     ) -> ToolResult:
         """Format action result with consistent error handling.
