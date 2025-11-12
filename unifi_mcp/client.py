@@ -8,7 +8,7 @@ automatic session management, authentication, and request handling.
 import json
 import logging
 import base64
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import httpx
 
 from .config import UniFiConfig
@@ -16,7 +16,6 @@ from .formatters import (
     format_client_summary, format_device_summary, format_site_summary,
     format_bytes
 )
-from .types import JSONValue, ErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -128,9 +127,9 @@ class UnifiControllerClient:
         method: str,
         endpoint: str,
         site_name: str = "default",
-        data: Optional[dict[str, JSONValue]] = None,
-        params: Optional[dict[str, JSONValue]] = None
-    ) -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+        data: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None
+    ) -> Union[Dict[str, Any], list]:
         """Make an authenticated request to the UniFi controller."""
         await self.ensure_authenticated()
         
@@ -201,19 +200,19 @@ class UnifiControllerClient:
             logger.error(f"Request error: {e}")
             return {"error": str(e)}
             
-    async def get_sites(self) -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_sites(self) -> Union[Dict[str, Any], list]:
         """Get all sites from the controller."""
         return await self._make_request("GET", "/self/sites", site_name="")
         
-    async def get_devices(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_devices(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get all devices for a site."""
         return await self._make_request("GET", "/stat/device", site_name=site_name)
         
-    async def get_clients(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_clients(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get all active clients for a site."""
         return await self._make_request("GET", "/stat/sta", site_name=site_name)
         
-    async def restart_device(self, mac: str, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def restart_device(self, mac: str, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Restart a device by MAC address."""
         data = {
             "cmd": "restart",
@@ -221,7 +220,7 @@ class UnifiControllerClient:
         }
         return await self._make_request("POST", "/cmd/devmgr", site_name=site_name, data=data)
         
-    async def locate_device(self, mac: str, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def locate_device(self, mac: str, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Enable locate LED on a device."""
         data = {
             "cmd": "set-locate",
@@ -229,7 +228,7 @@ class UnifiControllerClient:
         }
         return await self._make_request("POST", "/cmd/devmgr", site_name=site_name, data=data)
         
-    async def reconnect_client(self, mac: str, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def reconnect_client(self, mac: str, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Force reconnect a client."""
         data = {
             "cmd": "kick-sta",
@@ -237,54 +236,54 @@ class UnifiControllerClient:
         }
         return await self._make_request("POST", "/cmd/stamgr", site_name=site_name, data=data)
         
-    async def get_events(self, site_name: str = "default", limit: int = 100) -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_events(self, site_name: str = "default", limit: int = 100) -> Union[Dict[str, Any], list]:
         """Get recent events."""
         data = {"_limit": limit}
         return await self._make_request("POST", "/stat/event", site_name=site_name, data=data)
         
-    async def get_alarms(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_alarms(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get active alarms."""
         return await self._make_request("GET", "/list/alarm", site_name=site_name)
         
-    async def get_site_health(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_site_health(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get site health information."""
         return await self._make_request("GET", "/stat/health", site_name=site_name)
         
-    async def get_wlan_configs(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_wlan_configs(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get WLAN configurations."""
         return await self._make_request("GET", "/rest/wlanconf", site_name=site_name)
         
-    async def get_network_configs(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_network_configs(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get network/VLAN configurations."""
         return await self._make_request("GET", "/rest/networkconf", site_name=site_name)
         
-    async def get_port_configs(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_port_configs(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get switch port profile configurations."""
         return await self._make_request("GET", "/rest/portconf", site_name=site_name)
         
-    async def get_port_forwarding_rules(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_port_forwarding_rules(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get port forwarding rules."""
         return await self._make_request("GET", "/list/portforward", site_name=site_name)
         
-    async def get_dpi_stats(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_dpi_stats(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get DPI statistics."""
         return await self._make_request("GET", "/stat/dpi", site_name=site_name)
         
-    async def get_dashboard_metrics(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_dashboard_metrics(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get dashboard metrics."""
         return await self._make_request("GET", "/stat/dashboard", site_name=site_name)
         
-    async def get_rogue_aps(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_rogue_aps(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get detected rogue access points."""
         data = {"within": 24}  # Last 24 hours
         return await self._make_request("POST", "/stat/rogueap", site_name=site_name, data=data)
         
-    async def get_speedtest_results(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_speedtest_results(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get speed test results."""
         data = {"attrs": ["xput_download", "xput_upload", "latency", "time"]}
         return await self._make_request("POST", "/stat/report/archive.speedtest", site_name=site_name, data=data)
         
-    async def get_threat_events(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_threat_events(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get IPS threat detection events."""
         data = {"within": 24}  # Last 24 hours
         return await self._make_request("POST", "/stat/ips/event", site_name=site_name, data=data)
@@ -292,7 +291,7 @@ class UnifiControllerClient:
     # ==================== FORMATTED DATA METHODS ====================
     # These methods return structured, formatted data for tools
     
-    async def get_clients_formatted(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_clients_formatted(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get clients with formatted, structured data."""
         clients = await self.get_clients(site_name)
         if isinstance(clients, dict) and "error" in clients:
@@ -302,7 +301,7 @@ class UnifiControllerClient:
         
         return [format_client_summary(client) for client in clients]
     
-    async def get_devices_formatted(self, site_name: str = "default") -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_devices_formatted(self, site_name: str = "default") -> Union[Dict[str, Any], list]:
         """Get devices with formatted, structured data."""
         devices = await self.get_devices(site_name)
         if isinstance(devices, dict) and "error" in devices:
@@ -323,7 +322,7 @@ class UnifiControllerClient:
                 })
         return formatted_devices
     
-    async def get_sites_formatted(self) -> Union[dict[str, JSONValue], list[dict[str, JSONValue]], ErrorResponse]:
+    async def get_sites_formatted(self) -> Union[Dict[str, Any], list]:
         """Get sites with formatted, structured data."""
         sites = await self.get_sites()
         if isinstance(sites, dict) and "error" in sites:

@@ -5,14 +5,13 @@ Handles all client management operations including listing, control, and configu
 """
 
 import logging
-
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ..formatters import format_client_summary, format_clients_list
+from .base import BaseService
 from ..models.enums import UnifiAction
 from ..models.params import UnifiParams
-from .base import BaseService
+from ..formatters import format_client_summary, format_clients_list
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,9 @@ class ClientService(BaseService):
 
         handler = action_map.get(params.action)
         if not handler:
-            return self.create_error_result(f"Client action {params.action} not supported")
+            return self.create_error_result(
+                f"Client action {params.action} not supported"
+            )
 
         try:
             return await handler(params)
@@ -56,22 +57,21 @@ class ClientService(BaseService):
         """Get connected clients with formatted connection details."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
-            connected_only = params.connected_only if params.connected_only is not None else defaults.get("connected_only", True)
+            site_name = defaults.get('site_name', 'default')
+            connected_only = params.connected_only if params.connected_only is not None else defaults.get('connected_only', True)
 
             clients = await self.client.get_clients(site_name)
 
             # Check for error response
             if isinstance(clients, dict) and "error" in clients:
-                return self.create_error_result(clients.get("error", "unknown error"), clients)
+                return self.create_error_result(clients.get('error','unknown error'), clients)
 
             if not isinstance(clients, list):
                 return self.create_error_result("Unexpected response format")
-            client_items = self.dict_items(clients)
 
             # Format each client for clean output
             formatted_clients = []
-            for client_data in client_items:
+            for client_data in clients:
                 try:
                     # Skip offline clients if connected_only is True
                     if connected_only and not client_data.get("is_online", True):
@@ -81,12 +81,20 @@ class ClientService(BaseService):
                     formatted_clients.append(formatted_client)
                 except Exception as e:
                     logger.error(f"Error formatting client {client_data.get('name', 'Unknown')}: {e}")
-                    formatted_clients.append(
-                        {"name": client_data.get("name", "Unknown"), "mac": client_data.get("mac", ""), "error": f"Formatting error: {e!s}"}
-                    )
+                    formatted_clients.append({
+                        "name": client_data.get("name", "Unknown"),
+                        "mac": client_data.get("mac", ""),
+                        "error": f"Formatting error: {str(e)}"
+                    })
 
-            summary_text = format_clients_list([c for c in client_items if (c.get("is_online", True) or not connected_only)])
-            return self.create_success_result(text=summary_text, data=formatted_clients, success_message=f"Retrieved {len(formatted_clients)} clients")
+            summary_text = format_clients_list(
+                [c for c in clients if (c.get("is_online", True) or not connected_only)]
+            )
+            return self.create_success_result(
+                text=summary_text,
+                data=formatted_clients,
+                success_message=f"Retrieved {len(formatted_clients)} clients"
+            )
 
         except Exception as e:
             logger.error(f"Error getting clients: {e}")
@@ -96,56 +104,90 @@ class ClientService(BaseService):
         """Force reconnection of a client device."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
-            mac = self.require_mac(params)
-
-            result = await self.client.reconnect_client(mac, site_name)
+            site_name = defaults.get('site_name', 'default')
+            
+            # MAC is required and validated by pydantic
+            assert params.mac is not None, "MAC address required"
+            result = await self.client.reconnect_client(params.mac, site_name)
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
             if not is_valid:
                 return self.create_error_result(error_msg, result)
 
-            resp = {"success": True, "message": f"Client {mac} reconnect command sent", "details": result}
-            return ToolResult(content=[TextContent(type="text", text=f"Reconnect requested: {mac}")], structured_content=resp)
+            resp = {
+                "success": True,
+                "message": f"Client {params.mac} reconnect command sent",
+                "details": result
+            }
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Reconnect requested: {params.mac}")],
+                structured_content=resp
+            )
 
         except Exception as e:
             logger.error(f"Error reconnecting client {params.mac}: {e}")
-            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
 
     async def _block_client(self, params: UnifiParams) -> ToolResult:
         """Block a client from accessing the network."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(self.require_mac(params))
+            # MAC is required and validated by pydantic
 
-            result = await self.client._make_request("POST", "/cmd/stamgr", site_name=site_name, data={"cmd": "block-sta", "mac": normalized_mac})
+            assert params.mac is not None, "MAC address required"
+
+            normalized_mac = self.normalize_mac(params.mac)
+
+            result = await self.client._make_request("POST", "/cmd/stamgr",
+                                                   site_name=site_name,
+                                                   data={"cmd": "block-sta", "mac": normalized_mac})
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
             if not is_valid:
                 return self.create_error_result(error_msg, result)
 
-            resp = {"success": True, "message": f"Client {normalized_mac} has been blocked from network access", "mac": normalized_mac, "details": result}
-            return ToolResult(content=[TextContent(type="text", text=f"Blocked client: {normalized_mac}")], structured_content=resp)
+            resp = {
+                "success": True,
+                "message": f"Client {normalized_mac} has been blocked from network access",
+                "mac": normalized_mac,
+                "details": result
+            }
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Blocked client: {normalized_mac}")],
+                structured_content=resp
+            )
 
         except Exception as e:
             logger.error(f"Error blocking client {params.mac}: {e}")
-            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
 
     async def _unblock_client(self, params: UnifiParams) -> ToolResult:
         """Unblock a previously blocked client."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(self.require_mac(params))
+            # MAC is required and validated by pydantic
 
-            result = await self.client._make_request("POST", "/cmd/stamgr", site_name=site_name, data={"cmd": "unblock-sta", "mac": normalized_mac})
+            assert params.mac is not None, "MAC address required"
+
+            normalized_mac = self.normalize_mac(params.mac)
+
+            result = await self.client._make_request("POST", "/cmd/stamgr",
+                                                   site_name=site_name,
+                                                   data={"cmd": "unblock-sta", "mac": normalized_mac})
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
@@ -156,45 +198,72 @@ class ClientService(BaseService):
                 "success": True,
                 "message": f"Client {normalized_mac} has been unblocked and can access the network",
                 "mac": normalized_mac,
-                "details": result,
+                "details": result
             }
-            return ToolResult(content=[TextContent(type="text", text=f"Unblocked client: {normalized_mac}")], structured_content=resp)
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Unblocked client: {normalized_mac}")],
+                structured_content=resp
+            )
 
         except Exception as e:
             logger.error(f"Error unblocking client {params.mac}: {e}")
-            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
 
     async def _forget_client(self, params: UnifiParams) -> ToolResult:
         """Remove historical data for a client (GDPR compliance)."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(self.require_mac(params))
+            # MAC is required and validated by pydantic
 
-            result = await self.client._make_request("POST", "/cmd/stamgr", site_name=site_name, data={"cmd": "forget-sta", "macs": [normalized_mac]})
+            assert params.mac is not None, "MAC address required"
+
+            normalized_mac = self.normalize_mac(params.mac)
+
+            result = await self.client._make_request("POST", "/cmd/stamgr",
+                                                   site_name=site_name,
+                                                   data={"cmd": "forget-sta", "macs": [normalized_mac]})
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
             if not is_valid:
                 return self.create_error_result(error_msg, result)
 
-            resp = {"success": True, "message": f"Client {normalized_mac} historical data has been removed", "mac": normalized_mac, "details": result}
-            return ToolResult(content=[TextContent(type="text", text=f"Forgot client data: {normalized_mac}")], structured_content=resp)
+            resp = {
+                "success": True,
+                "message": f"Client {normalized_mac} historical data has been removed",
+                "mac": normalized_mac,
+                "details": result
+            }
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Forgot client data: {normalized_mac}")],
+                structured_content=resp
+            )
 
         except Exception as e:
             logger.error(f"Error forgetting client {params.mac}: {e}")
-            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
 
     async def _set_client_name(self, params: UnifiParams) -> ToolResult:
         """Set or update the name/alias for a client."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(self.require_mac(params))
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
+            normalized_mac = self.normalize_mac(params.mac)
 
             # Resolve user id from controller users, not active sessions
             users = await self.client._make_request("GET", "/list/user", site_name=site_name)
@@ -206,19 +275,21 @@ class ClientService(BaseService):
                         break
             elif isinstance(users, dict) and "error" in users:
                 return ToolResult(
-                    content=[TextContent(type="text", text=f"Error: {users.get('error', 'unknown error')}")],
-                    structured_content={"error": users.get("error", "unknown error"), "raw": users},
+                    content=[TextContent(type="text", text=f"Error: {users.get('error','unknown error')}")],
+                    structured_content={"error": users.get("error","unknown error"), "raw": users}
                 )
 
             if not client_id:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Client not found: {normalized_mac}")],
-                    structured_content={"error": f"Client with MAC {normalized_mac} not found"},
+                    structured_content={"error": f"Client with MAC {normalized_mac} not found"}
                 )
 
             data = {"name": params.name} if params.name else {"name": ""}
 
-            result = await self.client._make_request("POST", f"/upd/user/{client_id}", site_name=site_name, data=data)
+            result = await self.client._make_request("POST", f"/upd/user/{client_id}",
+                                                   site_name=site_name,
+                                                   data=data)
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
@@ -231,23 +302,33 @@ class ClientService(BaseService):
                 "message": f"Client {normalized_mac} name {action} successfully",
                 "mac": normalized_mac,
                 "name": params.name,
-                "details": result,
+                "details": result
             }
             nice = f"Name {action}: {normalized_mac} -> '{params.name}'" if params.name else f"Name {action}: {normalized_mac}"
-            return ToolResult(content=[TextContent(type="text", text=nice)], structured_content=resp)
+            return ToolResult(
+                content=[TextContent(type="text", text=nice)],
+                structured_content=resp
+            )
 
         except Exception as e:
             logger.error(f"Error setting client name for {params.mac}: {e}")
-            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )
 
     async def _set_client_note(self, params: UnifiParams) -> ToolResult:
         """Set or update the note for a client."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(self.require_mac(params))
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
+            normalized_mac = self.normalize_mac(params.mac)
 
             # Resolve user id from controller users, not active sessions
             users = await self.client._make_request("GET", "/list/user", site_name=site_name)
@@ -259,19 +340,21 @@ class ClientService(BaseService):
                         break
             elif isinstance(users, dict) and "error" in users:
                 return ToolResult(
-                    content=[TextContent(type="text", text=f"Error: {users.get('error', 'unknown error')}")],
-                    structured_content={"error": users.get("error", "unknown error"), "raw": users},
+                    content=[TextContent(type="text", text=f"Error: {users.get('error','unknown error')}")],
+                    structured_content={"error": users.get("error","unknown error"), "raw": users}
                 )
 
             if not client_id:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Client not found: {normalized_mac}")],
-                    structured_content={"error": f"Client with MAC {normalized_mac} not found"},
+                    structured_content={"error": f"Client with MAC {normalized_mac} not found"}
                 )
 
             data = {"note": params.note} if params.note else {"note": ""}
 
-            result = await self.client._make_request("POST", f"/upd/user/{client_id}", site_name=site_name, data=data)
+            result = await self.client._make_request("POST", f"/upd/user/{client_id}",
+                                                   site_name=site_name,
+                                                   data=data)
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
@@ -284,11 +367,17 @@ class ClientService(BaseService):
                 "message": f"Client {normalized_mac} note {action} successfully",
                 "mac": normalized_mac,
                 "note": params.note,
-                "details": result,
+                "details": result
             }
             nice = f"Note {action}: {normalized_mac} -> '{params.note}'" if params.note else f"Note {action}: {normalized_mac}"
-            return ToolResult(content=[TextContent(type="text", text=nice)], structured_content=resp)
+            return ToolResult(
+                content=[TextContent(type="text", text=nice)],
+                structured_content=resp
+            )
 
         except Exception as e:
             logger.error(f"Error setting client note for {params.mac}: {e}")
-            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
+            return ToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                structured_content={"error": str(e)}
+            )

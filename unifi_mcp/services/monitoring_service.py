@@ -350,6 +350,10 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             data = {
@@ -389,6 +393,10 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             result = await self.client._make_request("GET", f"/stat/spectrum-scan/{normalized_mac}", site_name=site_name)
@@ -420,6 +428,10 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             minutes = params.minutes or defaults.get('minutes', 480)
