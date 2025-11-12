@@ -7,7 +7,7 @@ Provides shared functionality and common patterns for all domain services.
 import logging
 import re
 from abc import ABC
-from typing import Optional, Callable, Union
+from typing import Optional, Callable, Union, cast
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -93,16 +93,14 @@ class BaseService(ABC):
         """
         structured_content: Union[dict[str, JSONValue], UniFiData, list[dict[str, JSONValue]], JSONValue] = data
         if success_message and isinstance(data, dict):
-            structured_content = {
-                "success": True,
-                "message": success_message,
-                **data
-            }
+            # Build dict with update() to avoid TypedDict unpacking issues
+            structured_content = cast(dict[str, JSONValue], {"success": True, "message": success_message})
+            structured_content.update(cast(dict[str, JSONValue], data))
         elif success_message:
             structured_content = {
                 "success": True,
                 "message": success_message,
-                "data": data
+                "data": cast(JSONValue, data)
             }
 
         return ToolResult(
@@ -183,7 +181,7 @@ class BaseService(ABC):
         # Format response if formatter provided
         if formatter_func:
             try:
-                formatted_data = formatter_func(response)
+                formatted_data = formatter_func(cast(Union[UniFiData, dict[str, JSONValue]], response))
                 text = success_text or f"{action.value} completed successfully"
                 return self.create_success_result(text, formatted_data)
             except Exception as e:
@@ -192,7 +190,7 @@ class BaseService(ABC):
 
         # Return raw response if no formatter
         text = success_text or f"{action.value} completed"
-        return self.create_success_result(text, response)
+        return self.create_success_result(text, cast(Union[UniFiData, dict[str, JSONValue], list[dict[str, JSONValue]], JSONValue], response))
 
     async def execute_action(self, params: UnifiParams) -> ToolResult:
         """Execute the specified action with the given parameters.
