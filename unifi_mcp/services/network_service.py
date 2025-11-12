@@ -1,4 +1,3 @@
-from typing import cast, Dict, Any
 """
 Network service for UniFi MCP Server.
 
@@ -6,6 +5,7 @@ Handles all network configuration operations including sites, WLANs, networks,
 port configurations, and security settings.
 """
 
+from typing import cast, Dict, Any
 import logging
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
@@ -187,7 +187,7 @@ class NetworkService(BaseService):
                 }
                 formatted_networks.append(formatted_network)
 
-            summary_text = format_networks_list(networks)
+            summary_text = format_networks_list(cast(list[Dict[str, Any]], networks))
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_networks,
@@ -217,6 +217,7 @@ class NetworkService(BaseService):
             # Format port configs for clean output
             formatted_ports = []
             for port in ports:
+                port = cast(Dict[str, Any], port)
                 formatted_port = {
                     "name": port.get("name", "Unknown Port Profile"),
                     "enabled": port.get("enabled", False),

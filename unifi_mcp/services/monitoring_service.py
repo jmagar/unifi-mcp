@@ -4,7 +4,7 @@ Monitoring service for UniFi MCP Server.
 Handles all monitoring and statistics operations including controller status,
 events, alarms, security monitoring, and performance metrics.
 """
-from typing import cast, Dict, Any
+from typing import cast, Any
 
 import logging
 import time

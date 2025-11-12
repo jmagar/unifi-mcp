@@ -344,6 +344,9 @@ class UnifiControllerClient:
         if not formatted_clients:
             return "📱 No clients connected"
         
+        # Type narrowing: after error check, should be a list
+        assert isinstance(formatted_clients, list), "Expected list of clients"
+        
         wireless = [c for c in formatted_clients if c.get('connection_type') == 'Wireless']
         wired = [c for c in formatted_clients if c.get('connection_type') == 'Wired']
         
@@ -368,6 +371,9 @@ class UnifiControllerClient:
         
         if not formatted_devices:
             return "📱 No devices found"
+        
+        # Type narrowing: after error check, should be a list
+        assert isinstance(formatted_devices, list), "Expected list of devices"
         
         online = len([d for d in formatted_devices if d.get('status') == 'Online'])
         aps = len([d for d in formatted_devices if d.get('type') == 'Access Point'])
@@ -423,6 +429,9 @@ class UnifiControllerClient:
         
         if not formatted_sites:
             return "🏢 No sites found"
+        
+        # Type narrowing: after error check, should be a list
+        assert isinstance(formatted_sites, list), "Expected list of sites"
         
         summary = f"🏢 {len(formatted_sites)} sites: "
         site_names = [s.get('name', 'Site') for s in formatted_sites[:3]]
