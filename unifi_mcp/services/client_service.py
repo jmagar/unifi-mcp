@@ -105,7 +105,9 @@ class ClientService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-
+            
+            # MAC is required and validated by pydantic
+            assert params.mac is not None, "MAC address required"
             result = await self.client.reconnect_client(params.mac, site_name)
 
             # Validate response
@@ -137,6 +139,10 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             result = await self.client._make_request("POST", "/cmd/stamgr",
@@ -173,6 +179,10 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             result = await self.client._make_request("POST", "/cmd/stamgr",
@@ -209,6 +219,10 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             result = await self.client._make_request("POST", "/cmd/stamgr",
@@ -245,6 +259,10 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             # Resolve user id from controller users, not active sessions
@@ -306,6 +324,10 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
+            # MAC is required and validated by pydantic
+
+            assert params.mac is not None, "MAC address required"
+
             normalized_mac = self.normalize_mac(params.mac)
 
             # Resolve user id from controller users, not active sessions

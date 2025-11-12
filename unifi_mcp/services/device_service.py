@@ -103,7 +103,8 @@ class DeviceService(BaseService):
             if error_result:
                 return error_result
 
-            # Normalize MAC address for comparison
+            # Normalize MAC address for comparison (validated by pydantic)
+            assert params.mac is not None, "MAC address required for this action"
             normalized_mac = self.normalize_mac(params.mac)
 
             # Find matching device
@@ -133,7 +134,9 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-
+            
+            # MAC is required and validated by pydantic
+            assert params.mac is not None, "MAC address required for restart_device"
             result = await self.client.restart_device(params.mac, site_name)
 
             # Validate response
@@ -160,7 +163,9 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-
+            
+            # MAC is required and validated by pydantic
+            assert params.mac is not None, "MAC address required for locate_device"
             result = await self.client.locate_device(params.mac, site_name)
 
             # Check for error in response
