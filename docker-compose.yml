@@ -19,15 +19,9 @@ services:
       - UNIFI_LOCAL_MCP_LOG_LEVEL=${UNIFI_LOCAL_MCP_LOG_LEVEL:-INFO}
       - UNIFI_LOCAL_MCP_LOG_FILE=${UNIFI_LOCAL_MCP_LOG_FILE:-/app/logs/unifi-mcp.log}
       
-      # Google OAuth Authentication (FastMCP)
-      - FASTMCP_SERVER_AUTH=${FASTMCP_SERVER_AUTH}
-      - FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID=${FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID}
-      - FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET=${FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET}
-      - FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL=${FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL}
-      - FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES=${FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES}
-      - FASTMCP_SERVER_AUTH_GOOGLE_REDIRECT_PATH=${FASTMCP_SERVER_AUTH_GOOGLE_REDIRECT_PATH:-/auth/callback}
-      - FASTMCP_SERVER_AUTH_GOOGLE_TIMEOUT_SECONDS=${FASTMCP_SERVER_AUTH_GOOGLE_TIMEOUT_SECONDS:-10}
-      
+      # Auth handled by mcp-oauth at SWAG layer (Google OAuth disabled)
+      # - FASTMCP_SERVER_AUTH=${FASTMCP_SERVER_AUTH}
+
       # Logging and Process Management
       - MCP_LOG_FILE=${MCP_LOG_FILE:-/app/logs/unifi-mcp.log}
       - MCP_PID_FILE=${MCP_PID_FILE:-/app/logs/unifi-mcp.pid}
@@ -38,18 +32,18 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${UNIFI_LOCAL_MCP_PORT:-8001}/health"]
+      test: ["CMD", "sh", "-c", "curl -s -X POST http://localhost:${UNIFI_LOCAL_MCP_PORT:-8001}/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}' | grep -q 'jsonrpc'"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
     networks:
-      - unifi-mcp-network
+      - jakenet
 
 volumes:
   unifi-mcp-logs:
     driver: local
 
 networks:
-  unifi-mcp-network:
-    driver: bridge
+  jakenet:
+    external: true

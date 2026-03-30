@@ -11,11 +11,16 @@ wheels/
 .venv
 .venv-backend
 .env
+.env.*
+!.env.example
 *.log
 *.pid
 
 # Runtime files
-logs/
+logs/*
+!logs/.gitkeep
+backups/*
+!backups/.gitkeep
 
 .bivvy
 .cursor

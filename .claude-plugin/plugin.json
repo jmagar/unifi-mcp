@@ -1,0 +1,38 @@
+{
+  "name": "unifi-mcp",
+  "version": "1.0.0",
+  "description": "UniFi network management via MCP tools. Monitor devices, clients, network health, firewall rules, and perform management operations.",
+  "author": {
+    "name": "Jacob Magar"
+  },
+  "repository": "https://github.com/jmagar/unifi-mcp",
+  "license": "MIT",
+  "keywords": ["unifi", "networking", "monitoring", "homelab", "mcp"],
+  "userConfig": {
+    "unifi_mcp_url": {
+      "type": "string",
+      "title": "UniFi MCP Server URL",
+      "description": "URL of the unifi-mcp MCP server. Default http://localhost:8001 works if running via docker compose in this repo. Change if running on a different host or port.",
+      "default": "http://localhost:8001",
+      "sensitive": false
+    },
+    "unifi_controller_url": {
+      "type": "string",
+      "title": "UniFi Controller URL",
+      "description": "URL of your UniFi controller, e.g. https://192.168.1.1:443. No trailing slash.",
+      "sensitive": true
+    },
+    "unifi_username": {
+      "type": "string",
+      "title": "UniFi Username",
+      "description": "UniFi controller admin username.",
+      "sensitive": true
+    },
+    "unifi_password": {
+      "type": "string",
+      "title": "UniFi Password",
+      "description": "UniFi controller admin password.",
+      "sensitive": true
+    }
+  }
+}

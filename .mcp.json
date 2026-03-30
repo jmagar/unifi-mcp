@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "unifi-mcp": {
+      "type": "http",
+      "url": "${user_config.unifi_mcp_url}/mcp"
+    }
+  }
+}
