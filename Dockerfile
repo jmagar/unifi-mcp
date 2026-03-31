@@ -1,38 +1,57 @@
-# Single-stage build for UniFi MCP Server
+# Multi-stage build for UniFi MCP Server
+# Builder stage: install deps and compile
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files and install
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir --prefix=/install -e .
+
+# Copy application code
+COPY unifi_mcp/ ./unifi_mcp/
+
+# Runtime stage: minimal image
 FROM python:3.11-slim
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash unifi
+# Create non-root user
+RUN useradd --create-home --shell /bin/sh --uid 1001 unifi
 
-# Set working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml ./
-
-# Install dependencies using pip
-RUN pip install --no-cache-dir -e .
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
 
 # Copy application code
-COPY . .
+COPY --from=builder /build/unifi_mcp/ ./unifi_mcp/
+COPY pyproject.toml ./
 
-# Change ownership to unifi user
+# Copy entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Set ownership
 RUN chown -R unifi:unifi /app
 
 # Switch to non-root user
 USER unifi
 
-# Expose the default MCP port
-EXPOSE 8001
+# Expose the MCP port
+EXPOSE 3003
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8001/health || exit 1
+    CMD curl -f http://localhost:3003/health || exit 1
 
-# Default command
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "-m", "unifi_mcp.main"]

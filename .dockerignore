@@ -1,76 +1,70 @@
-# Git
+# Version control
 .git
 .gitignore
 
-# Python
-__pycache__
+# Environment / secrets
+.env
+.env.*
+.cache/
+
+# Node / Python artifacts
+node_modules/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-env
 pip-log.txt
-pip-delete-this-directory.txt
 .tox
 .coverage
 .coverage.*
-.cache
 nosetests.xml
 coverage.xml
 *.cover
 *.log
-.git
 .mypy_cache
 .pytest_cache
 .hypothesis
+*.egg-info/
+build/
+dist/
 
-# Documentation
-docs/_build
-.readthedocs.yml
+# Dev tooling
+.lavra/
+.omc/
+.serena/
+.vscode/
+.idea/
+.ipynb_checkpoints/
 
-# PyCharm
-.idea
-
-# VS Code
-.vscode
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Environment variables
-.env.local
-.env.development
-.env.test
-.env.production
-
-# macOS
-.DS_Store
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Linux
-*~
-
-# Docker
-Dockerfile*
-docker-compose*
-.dockerignore
-
-# Development files
+# Docs and markdown (keep README)
 *.md
-LICENSE
-.claude/
+!README.md
 docs/
+LICENSE
 
-# Test files
+# Tests
 tests/
 test_*
 *_test.py
 
-# Build artifacts
-build/
-dist/
-*.egg-info/
+# Docker meta (not needed inside image)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI / tooling config
+.github/
+.pre-commit-config.yaml
+Justfile
+
+# Backups / logs
+backups/
+logs/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*~
