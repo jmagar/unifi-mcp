@@ -7,114 +7,166 @@ and server lifecycle management.
 
 import logging
 import os
-from typing import Optional, Annotated
+from typing import Annotated, Optional
+
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from pydantic import Field
 
-from .config import UniFiConfig, ServerConfig
 from .client import UnifiControllerClient
+from .config import ServerConfig, UniFiConfig, validate_auth_config
 from .models import UnifiAction, UnifiParams
-from .services import UnifiService
+from .models.enums import DESTRUCTIVE_ACTIONS
 from .resources import (
-    register_device_resources,
     register_client_resources,
-    register_network_resources,
+    register_device_resources,
     register_monitoring_resources,
+    register_network_resources,
     register_overview_resources,
-    register_site_resources
+    register_site_resources,
 )
+from .services import UnifiService
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Response size cap (512 KB)
+# ---------------------------------------------------------------------------
+MAX_RESPONSE_SIZE = 512 * 1024  # bytes
+
+
+def _truncate_response(text: str) -> str:
+    """Truncate response text if it exceeds MAX_RESPONSE_SIZE."""
+    if len(text.encode("utf-8")) > MAX_RESPONSE_SIZE:
+        # Slice by character count — close enough for UTF-8 heavy text
+        truncated = text.encode("utf-8")[:MAX_RESPONSE_SIZE].decode(
+            "utf-8", errors="ignore"
+        )
+        return truncated + "\n... [truncated]"
+    return text
 
 
 def _normalize_mac(mac: str) -> str:
     return mac.strip().lower().replace("-", ":").replace(".", ":")
 
 
+# ---------------------------------------------------------------------------
+# Server class
+# ---------------------------------------------------------------------------
+
+
 class UniFiMCPServer:
     """UniFi MCP Server with modular architecture."""
-    
+
     def __init__(self, unifi_config: UniFiConfig, server_config: ServerConfig):
         """Initialize the UniFi MCP server."""
         self.unifi_config = unifi_config
         self.server_config = server_config
-        
-        # Check if Google OAuth is configured via environment variables
-        auth_provider = os.getenv("FASTMCP_SERVER_AUTH")
-        self._auth_enabled = False
-        
-        if auth_provider in ["google", "fastmcp.server.auth.providers.google.GoogleProvider"]:
-            logger.info("Google OAuth authentication requested")
-            # Validate required Google env vars
-            client_id = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID")
-            client_secret = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET")
-            base_url = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL")
-            
-            if not client_id or not client_secret or not base_url:
-                logger.error("Missing required Google OAuth environment variables")
-                logger.error("Required: FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID, FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET, FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL")
-                self.mcp = FastMCP("UniFi Local Controller MCP Server")
-            else:
-                try:
-                    from fastmcp.server.auth.providers.google import GoogleProvider
-                    
-                    # Build scopes by splitting and filtering
-                    scopes_str = os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES", "")
-                    if scopes_str:
-                        scopes = [s.strip() for s in scopes_str.split(",") if s.strip()]
-                    else:
-                        scopes = []
-                    
-                    if not scopes:
-                        scopes = ["openid", "email", "profile"]
-                    
-                    google_provider = GoogleProvider(
-                        client_id=client_id,
-                        client_secret=client_secret,
-                        base_url=base_url,
-                        required_scopes=scopes,
-                        redirect_path=os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_REDIRECT_PATH", "/auth/callback"),
-                        timeout_seconds=int(os.getenv("FASTMCP_SERVER_AUTH_GOOGLE_TIMEOUT_SECONDS", "10"))
-                    )
-                    
-                    self.mcp = FastMCP("UniFi Local Controller MCP Server", auth=google_provider)
-                    self._auth_enabled = True
-                    logger.info("Google OAuth provider configured successfully")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to configure Google OAuth: {e}")
-                    logger.info("Falling back to no authentication")
-                    self.mcp = FastMCP("UniFi Local Controller MCP Server")
-        else:
-            logger.info("No authentication configured - server will run without OAuth")
-            self.mcp = FastMCP("UniFi Local Controller MCP Server")
+
+        # Validate Bearer token at startup (exits if missing and NO_AUTH != true)
+        self._bearer_token: Optional[str] = validate_auth_config()
+
+        self.mcp = FastMCP("UniFi Local Controller MCP Server")
         self.client: Optional[UnifiControllerClient] = None
         self.unifi_service: Optional[UnifiService] = None
-        
+
+    # ------------------------------------------------------------------
+    # Destructive ops gate (3-path)
+    # ------------------------------------------------------------------
+
+    def _check_destructive(self, params: UnifiParams) -> Optional[ToolResult]:
+        """Return a ToolResult gate response if the action is destructive and
+        not yet confirmed, or None if execution should proceed."""
+        if params.action not in DESTRUCTIVE_ACTIONS:
+            return None
+
+        # Path 1: env bypass (CI / automation)
+        if os.getenv("ALLOW_DESTRUCTIVE") == "true":
+            return None
+
+        # Path 2: ALLOW_YOLO skips elicitation
+        if os.getenv("ALLOW_YOLO") == "true":
+            return None
+
+        # Path 3: explicit confirmation param
+        if params.confirm:
+            return None
+
+        return ToolResult(
+            content=[
+                {
+                    "type": "text",
+                    "text": (
+                        f"'{params.action.value}' is a destructive operation. "
+                        "Pass confirm=true to proceed, or set ALLOW_DESTRUCTIVE=true / "
+                        "ALLOW_YOLO=true in the environment to bypass."
+                    ),
+                }
+            ],
+            structured_content={
+                "error": "confirmation_required",
+                "action": params.action.value,
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Bearer auth helper
+    # ------------------------------------------------------------------
+
+    def _make_bearer_middleware(self):
+        """Return a Starlette middleware that validates Authorization: Bearer."""
+        from starlette.middleware.base import BaseHTTPMiddleware
+        from starlette.responses import JSONResponse
+
+        expected_token = self._bearer_token
+
+        class BearerAuthMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                # Skip auth for /health
+                if request.url.path == "/health":
+                    return await call_next(request)
+
+                if expected_token is None:
+                    # NO_AUTH mode — pass through
+                    return await call_next(request)
+
+                auth_header = request.headers.get("Authorization", "")
+                if not auth_header.startswith("Bearer "):
+                    return JSONResponse(
+                        {"error": "Missing or invalid Authorization header"},
+                        status_code=401,
+                    )
+                token = auth_header[len("Bearer ") :]
+                if token != expected_token:
+                    return JSONResponse(
+                        {"error": "Invalid bearer token"},
+                        status_code=403,
+                    )
+                return await call_next(request)
+
+        return BearerAuthMiddleware
+
+    # ------------------------------------------------------------------
+    # Initialization
+    # ------------------------------------------------------------------
+
     async def initialize(self) -> None:
         """Initialize the UniFi client and register tools/resources."""
         logger.info("Initializing UniFi MCP Server...")
-        
-        # Initialize UniFi client
+
         self.client = UnifiControllerClient(self.unifi_config)
         try:
             await self.client.connect()
         except Exception as e:
             logger.error(f"Failed to connect to UniFi controller: {e}")
-            # Optionally: raise to abort startup
             raise
 
-        # Initialize unified service
         self.unifi_service = UnifiService(self.client)
 
-        # Register unified tool
-        logger.info("Registering unified MCP tool...")
+        logger.info("Registering MCP tools...")
         self._register_unified_tool()
-        
-        # Note: Authentication test tool (get_user_info) is now handled by the unified tool
-        
-        # Register all resources
+        self._register_help_tool()
+
         logger.info("Registering MCP resources...")
         register_device_resources(self.mcp, self.client)
         register_client_resources(self.mcp, self.client)
@@ -122,28 +174,113 @@ class UniFiMCPServer:
         register_monitoring_resources(self.mcp, self.client)
         register_overview_resources(self.mcp, self.client)
         register_site_resources(self.mcp, self.client)
-        
+
         logger.info("UniFi MCP Server initialization complete")
-    
+
+    # ------------------------------------------------------------------
+    # Tool registration
+    # ------------------------------------------------------------------
+
     def _register_unified_tool(self) -> None:
-        """Register the unified UniFi tool that handles all actions."""
-        logger.info("Registering unified UniFi tool...")
+        """Register the unified `unifi` tool that handles all actions."""
 
         @self.mcp.tool()
         async def unifi(
-            action: Annotated[str, Field(description="The action to perform. See UnifiAction enum for all available actions.")],
-            site_name: Annotated[str, Field(default="default", description="UniFi site name (not used by get_sites, get_controller_status, get_user_info)")] = "default",
-            mac: Annotated[Optional[str], Field(default=None, description="Device or client MAC address (any format, required for device/client operations)")] = None,
-            limit: Annotated[Optional[int], Field(default=None, description="Maximum number of results to return (default varies by action)")] = None,
-            connected_only: Annotated[Optional[bool], Field(default=None, description="Only return currently connected clients (get_clients only, default: True)")] = None,
-            active_only: Annotated[Optional[bool], Field(default=None, description="Only return active/unarchived items (get_alarms only, default: True)")] = None,
-            by_filter: Annotated[Optional[str], Field(default=None, description="Filter type for DPI stats: 'by_app' or 'by_cat' (get_dpi_stats only, default: 'by_app')")] = None,
-            name: Annotated[Optional[str], Field(default=None, description="New name for client (set_client_name only)")] = None,
-            note: Annotated[Optional[str], Field(default=None, description="Note for client (set_client_note only)")] = None,
-            minutes: Annotated[Optional[int], Field(default=None, description="Duration of guest access in minutes (authorize_guest only, default: 480 = 8 hours)")] = None,
-            up_bandwidth: Annotated[Optional[int], Field(default=None, description="Upload bandwidth limit in Kbps (authorize_guest only)")] = None,
-            down_bandwidth: Annotated[Optional[int], Field(default=None, description="Download bandwidth limit in Kbps (authorize_guest only)")] = None,
-            quota: Annotated[Optional[int], Field(default=None, description="Data quota in MB (authorize_guest only)")] = None,
+            action: Annotated[
+                str,
+                Field(
+                    description="The action to perform. See UnifiAction enum for all available actions."
+                ),
+            ],
+            site_name: Annotated[
+                str,
+                Field(
+                    default="default",
+                    description="UniFi site name (not used by get_sites, get_controller_status, get_user_info)",
+                ),
+            ] = "default",
+            mac: Annotated[
+                Optional[str],
+                Field(
+                    default=None,
+                    description="Device or client MAC address (any format, required for device/client operations)",
+                ),
+            ] = None,
+            limit: Annotated[
+                Optional[int],
+                Field(
+                    default=None,
+                    description="Maximum number of results to return (default varies by action)",
+                ),
+            ] = None,
+            connected_only: Annotated[
+                Optional[bool],
+                Field(
+                    default=None,
+                    description="Only return currently connected clients (get_clients only, default: True)",
+                ),
+            ] = None,
+            active_only: Annotated[
+                Optional[bool],
+                Field(
+                    default=None,
+                    description="Only return active/unarchived items (get_alarms only, default: True)",
+                ),
+            ] = None,
+            by_filter: Annotated[
+                Optional[str],
+                Field(
+                    default=None,
+                    description="Filter type for DPI stats: 'by_app' or 'by_cat' (get_dpi_stats only, default: 'by_app')",
+                ),
+            ] = None,
+            name: Annotated[
+                Optional[str],
+                Field(
+                    default=None,
+                    description="New name for client (set_client_name only)",
+                ),
+            ] = None,
+            note: Annotated[
+                Optional[str],
+                Field(
+                    default=None, description="Note for client (set_client_note only)"
+                ),
+            ] = None,
+            minutes: Annotated[
+                Optional[int],
+                Field(
+                    default=None,
+                    description="Duration of guest access in minutes (authorize_guest only, default: 480 = 8 hours)",
+                ),
+            ] = None,
+            up_bandwidth: Annotated[
+                Optional[int],
+                Field(
+                    default=None,
+                    description="Upload bandwidth limit in Kbps (authorize_guest only)",
+                ),
+            ] = None,
+            down_bandwidth: Annotated[
+                Optional[int],
+                Field(
+                    default=None,
+                    description="Download bandwidth limit in Kbps (authorize_guest only)",
+                ),
+            ] = None,
+            quota: Annotated[
+                Optional[int],
+                Field(
+                    default=None, description="Data quota in MB (authorize_guest only)"
+                ),
+            ] = None,
+            confirm: Annotated[
+                Optional[bool],
+                Field(
+                    default=None,
+                    description="Set to true to confirm destructive operations (restart_device, block_client, forget_client, reconnect_client)",
+                ),
+            ] = None,
         ) -> ToolResult:
             """Unified UniFi tool providing access to all device, client, network, and monitoring operations.
 
@@ -157,39 +294,27 @@ class UniFiMCPServer:
             - Monitoring & Statistics: get_controller_status, get_events, get_alarms, get_dpi_stats, get_rogue_aps, start_spectrum_scan, get_spectrum_scan_state, authorize_guest, get_speedtest_results, get_ips_events
             - Authentication: get_user_info
 
-            Args:
-                action: The action to perform (see above for available actions)
-                site_name: UniFi site name (default: "default")
-                mac: Device or client MAC address (required for device/client operations)
-                limit: Maximum number of results to return
-                connected_only: Only return currently connected clients (get_clients)
-                active_only: Only return active/unarchived items (get_alarms)
-                by_filter: Filter type for DPI stats: 'by_app' or 'by_cat' (get_dpi_stats)
-                name: New name for client (set_client_name)
-                note: Note for client (set_client_note)
-                minutes: Duration of guest access in minutes (authorize_guest)
-                up_bandwidth: Upload bandwidth limit in Kbps (authorize_guest)
-                down_bandwidth: Download bandwidth limit in Kbps (authorize_guest)
-                quota: Data quota in MB (authorize_guest)
-
-            Returns:
-                ToolResult with action response and structured data
+            Destructive actions (restart_device, block_client, forget_client, reconnect_client)
+            require confirm=true unless ALLOW_DESTRUCTIVE=true or ALLOW_YOLO=true is set.
             """
             try:
-                # Parse and validate action
                 try:
                     unifi_action = UnifiAction(action)
                 except ValueError:
-                    available_actions = [action.value for action in UnifiAction]
+                    available_actions = [a.value for a in UnifiAction]
                     return ToolResult(
-                        content=[{
-                            "type": "text",
-                            "text": f"Invalid action '{action}'. Available actions: {', '.join(available_actions)}"
-                        }],
-                        structured_content={"error": f"Invalid action: {action}", "available_actions": available_actions}
+                        content=[
+                            {
+                                "type": "text",
+                                "text": f"Invalid action '{action}'. Available actions: {', '.join(available_actions)}",
+                            }
+                        ],
+                        structured_content={
+                            "error": f"Invalid action: {action}",
+                            "available_actions": available_actions,
+                        },
                     )
 
-                # Create and validate parameters
                 params = UnifiParams(
                     action=unifi_action,
                     site_name=site_name,
@@ -203,57 +328,229 @@ class UniFiMCPServer:
                     minutes=minutes,
                     up_bandwidth=up_bandwidth,
                     down_bandwidth=down_bandwidth,
-                    quota=quota
+                    quota=quota,
+                    confirm=confirm,
                 )
 
-                # Execute action through service layer
+                # Destructive ops gate
+                gate = self._check_destructive(params)
+                if gate is not None:
+                    return gate
+
                 if not self.unifi_service:
                     return ToolResult(
-                        content=[{"type": "text", "text": "Error: Service not initialized"}],
-                        structured_content={"error": "Service not initialized"}
+                        content=[
+                            {"type": "text", "text": "Error: Service not initialized"}
+                        ],
+                        structured_content={"error": "Service not initialized"},
                     )
-                return await self.unifi_service.execute_action(params)
+
+                result = await self.unifi_service.execute_action(params)
+
+                # Apply response size cap
+                if result.content:
+                    capped = []
+                    for item in result.content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            capped.append(
+                                {
+                                    "type": "text",
+                                    "text": _truncate_response(item["text"]),
+                                }
+                            )
+                        elif hasattr(item, "text"):
+                            item.text = _truncate_response(item.text)
+                            capped.append(item)
+                        else:
+                            capped.append(item)
+                    result = ToolResult(
+                        content=capped, structured_content=result.structured_content
+                    )
+
+                return result
 
             except Exception as e:
                 logger.error(f"Error in unified UniFi tool: {e}")
                 return ToolResult(
                     content=[{"type": "text", "text": f"Error: {str(e)}"}],
-                    structured_content={"error": str(e)}
+                    structured_content={"error": str(e)},
                 )
 
         logger.info("Unified UniFi tool registered successfully")
-    
+
+    def _register_help_tool(self) -> None:
+        """Register the `unifi_help` tool that returns markdown help."""
+
+        @self.mcp.tool()
+        async def unifi_help() -> ToolResult:
+            """Return markdown help for all available UniFi MCP actions."""
+            help_text = """# UniFi MCP — Tool Reference
+
+## Tool: `unifi`
+
+Single action-based tool for all UniFi operations.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | string (required) | Action to perform (see below) |
+| `site_name` | string | UniFi site name (default: "default") |
+| `mac` | string | Device/client MAC address |
+| `limit` | int | Max results to return |
+| `connected_only` | bool | get_clients: connected clients only (default: true) |
+| `active_only` | bool | get_alarms: active alarms only (default: true) |
+| `by_filter` | string | get_dpi_stats: "by_app" or "by_cat" (default: "by_app") |
+| `name` | string | set_client_name: new name |
+| `note` | string | set_client_note: note text |
+| `minutes` | int | authorize_guest: duration in minutes (default: 480) |
+| `up_bandwidth` | int | authorize_guest: upload limit in Kbps |
+| `down_bandwidth` | int | authorize_guest: download limit in Kbps |
+| `quota` | int | authorize_guest: data quota in MB |
+| `confirm` | bool | Confirm destructive operations |
+
+### Available Actions
+
+#### Device Management
+| Action | MAC Required | Description |
+|--------|-------------|-------------|
+| `get_devices` | No | List all devices on a site |
+| `get_device_by_mac` | Yes | Get device details by MAC |
+| `restart_device` | Yes | **Destructive** — Restart a device |
+| `locate_device` | Yes | Activate locate LED on a device |
+
+#### Client Management
+| Action | MAC Required | Description |
+|--------|-------------|-------------|
+| `get_clients` | No | List clients (connected_only default: true) |
+| `reconnect_client` | Yes | **Destructive** — Force client reconnection |
+| `block_client` | Yes | **Destructive** — Block a client |
+| `unblock_client` | Yes | Unblock a client |
+| `forget_client` | Yes | **Destructive** — Forget/remove a client |
+| `set_client_name` | Yes | Set alias name for a client |
+| `set_client_note` | Yes | Set note for a client |
+
+#### Network Configuration
+| Action | Description |
+|--------|-------------|
+| `get_sites` | List all sites |
+| `get_wlan_configs` | List WLAN configurations |
+| `get_network_configs` | List network configurations |
+| `get_port_configs` | List port configurations |
+| `get_port_forwarding_rules` | List port forwarding rules |
+| `get_firewall_rules` | List firewall rules |
+| `get_firewall_groups` | List firewall groups |
+| `get_static_routes` | List static routes |
+
+#### Monitoring & Statistics
+| Action | Description |
+|--------|-------------|
+| `get_controller_status` | Get controller status |
+| `get_events` | Get recent events (limit default: 100) |
+| `get_alarms` | Get alarms (active_only default: true) |
+| `get_dpi_stats` | Get DPI statistics |
+| `get_rogue_aps` | Get rogue access points |
+| `start_spectrum_scan` | Start spectrum scan on a device |
+| `get_spectrum_scan_state` | Get spectrum scan state |
+| `authorize_guest` | Authorize guest access |
+| `get_speedtest_results` | Get speedtest history |
+| `get_ips_events` | Get IPS/IDS events |
+
+#### Authentication
+| Action | Description |
+|--------|-------------|
+| `get_user_info` | Get authenticated user info |
+
+### Destructive Operations
+
+Actions marked **Destructive** require one of:
+1. `confirm=true` parameter
+2. `ALLOW_DESTRUCTIVE=true` environment variable
+3. `ALLOW_YOLO=true` environment variable
+
+## Tool: `unifi_help`
+
+Returns this help text.
+"""
+            return ToolResult(
+                content=[{"type": "text", "text": help_text}],
+                structured_content={"help": help_text},
+            )
+
+        logger.info("unifi_help tool registered successfully")
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
     async def cleanup(self) -> None:
         """Cleanup server resources."""
         logger.info("Cleaning up UniFi MCP Server...")
-        
         if self.client:
             await self.client.disconnect()
-            
         logger.info("UniFi MCP Server cleanup complete")
-    
+
     def get_app(self):
-        """Get the FastMCP application instance."""
-        return self.mcp.http_app
-    
+        """Get the FastMCP HTTP application instance with middleware attached."""
+        from starlette.applications import Starlette
+        from starlette.responses import JSONResponse
+        from starlette.routing import Route
+
+        base_app = self.mcp.http_app
+
+        # Add /health endpoint by wrapping in a Starlette app
+        async def health(_request):
+            return JSONResponse(
+                {
+                    "status": "ok",
+                    "service": "unifi-mcp",
+                    "timestamp": __import__("datetime").datetime.utcnow().isoformat()
+                    + "Z",
+                }
+            )
+
+        # Mount /health on the base_app if it supports middleware/routing,
+        # otherwise wrap with a thin Starlette router.
+        from starlette.middleware import Middleware
+        from starlette.routing import Mount
+
+        middleware = [Middleware(self._make_bearer_middleware())]
+
+        app = Starlette(
+            routes=[
+                Route("/health", health),
+                Mount("/", app=base_app),
+            ],
+            middleware=middleware,
+        )
+        return app
+
     async def run(self) -> None:
         """Run the server (for standalone execution)."""
         import uvicorn
-        
+
         await self.initialize()
-        
+
+        transport = self.server_config.transport
+
         try:
-            app = self.get_app()
-            config = uvicorn.Config(
-                app,
-                host=self.server_config.host,
-                port=self.server_config.port,
-                log_level=self.server_config.log_level.lower()
-            )
-            server = uvicorn.Server(config)
-            
-            logger.info(f"Starting UniFi MCP Server on {self.server_config.host}:{self.server_config.port}")
-            await server.serve()
-            
+            if transport == "stdio":
+                logger.info("Starting UniFi MCP Server in stdio transport mode")
+                await self.mcp.run_async(transport="stdio")
+            else:
+                app = self.get_app()
+                config = uvicorn.Config(
+                    app,
+                    host=self.server_config.host,
+                    port=self.server_config.port,
+                    log_level=self.server_config.log_level.lower(),
+                )
+                server = uvicorn.Server(config)
+                logger.info(
+                    f"Starting UniFi MCP Server (HTTP) on "
+                    f"{self.server_config.host}:{self.server_config.port}"
+                )
+                await server.serve()
+
         finally:
             await self.cleanup()

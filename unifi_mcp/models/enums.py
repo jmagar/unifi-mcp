@@ -123,3 +123,11 @@ NO_SITE_ACTIONS = {
     UnifiAction.GET_CONTROLLER_STATUS,
     UnifiAction.GET_USER_INFO,
 }
+
+# Actions that are destructive and require explicit confirmation
+DESTRUCTIVE_ACTIONS = {
+    UnifiAction.RESTART_DEVICE,
+    UnifiAction.BLOCK_CLIENT,
+    UnifiAction.FORGET_CLIENT,
+    UnifiAction.RECONNECT_CLIENT,
+}
