@@ -3,47 +3,32 @@ services:
     build: .
     container_name: unifi-mcp
     restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    env_file: .env
+    # NOTE: No environment: block — all vars come from .env via env_file above.
+    # Do NOT add environment: here. Put all variables in .env and .env.example.
     ports:
-      - "${UNIFI_LOCAL_MCP_PORT:-8001}:${UNIFI_LOCAL_MCP_PORT:-8001}"
-    environment:
-      # UniFi Controller Configuration
-      - UNIFI_CONTROLLER_URL=${UNIFI_CONTROLLER_URL:-https://192.168.1.1:443}
-      - UNIFI_USERNAME=${UNIFI_USERNAME:-admin}
-      - UNIFI_PASSWORD=${UNIFI_PASSWORD}
-      - UNIFI_IS_UDM_PRO=${UNIFI_IS_UDM_PRO:-true}
-      - UNIFI_VERIFY_SSL=${UNIFI_VERIFY_SSL:-false}
-      
-      # Server Configuration
-      - UNIFI_LOCAL_MCP_HOST=${UNIFI_LOCAL_MCP_HOST:-0.0.0.0}
-      - UNIFI_LOCAL_MCP_PORT=${UNIFI_LOCAL_MCP_PORT:-8001}
-      - UNIFI_LOCAL_MCP_LOG_LEVEL=${UNIFI_LOCAL_MCP_LOG_LEVEL:-INFO}
-      - UNIFI_LOCAL_MCP_LOG_FILE=${UNIFI_LOCAL_MCP_LOG_FILE:-/app/logs/unifi-mcp.log}
-      
-      # Auth handled by mcp-oauth at SWAG layer (Google OAuth disabled)
-      # - FASTMCP_SERVER_AUTH=${FASTMCP_SERVER_AUTH}
-
-      # Logging and Process Management
-      - MCP_LOG_FILE=${MCP_LOG_FILE:-/app/logs/unifi-mcp.log}
-      - MCP_PID_FILE=${MCP_PID_FILE:-/app/logs/unifi-mcp.pid}
-    
-    # Volume mounts
+      - "${UNIFI_MCP_PORT:-8001}:8001/tcp"
     volumes:
-      - unifi-mcp-logs:/app/logs
-    
-    # Health check
-    healthcheck:
-      test: ["CMD", "sh", "-c", "curl -s -X POST http://localhost:${UNIFI_LOCAL_MCP_PORT:-8001}/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}' | grep -q 'jsonrpc'"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      - ${UNIFI_MCP_VOLUME:-unifi-mcp-data}:/data
     networks:
-      - jakenet
+      - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'
 
 volumes:
-  unifi-mcp-logs:
-    driver: local
+  unifi-mcp-data:
 
 networks:
-  jakenet:
+  proxy:
+    name: ${DOCKER_NETWORK:-unifi-mcp}
     external: true

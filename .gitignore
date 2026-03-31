@@ -1,26 +1,69 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-.serena
-
-# Virtual environments
-.venv
-.venv-backend
+# ── Secrets ──────────────────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
+
+# ── Runtime / hook artifacts ─────────────────────────────────────────────────
+backups/*
+!backups/.gitkeep
+logs/*
+!logs/.gitkeep
 *.log
 *.pid
 
-# Runtime files
-logs/*
-!logs/.gitkeep
-backups/*
-!backups/.gitkeep
-
+# ── Claude Code / AI tooling ────────────────────────────────────────────────
+.claude/settings.local.json
+.claude/worktrees/
+.omc/
+.lavra/
+.beads/
+.serena/
+.worktrees
+.full-review/
+.full-review-archive-*
 .bivvy
-.cursor
+
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+.vscode/
+.cursor/
+.windsurf/
+.1code/
+
+# ── Caches (ALL tool artifacts go here — see .cache Convention) ──────────────
+.cache/
+
+# ── Documentation artifacts ───────────────────────────────────────────────────
+docs/plans/
+docs/sessions/
+docs/reports/
+docs/research/
+docs/superpowers/
+
+# ── Python ───────────────────────────────────────────────────────────────────
+.venv/
+.venv-backend/
+__pycache__/
+*.py[oc]
+*.egg-info/
+*.egg
+dist/
+build/
+sdist/
+wheels/
+.hypothesis/
+.pytest_cache/
+.ruff_cache/
+.ty_cache/
+.mypy_cache/
+.pytype/
+.pyre/
+.pyright/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+.tox/
+.nox/
+pip-log.txt
+pip-wheel-metadata/
+*.whl

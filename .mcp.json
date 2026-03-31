@@ -2,7 +2,10 @@
   "mcpServers": {
     "unifi-mcp": {
       "type": "http",
-      "url": "${user_config.unifi_mcp_url}/mcp"
+      "url": "${user_config.unifi_mcp_url}",
+      "headers": {
+        "Authorization": "Bearer ${user_config.unifi_mcp_token}"
+      }
     }
   }
 }
