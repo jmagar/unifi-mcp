@@ -1,0 +1,32 @@
+repos:
+  - repo: local
+    hooks:
+      - id: skills-validate
+        name: Validate skill definitions
+        language: script
+        entry: bash scripts/lint-plugin.sh
+        pass_filenames: false
+        always_run: false
+        files: ^skills/
+
+      - id: docker-security
+        name: Check Docker security
+        language: script
+        entry: bash scripts/check-docker-security.sh
+        pass_filenames: false
+        always_run: false
+        files: ^Dockerfile
+
+      - id: no-baked-env
+        name: Check no baked-in env secrets
+        language: script
+        entry: bash scripts/check-no-baked-env.sh
+        pass_filenames: false
+        always_run: true
+
+      - id: ensure-ignore-files
+        name: Ensure .gitignore patterns present
+        language: script
+        entry: bash scripts/ensure-ignore-files.sh --check
+        pass_filenames: false
+        always_run: true

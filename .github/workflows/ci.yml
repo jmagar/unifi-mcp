@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "chore/**", "feat/**", "fix/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync
+      - name: Ruff lint
+        run: uv run ruff check .
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync
+      - name: Mypy
+        run: uv run mypy unifi_mcp/
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync
+      - name: Run tests
+        run: uv run pytest tests/ -v
+
+  version-sync:
+    name: Version Sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version consistency
+        run: |
+          PYPROJECT_VER=$(python3 -c "import tomllib; d=tomllib.load(open('pyproject.toml','rb')); print(d['project']['version'])")
+          PLUGIN_VER=$(python3 -c "import json; d=json.load(open('.claude-plugin/plugin.json')); print(d['version'])")
+          CODEX_VER=$(python3 -c "import json; d=json.load(open('.codex-plugin/plugin.json')); print(d['version'])")
+          APP_VER=$(python3 -c "import json; d=json.load(open('.app.json')); print(d['version'])")
+          echo "pyproject: $PYPROJECT_VER  .claude-plugin: $PLUGIN_VER  .codex-plugin: $CODEX_VER  .app.json: $APP_VER"
+          [ "$PYPROJECT_VER" = "$PLUGIN_VER" ] && [ "$PLUGIN_VER" = "$CODEX_VER" ] && [ "$CODEX_VER" = "$APP_VER" ] || \
+            (echo "Version mismatch!" && exit 1)
+
+  contract-drift:
+    name: Contract Drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate skills
+        run: bash scripts/lint-plugin.sh
