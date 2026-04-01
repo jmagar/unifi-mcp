@@ -2,7 +2,7 @@
   "mcpServers": {
     "unifi-mcp": {
       "type": "http",
-      "url": "${env.UNIFI_MCP_URL}"
+      "url": "${user_config.unifi_mcp_url}"
     }
   }
 }
