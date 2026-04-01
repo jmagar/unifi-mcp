@@ -79,6 +79,8 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
                     structured_content={"error": result.get('error','unknown error'), "raw": result}
                 )
+            if not isinstance(result, dict):
+                return self.create_error_result("Unexpected response format", result)
 
             resp = {
                 "status": "online",
@@ -120,11 +122,12 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content={"error": "Unexpected response format", "raw": events}
                 )
+            event_items = self.dict_items(events)
 
             # Format events for clean output
             formatted_events = []
             events_sorted = sorted(
-                events, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True
+                event_items, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True
             )[:limit]
             for event in events_sorted:
                 formatted_event = {
@@ -175,10 +178,11 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content={"error": "Unexpected response format", "raw": alarms}
                 )
+            alarm_items = self.dict_items(alarms)
 
             # Filter and format alarms
             formatted_alarms = []
-            for alarm in alarms:
+            for alarm in alarm_items:
                 # Skip archived alarms if active_only is True
                 if active_only and alarm.get("archived", False):
                     continue
@@ -226,10 +230,11 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content={"error": "Unexpected response format", "raw": dpi_stats}
                 )
+            stat_items = self.dict_items(dpi_stats)
 
             # Format DPI stats with data formatting
             formatted_stats = []
-            for stat in dpi_stats:
+            for stat in stat_items:
                 formatted_stat = format_data_values(stat)
 
                 # Add human-readable summary
@@ -279,9 +284,10 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content={"error": "Unexpected response format", "raw": rogue_aps}
                 )
+            rogue_items = self.dict_items(rogue_aps)
 
             # Sort by signal strength (strongest first) and limit results
-            filtered_rogues = sorted(rogue_aps,
+            filtered_rogues = sorted(rogue_items,
                                    key=lambda x: x.get("rssi", -100),
                                    reverse=True)[:limit]
 
@@ -289,9 +295,9 @@ class MonitoringService(BaseService):
             formatted_rogues = []
 
             # Add summary if results were limited
-            if len(rogue_aps) > limit:
+            if len(rogue_items) > limit:
                 formatted_rogues.append({
-                    "summary": f"Showing top {limit} of {len(rogue_aps)} detected rogue APs (sorted by signal strength)"
+                    "summary": f"Showing top {limit} of {len(rogue_items)} detected rogue APs (sorted by signal strength)"
                 })
 
             for rogue in filtered_rogues:
@@ -349,7 +355,8 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            mac = self.require_mac(params)
+            normalized_mac = self.normalize_mac(mac)
 
             data = {
                 "cmd": "spectrum-scan",
@@ -366,11 +373,11 @@ class MonitoringService(BaseService):
 
             resp = {
                 "success": True,
-                "message": f"Spectrum scan started on AP {params.mac}",
+                "message": f"Spectrum scan started on AP {mac}",
                 "details": result
             }
             return ToolResult(
-                content=[TextContent(type="text", text=f"Spectrum scan started: {params.mac}")],
+                content=[TextContent(type="text", text=f"Spectrum scan started: {mac}")],
                 structured_content=resp
             )
 
@@ -388,7 +395,8 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            mac = self.require_mac(params)
+            normalized_mac = self.normalize_mac(mac)
 
             result = await self.client._make_request("GET", f"/stat/spectrum-scan/{normalized_mac}", site_name=site_name)
 
@@ -398,8 +406,8 @@ class MonitoringService(BaseService):
                     structured_content=result
                 )
 
-            resp = {"mac": params.mac, "scan_data": result}
-            text = f"Spectrum Scan State\n  MAC: {params.mac} | Data: {'✓' if bool(result) else '✗'}"
+            resp = {"mac": mac, "scan_data": result}
+            text = f"Spectrum Scan State\n  MAC: {mac} | Data: {'✓' if bool(result) else '✗'}"
             return ToolResult(
                 content=[TextContent(type="text", text=text)],
                 structured_content=resp
@@ -419,7 +427,8 @@ class MonitoringService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            mac = self.require_mac(params)
+            normalized_mac = self.normalize_mac(mac)
 
             minutes = params.minutes or defaults.get('minutes', 480)
             up_bandwidth = params.up_bandwidth
@@ -455,10 +464,10 @@ class MonitoringService(BaseService):
 
             resp = {
                 "success": True,
-                "message": f"Guest {params.mac} authorized for {minutes} minutes",
+                "message": f"Guest {mac} authorized for {minutes} minutes",
                 "details": result
             }
-            text = f"Guest authorized: {params.mac} | {minutes} min"
+            text = f"Guest authorized: {mac} | {minutes} min"
             return ToolResult(
                 content=[TextContent(type="text", text=text)],
                 structured_content=resp

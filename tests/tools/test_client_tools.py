@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, patch
 from inline_snapshot import snapshot
 
 from fastmcp import FastMCP, Client
-from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 from unifi_mcp.client import UnifiControllerClient
@@ -32,39 +31,33 @@ class TestGetClientsTool:
         async with Client(client_tools_server) as client:
             result = await client.call_tool("get_clients", {})
             
-            assert isinstance(result, ToolResult)
             assert len(result.content) > 0
             assert isinstance(result.content[0], TextContent)
             
-            # Should have structured content with formatted clients
-            assert result.structured_content is not None
-            assert isinstance(result.structured_content, list)
-            assert len(result.structured_content) == 2
+            payload = result.data
+            assert payload is not None
+            assert isinstance(payload["data"], list)
+            assert len(payload["data"]) == 2
             
             # Check client formatting
-            client1 = result.structured_content[0]
+            client1 = payload["data"][0]
             assert client1["name"] == "John's iPhone"
-            assert client1["is_online"] is True
+            assert client1["connection_type"] == "wireless"
 
 
-    async def test_get_clients_online_only_filter(self, client_tools_server):
-        """Test get_clients with online_only filter."""
+    async def test_get_clients_connected_only_filter(self, client_tools_server):
+        """Test get_clients with connected_only filter."""
         async with Client(client_tools_server) as client:
-            result = await client.call_tool("get_clients", {"online_only": True})
+            result = await client.call_tool("get_clients", {"connected_only": True})
             
-            assert isinstance(result, ToolResult)
-            # All mock clients are online, so should return both
-            assert result.structured_content is not None
+            assert result.data is not None
 
 
-    async def test_get_clients_wired_only_filter(self, client_tools_server):
-        """Test get_clients with wired_only filter."""
+    async def test_get_clients_rejects_unknown_filter(self, client_tools_server):
+        """Test get_clients rejects removed wired_only filter."""
         async with Client(client_tools_server) as client:
-            result = await client.call_tool("get_clients", {"wired_only": True})
-            
-            assert isinstance(result, ToolResult)
-            # Should filter to only wired clients
-            assert result.structured_content is not None
+            with pytest.raises(Exception, match="wired_only"):
+                await client.call_tool("get_clients", {"wired_only": True})
 
 
     async def test_get_clients_authentication_error(self, mock_failed_unifi_client):
@@ -75,43 +68,37 @@ class TestGetClientsTool:
         async with Client(mcp) as client:
             result = await client.call_tool("get_clients", {})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "error" in content_text.lower()
 
 
-class TestGetClientByMacTool:
-    """Test get_client_by_mac tool functionality."""
+class TestReconnectClientTool:
+    """Test reconnect_client tool functionality."""
     
-    async def test_get_client_by_mac_success(self, client_tools_server):
-        """Test successful retrieval of specific client by MAC."""
+    async def test_reconnect_client_success(self, client_tools_server):
+        """Test successful reconnect request for a client MAC."""
         target_mac = "aa:bb:cc:dd:ee:f1"
         
         async with Client(client_tools_server) as client:
-            result = await client.call_tool("get_client_by_mac", {"mac": target_mac})
+            result = await client.call_tool("reconnect_client", {"mac": target_mac})
             
-            assert isinstance(result, ToolResult)
-            content_text = result.content[0].text
-            assert "John's iPhone" in content_text
-            
-            # Should return single client
-            assert isinstance(result.structured_content, dict)
-            assert result.structured_content["name"] == "John's iPhone"
+            assert "reconnect requested" in result.content[0].text.lower()
+            assert isinstance(result.data, dict)
+            assert result.data["success"] is True
 
 
-    async def test_get_client_by_mac_not_found(self, client_tools_server):
-        """Test get_client_by_mac when client not found."""
+    async def test_reconnect_client_not_found_passthrough(self, client_tools_server):
+        """Test reconnect_client still emits a command for an arbitrary MAC."""
         nonexistent_mac = "ff:ff:ff:ff:ff:ff"
         
         async with Client(client_tools_server) as client:
-            result = await client.call_tool("get_client_by_mac", {"mac": nonexistent_mac})
+            result = await client.call_tool("reconnect_client", {"mac": nonexistent_mac})
             
-            content_text = result.content[0].text
-            assert "not found" in content_text.lower()
+            assert "reconnect requested" in result.content[0].text.lower()
 
 
-    async def test_get_client_by_mac_normalization(self, client_tools_server):
-        """Test MAC address normalization in get_client_by_mac."""
+    async def test_reconnect_client_normalization(self, client_tools_server):
+        """Test MAC address normalization in reconnect_client."""
         mac_formats = [
             "AA:BB:CC:DD:EE:F1",
             "AA-BB-CC-DD-EE-F1",
@@ -121,12 +108,9 @@ class TestGetClientByMacTool:
         
         async with Client(client_tools_server) as client:
             for mac in mac_formats:
-                result = await client.call_tool("get_client_by_mac", {"mac": mac})
+                result = await client.call_tool("reconnect_client", {"mac": mac})
                 
-                # All should find the same client
-                assert isinstance(result, ToolResult)
-                if "not found" not in result.content[0].text.lower():
-                    assert "John's iPhone" in result.content[0].text
+                assert "reconnect requested" in result.content[0].text.lower()
 
 
 class TestBlockUnblockClientTools:
@@ -139,7 +123,6 @@ class TestBlockUnblockClientTools:
         async with Client(client_tools_server) as client:
             result = await client.call_tool("block_client", {"mac": client_mac})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "blocked" in content_text.lower()
 
@@ -151,7 +134,6 @@ class TestBlockUnblockClientTools:
         async with Client(client_tools_server) as client:
             result = await client.call_tool("unblock_client", {"mac": client_mac})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "unblocked" in content_text.lower()
 
@@ -164,7 +146,7 @@ class TestBlockUnblockClientTools:
             result = await client.call_tool("block_client", {"mac": nonexistent_mac})
             
             content_text = result.content[0].text
-            assert "not found" in content_text.lower()
+            assert "blocked" in content_text.lower()
 
 
 class TestSetClientNameTool:
@@ -181,7 +163,6 @@ class TestSetClientNameTool:
                 "name": new_name
             })
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "name updated" in content_text.lower()
             assert new_name in content_text
@@ -211,8 +192,7 @@ class TestSetClientNameTool:
                 "name": ""
             })
             
-            # Should handle empty name gracefully
-            assert isinstance(result, ToolResult)
+            assert result.data is not None
 
 
 class TestSetClientNoteTool:
@@ -229,7 +209,6 @@ class TestSetClientNoteTool:
                 "note": note
             })
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "note updated" in content_text.lower()
 
@@ -253,82 +232,65 @@ class TestClientToolsSchema:
     
     async def test_get_clients_schema(self, client_tools_server):
         """Test get_clients tool schema structure."""
-        tools = client_tools_server.list_tools()
+        tools = await client_tools_server._list_tools()
         get_clients_tool = next(tool for tool in tools if tool.name == "get_clients")
         
-        schema = get_clients_tool.inputSchema
+        schema = get_clients_tool.parameters
         assert schema == snapshot({
-            "type": "object",
             "properties": {
-                "site_name": {
-                    "type": "string",
-                    "default": "default",
-                    "description": "UniFi site name (default: \"default\")"
-                },
-                "online_only": {
+                "connected_only": {
+                    "default": True,
+                    "title": "Connected Only",
                     "type": "boolean",
-                    "default": False,
-                    "description": "Only return online clients"
                 },
-                "wired_only": {
-                    "type": "boolean", 
-                    "default": False,
-                    "description": "Only return wired clients"
-                }
+                "site_name": {
+                    "default": "default",
+                    "title": "Site Name",
+                    "type": "string",
+                },
             },
-            "additionalProperties": False
+            "type": "object",
         })
 
 
     async def test_set_client_name_schema(self, client_tools_server):
         """Test set_client_name tool schema structure."""
-        tools = client_tools_server.list_tools()
+        tools = await client_tools_server._list_tools()
         set_name_tool = next(tool for tool in tools if tool.name == "set_client_name")
         
-        schema = set_name_tool.inputSchema
+        schema = set_name_tool.parameters
         assert schema == snapshot({
-            "type": "object",
             "properties": {
-                "mac": {
-                    "type": "string",
-                    "description": "Client MAC address (any format)"
-                },
-                "name": {
-                    "type": "string",
-                    "description": "New client name"
-                },
+                "mac": {"title": "Mac", "type": "string"},
+                "name": {"title": "Name", "type": "string"},
                 "site_name": {
-                    "type": "string",
                     "default": "default",
-                    "description": "UniFi site name (default: \"default\")"
-                }
+                    "title": "Site Name",
+                    "type": "string",
+                },
             },
             "required": ["mac", "name"],
-            "additionalProperties": False
+            "type": "object",
         })
 
 
     async def test_block_client_schema(self, client_tools_server):
         """Test block_client tool schema structure."""
-        tools = client_tools_server.list_tools()
+        tools = await client_tools_server._list_tools()
         block_tool = next(tool for tool in tools if tool.name == "block_client")
         
-        schema = block_tool.inputSchema
+        schema = block_tool.parameters
         assert schema == snapshot({
-            "type": "object",
             "properties": {
-                "mac": {
-                    "type": "string",
-                    "description": "Client MAC address (any format)"
-                },
+                "mac": {"title": "Mac", "type": "string"},
                 "site_name": {
-                    "type": "string",
                     "default": "default",
-                    "description": "UniFi site name (default: \"default\")"
-                }
+                    "title": "Site Name",
+                    "type": "string",
+                },
             },
             "required": ["mac"],
-            "additionalProperties": False
+            "type": "object",
         })
 
 
@@ -346,7 +308,6 @@ class TestClientToolsErrorHandling:
         async with Client(mcp) as client:
             result = await client.call_tool("get_clients", {})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "error" in content_text.lower()
 
@@ -367,8 +328,7 @@ class TestClientToolsErrorHandling:
         async with Client(mcp) as client:
             result = await client.call_tool("get_clients", {})
             
-            # Should handle malformed data gracefully
-            assert isinstance(result, ToolResult)
+            assert result.data is not None
 
 
 @pytest.mark.integration

@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
     """Register all device management tools."""
+
+    def list_payload(items: List[Dict[str, Any]], *, message: str) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": message,
+            "count": len(items),
+            "data": items,
+        }
     
     @mcp.tool()
     async def get_devices(site_name: str = "default") -> ToolResult:
@@ -63,7 +71,10 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
 
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
-                structured_content=formatted_devices
+                structured_content=list_payload(
+                    formatted_devices,
+                    message=f"Retrieved {len(formatted_devices)} devices",
+                ),
             )
             
         except Exception as e:
@@ -150,7 +161,13 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             
             if isinstance(result, dict):
                 rc = result.get("meta", {}).get("rc")
-                if rc != "ok":
+                if "error" in result:
+                    msg = result.get("error") or "Controller returned failure"
+                    return ToolResult(
+                        content=[TextContent(type="text", text=f"Error: {msg}")],
+                        structured_content={"error": msg, "raw": result}
+                    )
+                if rc and rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
                     return ToolResult(
                         content=[TextContent(type="text", text=f"Error: {msg}")],
@@ -198,7 +215,7 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     )
                 
                 rc = result.get("meta", {}).get("rc")
-                if rc != "ok":
+                if rc and rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
                     return ToolResult(
                         content=[TextContent(type="text", text=f"Error: {msg}")],

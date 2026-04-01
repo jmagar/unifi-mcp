@@ -86,16 +86,16 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 # Add note about time-series data
                 summary += f"*Data from {len(dashboard)} time points - showing latest measurements*"
                 
-                latest = dashboard[-1]
+                latest = latest_data
                 # Filter dashboard to essential metrics
                 filtered_dashboard = {
-                    "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
-                    "wan_rx_rate": latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0)),
-                    "wlan_tx_rate": latest_data.get("tx_bytes-r", 0),
-                    "wlan_rx_rate": latest_data.get("rx_bytes-r", 0),
-                    "latency_avg": latest_data.get("latency_avg", 0),
-                    "timestamp": latest_data.get("time", 0),
-                    "data_points": len(dashboard)
+                    "wan_tx_rate": latest.get("wan-tx_bytes", latest.get("tx_bytes-r", 0)),
+                    "wan_rx_rate": latest.get("wan-rx_bytes", latest.get("rx_bytes-r", 0)),
+                    "wlan_tx_rate": latest.get("tx_bytes-r", 0),
+                    "wlan_rx_rate": latest.get("rx_bytes-r", 0),
+                    "latency_avg": latest.get("latency_avg", 0),
+                    "timestamp": latest.get("time", 0),
+                    "data_points": len(dashboard),
                 }
                 return json.dumps(filtered_dashboard, indent=2, ensure_ascii=False)
             
@@ -147,16 +147,17 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 
                 # Add note about real-time data
                 summary += "*Real-time traffic rates updated every few seconds*"
+                latest_data = dashboard
                 
                 # Filter dashboard to essential metrics
                 filtered_dashboard = {
-                    "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
-                    "wan_rx_rate": latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0)),
-                    "wlan_tx_rate": latest_data.get("tx_bytes-r", 0),
-                    "wlan_rx_rate": latest_data.get("rx_bytes-r", 0),
-                    "latency_avg": latest_data.get("latency_avg", 0),
-                    "timestamp": latest_data.get("time", 0),
-                    "data_points": len(dashboard)
+                    "wan_tx_rate": dashboard.get("wan", {}).get("tx_bytes-r", 0),
+                    "wan_rx_rate": dashboard.get("wan", {}).get("rx_bytes-r", 0),
+                    "wlan_tx_rate": dashboard.get("wlan", {}).get("tx_bytes-r", 0),
+                    "wlan_rx_rate": dashboard.get("wlan", {}).get("rx_bytes-r", 0),
+                    "latency_avg": dashboard.get("latency_avg", 0),
+                    "timestamp": dashboard.get("time", 0),
+                    "data_points": len(dashboard),
                 }
                 return json.dumps(filtered_dashboard, indent=2, ensure_ascii=False)
             
@@ -286,6 +287,7 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
                 
                 # Add note about real-time data
                 summary += "*Real-time traffic rates updated every few seconds*"
+                latest_data = dashboard
                 
                 # Filter dashboard to essential metrics
                 filtered_dashboard = {

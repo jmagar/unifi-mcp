@@ -30,8 +30,8 @@ jobs:
           version: "latest"
       - name: Install dependencies
         run: uv sync
-      - name: Mypy
-        run: uv run mypy unifi_mcp/
+      - name: Ty
+        run: uv run ty check unifi_mcp
 
   test:
     name: Tests

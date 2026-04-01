@@ -6,7 +6,7 @@ statistics, and security monitoring data.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
@@ -45,6 +45,12 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
                     structured_content={"error": result.get('error','unknown error'), "raw": result}
+                )
+
+            if not isinstance(result, dict):
+                return ToolResult(
+                    content=[TextContent(type="text", text="Error: Unexpected response format")],
+                    structured_content={"error": "Unexpected response format", "raw": result},
                 )
 
             resp = {
@@ -213,7 +219,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(dpi_stats, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content={"error": "Unexpected response format", "raw": events}
+                    structured_content={"error": "Unexpected response format", "raw": dpi_stats}
                 )
             
             # Format DPI stats with data formatting
@@ -275,7 +281,7 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
             if not isinstance(rogue_aps, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content={"error": "Unexpected response format", "raw": events}
+                    structured_content={"error": "Unexpected response format", "raw": rogue_aps}
                 )
             
             # Sort by signal strength (strongest first) and limit results
@@ -430,9 +436,9 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
     async def authorize_guest(
         mac: str,
         minutes: int = 480,
-        up_bandwidth: int = None,
-        down_bandwidth: int = None,
-        quota: int = None,
+        up_bandwidth: int | None = None,
+        down_bandwidth: int | None = None,
+        quota: int | None = None,
         site_name: str = "default"
     ) -> ToolResult:
         """

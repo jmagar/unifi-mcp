@@ -1,6 +1,6 @@
 ---
 name: unifi
-description: Manages UniFi network infrastructure — monitors connected clients and devices, enforces firewall rules, controls WiFi configs, runs speedtests, handles port forwarding, and performs management actions (block/unblock clients, restart APs, locate devices). Use when the user mentions UniFi, network monitoring, connected clients, network health, firewall rules, wifi config, port forwarding, DPI stats, rogue APs, speedtest results, network events, or asks to check, block, restart, or manage any network device.
+description: This skill should be used when the user needs to inspect or manage UniFi network infrastructure, including connected clients and devices, network health, firewall rules, WiFi configuration, port forwarding, DPI statistics, rogue APs, speedtest results, network events, or management actions such as blocking clients, restarting APs, or locating devices.
 ---
 
 # UniFi Skill

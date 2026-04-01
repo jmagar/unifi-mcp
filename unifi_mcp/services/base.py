@@ -6,7 +6,7 @@ Provides shared functionality and common patterns for all domain services.
 
 import logging
 from abc import ABC
-from typing import Any, Dict
+from typing import Any
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -47,6 +47,18 @@ class BaseService(ABC):
         return mac.strip().lower().replace("-", ":").replace(".", ":")
 
     @staticmethod
+    def require_mac(params: UnifiParams) -> str:
+        """Return a required MAC parameter or raise a ValueError."""
+        if not params.mac:
+            raise ValueError(f"{params.action.value} requires a MAC address")
+        return params.mac
+
+    @staticmethod
+    def dict_items(items: list[Any]) -> list[dict[str, Any]]:
+        """Keep only dict items from a loosely typed controller response list."""
+        return [item for item in items if isinstance(item, dict)]
+
+    @staticmethod
     def create_error_result(message: str, raw_data: Any = None) -> ToolResult:
         """Create standardized error ToolResult.
 
@@ -66,7 +78,7 @@ class BaseService(ABC):
     def create_success_result(
         text: str,
         data: Any,
-        success_message: str = None
+        success_message: str | None = None,
     ) -> ToolResult:
         """Create standardized success ToolResult.
 
@@ -120,7 +132,9 @@ class BaseService(ABC):
 
         return True, ""
 
-    def check_list_response(self, response: Any, action: UnifiAction) -> ToolResult:
+    def check_list_response(
+        self, response: Any, action: UnifiAction
+    ) -> ToolResult | None:
         """Check if response is a valid list and handle common error cases.
 
         Args:
@@ -146,7 +160,7 @@ class BaseService(ABC):
         response: Any,
         action: UnifiAction,
         formatter_func=None,
-        success_text: str = None
+        success_text: str | None = None,
     ) -> ToolResult:
         """Format action result with consistent error handling.
 

@@ -68,10 +68,11 @@ class ClientService(BaseService):
 
             if not isinstance(clients, list):
                 return self.create_error_result("Unexpected response format")
+            client_items = self.dict_items(clients)
 
             # Format each client for clean output
             formatted_clients = []
-            for client_data in clients:
+            for client_data in client_items:
                 try:
                     # Skip offline clients if connected_only is True
                     if connected_only and not client_data.get("is_online", True):
@@ -88,7 +89,7 @@ class ClientService(BaseService):
                     })
 
             summary_text = format_clients_list(
-                [c for c in clients if (c.get("is_online", True) or not connected_only)]
+                [c for c in client_items if (c.get("is_online", True) or not connected_only)]
             )
             return self.create_success_result(
                 text=summary_text,
@@ -105,8 +106,9 @@ class ClientService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
+            mac = self.require_mac(params)
 
-            result = await self.client.reconnect_client(params.mac, site_name)
+            result = await self.client.reconnect_client(mac, site_name)
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
@@ -115,11 +117,11 @@ class ClientService(BaseService):
 
             resp = {
                 "success": True,
-                "message": f"Client {params.mac} reconnect command sent",
+                "message": f"Client {mac} reconnect command sent",
                 "details": result
             }
             return ToolResult(
-                content=[TextContent(type="text", text=f"Reconnect requested: {params.mac}")],
+                content=[TextContent(type="text", text=f"Reconnect requested: {mac}")],
                 structured_content=resp
             )
 
@@ -137,7 +139,7 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            normalized_mac = self.normalize_mac(self.require_mac(params))
 
             result = await self.client._make_request("POST", "/cmd/stamgr",
                                                    site_name=site_name,
@@ -173,7 +175,7 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            normalized_mac = self.normalize_mac(self.require_mac(params))
 
             result = await self.client._make_request("POST", "/cmd/stamgr",
                                                    site_name=site_name,
@@ -209,7 +211,7 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            normalized_mac = self.normalize_mac(self.require_mac(params))
 
             result = await self.client._make_request("POST", "/cmd/stamgr",
                                                    site_name=site_name,
@@ -245,7 +247,7 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            normalized_mac = self.normalize_mac(self.require_mac(params))
 
             # Resolve user id from controller users, not active sessions
             users = await self.client._make_request("GET", "/list/user", site_name=site_name)
@@ -306,7 +308,7 @@ class ClientService(BaseService):
             site_name = defaults.get('site_name', 'default')
 
             # Normalize MAC address
-            normalized_mac = self.normalize_mac(params.mac)
+            normalized_mac = self.normalize_mac(self.require_mac(params))
 
             # Resolve user id from controller users, not active sessions
             users = await self.client._make_request("GET", "/list/user", site_name=site_name)

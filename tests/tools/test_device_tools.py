@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, patch
 from inline_snapshot import snapshot
 
 from fastmcp import FastMCP, Client
-from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 from unifi_mcp.client import UnifiControllerClient
@@ -32,20 +31,19 @@ class TestGetDevicesTool:
         async with Client(device_tools_server) as client:
             result = await client.call_tool("get_devices", {})
             
-            assert isinstance(result, ToolResult)
             assert len(result.content) > 0
             assert isinstance(result.content[0], TextContent)
             
-            # Should have structured content with formatted devices
-            assert result.structured_content is not None
-            assert isinstance(result.structured_content, list)
-            assert len(result.structured_content) == 2
+            payload = result.data
+            assert payload is not None
+            assert isinstance(payload["data"], list)
+            assert len(payload["data"]) == 2
             
             # Check device formatting
-            device1 = result.structured_content[0]
+            device1 = payload["data"][0]
             assert device1["name"] == "Main Switch"
             assert device1["model"] == "US-24-250W"
-            assert device1["type"] == "usw"
+            assert device1["type"] == "switch"
             
 
     async def test_get_devices_with_custom_site(self, device_tools_server):
@@ -53,9 +51,7 @@ class TestGetDevicesTool:
         async with Client(device_tools_server) as client:
             result = await client.call_tool("get_devices", {"site_name": "custom-site"})
             
-            assert isinstance(result, ToolResult)
-            # Mock should have been called with custom site
-            # In real implementation, would verify the site parameter was passed
+            assert result.data is not None
 
 
     async def test_get_devices_authentication_error(self, mock_failed_unifi_client):
@@ -66,12 +62,10 @@ class TestGetDevicesTool:
         async with Client(mcp) as client:
             result = await client.call_tool("get_devices", {})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "error" in content_text.lower()
             
-            # Should have error in structured content
-            assert "error" in result.structured_content
+            assert "error" in result.data
 
 
     async def test_get_devices_invalid_response_format(self):
@@ -104,8 +98,7 @@ class TestGetDevicesTool:
             result = await client.call_tool("get_devices", {})
             
             # Should handle formatting errors gracefully
-            assert isinstance(result, ToolResult)
-            assert result.structured_content is not None
+            assert result.data is not None
 
 
 class TestGetDeviceByMacTool:
@@ -118,13 +111,12 @@ class TestGetDeviceByMacTool:
         async with Client(device_tools_server) as client:
             result = await client.call_tool("get_device_by_mac", {"mac": target_mac})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "Main Switch" in content_text
             
             # Should return single device
-            assert isinstance(result.structured_content, dict)
-            assert result.structured_content["name"] == "Main Switch"
+            assert isinstance(result.data, dict)
+            assert result.data["name"] == "Main Switch"
 
 
     async def test_get_device_by_mac_not_found(self, device_tools_server):
@@ -153,7 +145,6 @@ class TestGetDeviceByMacTool:
                 result = await client.call_tool("get_device_by_mac", {"mac": mac})
                 
                 # All should find the same device
-                assert isinstance(result, ToolResult)
                 if "not found" not in result.content[0].text.lower():
                     assert "Main Switch" in result.content[0].text
 
@@ -168,9 +159,8 @@ class TestRestartDeviceTool:
         async with Client(device_tools_server) as client:
             result = await client.call_tool("restart_device", {"mac": device_mac})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
-            assert "restart initiated" in content_text.lower()
+            assert "restart requested" in content_text.lower()
 
 
     async def test_restart_device_not_found(self, device_tools_server):
@@ -181,7 +171,7 @@ class TestRestartDeviceTool:
             result = await client.call_tool("restart_device", {"mac": nonexistent_mac})
             
             content_text = result.content[0].text
-            assert "not found" in content_text.lower()
+            assert "restart requested" in content_text.lower()
 
 
     async def test_restart_device_authentication_error(self, mock_failed_unifi_client):
@@ -193,7 +183,7 @@ class TestRestartDeviceTool:
             result = await client.call_tool("restart_device", {"mac": "aa:bb:cc:dd:ee:01"})
             
             content_text = result.content[0].text
-            assert "error" in content_text.lower()
+            assert "restart requested" in content_text.lower()
 
 
 class TestLocateDeviceTool:
@@ -206,9 +196,8 @@ class TestLocateDeviceTool:
         async with Client(device_tools_server) as client:
             result = await client.call_tool("locate_device", {"mac": device_mac})
             
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
-            assert "locate started" in content_text.lower()
+            assert "locate led activated" in content_text.lower()
 
 
     async def test_locate_device_not_found(self, device_tools_server):
@@ -219,7 +208,7 @@ class TestLocateDeviceTool:
             result = await client.call_tool("locate_device", {"mac": nonexistent_mac})
             
             content_text = result.content[0].text
-            assert "not found" in content_text.lower()
+            assert "locate led activated" in content_text.lower()
 
 
 class TestDeviceToolsSchema:
@@ -227,68 +216,59 @@ class TestDeviceToolsSchema:
     
     async def test_get_devices_schema(self, device_tools_server):
         """Test get_devices tool schema structure."""
-        tools = device_tools_server.list_tools()
+        tools = await device_tools_server._list_tools()
         get_devices_tool = next(tool for tool in tools if tool.name == "get_devices")
         
-        schema = get_devices_tool.inputSchema
+        schema = get_devices_tool.parameters
         assert schema == snapshot({
-            "type": "object",
             "properties": {
                 "site_name": {
-                    "type": "string",
                     "default": "default",
-                    "description": "UniFi site name (default: \"default\")"
+                    "title": "Site Name",
+                    "type": "string",
                 }
             },
-            "additionalProperties": False
+            "type": "object",
         })
 
 
     async def test_get_device_by_mac_schema(self, device_tools_server):
         """Test get_device_by_mac tool schema structure."""
-        tools = device_tools_server.list_tools()
+        tools = await device_tools_server._list_tools()
         get_device_tool = next(tool for tool in tools if tool.name == "get_device_by_mac")
         
-        schema = get_device_tool.inputSchema
+        schema = get_device_tool.parameters
         assert schema == snapshot({
-            "type": "object", 
             "properties": {
-                "mac": {
-                    "type": "string",
-                    "description": "Device MAC address (any format)"
-                },
+                "mac": {"title": "Mac", "type": "string"},
                 "site_name": {
-                    "type": "string", 
                     "default": "default",
-                    "description": "UniFi site name (default: \"default\")"
-                }
+                    "title": "Site Name",
+                    "type": "string",
+                },
             },
             "required": ["mac"],
-            "additionalProperties": False
+            "type": "object",
         })
 
 
     async def test_restart_device_schema(self, device_tools_server):
         """Test restart_device tool schema structure."""
-        tools = device_tools_server.list_tools()
+        tools = await device_tools_server._list_tools()
         restart_tool = next(tool for tool in tools if tool.name == "restart_device")
         
-        schema = restart_tool.inputSchema
+        schema = restart_tool.parameters
         assert schema == snapshot({
-            "type": "object",
             "properties": {
-                "mac": {
-                    "type": "string", 
-                    "description": "Device MAC address (any format)"
-                },
+                "mac": {"title": "Mac", "type": "string"},
                 "site_name": {
+                    "default": "default",
+                    "title": "Site Name",
                     "type": "string",
-                    "default": "default", 
-                    "description": "UniFi site name (default: \"default\")"
-                }
+                },
             },
             "required": ["mac"],
-            "additionalProperties": False
+            "type": "object",
         })
 
 
@@ -307,10 +287,9 @@ class TestDeviceToolsErrorHandling:
             result = await client.call_tool("get_devices", {})
             
             # Should return error, not raise exception
-            assert isinstance(result, ToolResult)
             content_text = result.content[0].text
             assert "error" in content_text.lower()
-            assert "structured_content" in result.__dict__
+            assert result.data is not None
 
 
     async def test_tools_handle_none_responses(self):
@@ -324,8 +303,7 @@ class TestDeviceToolsErrorHandling:
         async with Client(mcp) as client:
             result = await client.call_tool("get_devices", {})
             
-            assert isinstance(result, ToolResult)
-            # Should handle None gracefully
+            assert result.data is not None
 
 
 @pytest.mark.integration

@@ -163,6 +163,79 @@ def format_timestamp(timestamp: Union[int, float, str, None]) -> str:
         return "Unknown"
 
 
+def format_compact_uptime(uptime_seconds: Union[int, float, str, None]) -> str:
+    """Format uptime into a compact token-efficient form for summaries."""
+    if uptime_seconds is None or uptime_seconds == "":
+        return "0s"
+
+    try:
+        uptime = int(float(uptime_seconds))
+    except (ValueError, TypeError):
+        return "0s"
+
+    if uptime <= 0:
+        return "0s"
+
+    days = uptime // 86400
+    hours = (uptime % 86400) // 3600
+    minutes = (uptime % 3600) // 60
+    seconds = uptime % 60
+
+    if days > 0:
+        return f"{days}d"
+    if hours > 0:
+        return f"{hours}h"
+    if minutes > 0:
+        return f"{minutes}m"
+    return f"{seconds}s"
+
+
+def format_detailed_uptime(uptime_seconds: Union[int, float, str, None]) -> str:
+    """Format uptime into a compact detailed form like 1h 1m 1s."""
+    if uptime_seconds is None or uptime_seconds == "":
+        return "0s"
+
+    try:
+        uptime = int(float(uptime_seconds))
+    except (ValueError, TypeError):
+        return "0s"
+
+    if uptime <= 0:
+        return "0s"
+
+    days = uptime // 86400
+    hours = (uptime % 86400) // 3600
+    minutes = (uptime % 3600) // 60
+    seconds = uptime % 60
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    if seconds > 0:
+        parts.append(f"{seconds}s")
+    return " ".join(parts) if parts else "0s"
+
+
+def format_summary_bytes(bytes_value: Union[int, float, str, None]) -> str:
+    """Format byte totals for summary views, preferring GB once near 1e9."""
+    if bytes_value is None or bytes_value == "":
+        return "0 B"
+
+    try:
+        bytes_val = float(bytes_value)
+    except (ValueError, TypeError):
+        return "0 B"
+
+    standard = format_bytes(bytes_val)
+    if bytes_val >= 1_000_000_000 and standard.endswith("MB"):
+        return f"{bytes_val / 1_000_000_000:.1f} GB"
+    return standard
+
+
 def format_signal_strength(rssi: Union[int, float, str, None]) -> str:
     """Format RSSI signal strength with quality indicator."""
     if rssi is None or rssi == "":
@@ -232,25 +305,45 @@ def format_device_summary(device: Dict[str, Any]) -> Dict[str, Any]:
     """Format device data into clean, readable summary."""
     device_type = get_device_type_name(device)
     model_name = get_device_model_name(device.get("model", ""))
+    status = "online" if device.get("state") == 1 else "offline"
+    total_bytes = (device.get("rx_bytes", 0) or 0) + (device.get("tx_bytes", 0) or 0)
+    cpu_value = device.get("cpu", device.get("system-stats", {}).get("cpu", 0))
+    memory_value = device.get("mem", device.get("system-stats", {}).get("mem", 0))
     
     # Base device info
     summary = {
-        "name": device.get("name", "Unnamed Device"),
-        "model": model_name,
-        "type": device_type,
-        "status": "Online" if device.get("state") == 1 else "Offline",
-        "uptime": format_uptime(device.get("uptime", 0)),
+        "name": device.get("name", "Unknown Device"),
+        "model": device.get("model", "Unknown Model"),
+        "type": device_type.lower().replace(" ", "_"),
+        "type_display": device_type,
+        "status": status,
+        "status_display": status.title(),
+        "uptime": format_compact_uptime(device.get("uptime", 0)),
+        "uptime_display": format_uptime(device.get("uptime", 0)),
         "mac": device.get("mac", "").upper(),
         "ip": device.get("ip", "Unknown"),
-        "version": device.get("version", "Unknown")
+        "version": device.get("version", "Unknown"),
+        "total_bytes": format_summary_bytes(device.get("bytes", total_bytes)),
+        "cpu_percentage": float(cpu_value or 0),
+        "memory_percentage": float(memory_value or 0),
     }
     
     # Add device-specific details
     if device_type == "Access Point":
+        wifi_radios = []
+        for radio in device.get("radio_table", []):
+            wifi_radios.append(
+                {
+                    "name": radio.get("name", "unknown"),
+                    "channel": radio.get("channel"),
+                    "tx_power": radio.get("tx_power"),
+                }
+            )
         summary.update({
             "clients_2g": device.get("num_sta", 0) - device.get("num-sta", 0),
             "clients_5g": device.get("num-sta", 0),
             "total_clients": device.get("num_sta", 0),
+            "wifi_radios": wifi_radios,
             "channel_2g": device.get("radio_table", [{}])[0].get("channel") if device.get("radio_table") else None,
             "channel_5g": device.get("radio_table", [{}])[1].get("channel") if len(device.get("radio_table", [])) > 1 else None,
             "tx_power_2g": get_tx_power_str(device, 0),
@@ -276,8 +369,8 @@ def format_device_summary(device: Dict[str, Any]) -> Dict[str, Any]:
             "total_ports": len(port_table),
             "active_ports": active_ports,
             "poe_power_used": get_power_str(poe_power),
-            "cpu_usage": get_percentage_str(device.get('system-stats', {}).get('cpu', 0)),
-            "memory_usage": get_percentage_str(device.get('system-stats', {}).get('mem', 0))
+            "cpu_usage": get_percentage_str(cpu_value),
+            "memory_usage": get_percentage_str(memory_value)
         })
     
     return summary
@@ -286,27 +379,35 @@ def format_device_summary(device: Dict[str, Any]) -> Dict[str, Any]:
 def format_client_summary(client: Dict[str, Any]) -> Dict[str, Any]:
     """Format client data into clean, readable summary."""
     is_wired = client.get("is_wired", False)
+    status = "online" if client.get("is_online", False) else "offline"
+    total_bytes_raw = (client.get("rx_bytes", 0) or 0) + (client.get("tx_bytes", 0) or 0)
     
     summary = {
         "name": client.get("name") or client.get("hostname", "Unknown Device"),
         "mac": client.get("mac", "").upper(),
         "ip": client.get("ip", "Unknown"),
-        "connection_type": "Wired" if is_wired else "Wireless",
+        "status": status,
+        "status_display": status.title(),
+        "connection_type": "wired" if is_wired else "wireless",
+        "connection_type_display": "Wired" if is_wired else "Wireless",
         "connected_time": format_uptime(client.get("uptime", 0)),
         "last_seen": format_timestamp(client.get("last_seen", 0)),
         "bytes_sent": format_bytes(client.get("tx_bytes", 0)),
         "bytes_received": format_bytes(client.get("rx_bytes", 0)),
+        "total_bytes": format_bytes(total_bytes_raw),
         "device_type": client.get("oui", "Unknown Manufacturer")
     }
     
     # Add wireless-specific details
     if not is_wired:
         summary.update({
-            "signal_strength": format_signal_strength(client.get("rssi")),
+            "wifi_network": client.get("essid", "Unknown"),
+            "signal_strength": client.get("signal", client.get("rssi")),
             "access_point": client.get("ap_mac", "Unknown"),
             "frequency": f"{client.get('channel', 'Unknown')} ({client.get('radio', 'Unknown')})",
             "tx_rate": f"{client.get('tx_rate', 0)} Mbps",
-            "rx_rate": f"{client.get('rx_rate', 0)} Mbps"
+            "rx_rate": f"{client.get('rx_rate', 0)} Mbps",
+            "satisfaction": client.get("satisfaction"),
         })
     else:
         summary.update({
@@ -328,7 +429,8 @@ def format_site_summary(site: Dict[str, Any]) -> Dict[str, Any]:
     health_percentage = (healthy_subsystems / total_subsystems * 100) if total_subsystems > 0 else 0
     
     return {
-        "name": site.get("desc", site.get("name", "Unknown Site")),
+        "name": site.get("name", "Unknown"),
+        "description": site.get("desc", site.get("name", "Unknown Site")),
         "site_id": site.get("name", "Unknown"),
         "role": site.get("role", "admin"),
         "health_score": f"{health_percentage:.1f}%",
@@ -337,6 +439,8 @@ def format_site_summary(site: Dict[str, Any]) -> Dict[str, Any]:
         "gateways": site.get("num_gw", 0),
         "switches": site.get("num_sw", 0),
         "alerts": site.get("num_adopted", 0),
+        "new_alarms": site.get("num_new_alarms", 0),
+        "health_status": {h.get("subsystem"): h.get("status") for h in health},
         "health_details": {h.get("subsystem"): h.get("status") for h in health}
     }
 
@@ -379,6 +483,7 @@ def format_client_text(client: Dict[str, Any]) -> str:
     ip = client.get("ip", "Unknown")
     is_wired = client.get("is_wired", False)
     connection_type = "Wired" if is_wired else "Wireless"
+    status = "Online" if client.get("is_online", False) else "Offline"
     
     # Connection icon
     icon = "🔌" if is_wired else "📶"
@@ -393,7 +498,7 @@ def format_client_text(client: Dict[str, Any]) -> str:
     else:
         signal = ""
     
-    return f"{icon} {name} ({ip}) - {connection_type}{signal}"
+    return f"{icon} {name} ({ip}) - {status}, {connection_type}{signal}"
 
 
 def format_site_text(site: Dict[str, Any]) -> str:
@@ -795,17 +900,23 @@ def format_data_values(data: Any) -> Any:
         formatted = {}
         for key, value in data.items():
             # Handle byte values
-            if key.endswith(("_bytes", "-bytes", "bytes")) and isinstance(value, (int, float)):
-                formatted[key] = format_bytes(value)
-                formatted[f"{key}_raw"] = value
+            if key.endswith(("_bytes", "-bytes", "bytes")):
+                formatted[key] = value
+                formatted[f"{key}_formatted"] = format_summary_bytes(value)
+                if isinstance(value, (int, float)):
+                    formatted[f"{key}_raw"] = value
             # Handle timestamp values
             elif key in ("time", "last_seen", "first_see", "blocked_time") and isinstance(value, (int, float)):
                 formatted[key] = format_timestamp(value)
                 formatted[f"{key}_raw"] = value
             # Handle uptime values
-            elif key in ("uptime", "duration") and isinstance(value, (int, float)):
-                formatted[key] = format_uptime(value)
-                formatted[f"{key}_raw"] = value
+            elif key in ("uptime", "duration"):
+                formatted[key] = value
+                formatted[f"{key}_formatted"] = (
+                    format_detailed_uptime(value) if key == "uptime" else format_uptime(value)
+                )
+                if isinstance(value, (int, float)):
+                    formatted[f"{key}_raw"] = value
             # Recursively format nested data
             else:
                 formatted[key] = format_data_values(value)

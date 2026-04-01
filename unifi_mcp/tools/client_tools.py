@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
     """Register all client management tools."""
+
+    def list_payload(items: List[Dict[str, Any]], *, message: str) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": message,
+            "count": len(items),
+            "data": items,
+        }
     
     @mcp.tool()
     async def get_clients(connected_only: bool = True, site_name: str = "default") -> ToolResult:
@@ -37,13 +45,13 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             if isinstance(clients, dict) and "error" in clients:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {clients.get('error','unknown error')}")],
-                    structured_content=[clients]
+                    structured_content={"error": clients.get("error", "unknown error"), "raw": clients}
                 )
             
             if not isinstance(clients, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content=[{"error": "Unexpected response format"}]
+                    structured_content={"error": "Unexpected response format", "raw": clients}
                 )
             
             # Format each client for clean output
@@ -69,14 +77,17 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             )
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
-                structured_content=formatted_clients
+                structured_content=list_payload(
+                    formatted_clients,
+                    message=f"Retrieved {len(formatted_clients)} clients",
+                ),
             )
             
         except Exception as e:
             logger.error(f"Error getting clients: {e}")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                structured_content=[{"error": str(e)}]
+                structured_content={"error": str(e), "raw": None}
             )
     
     

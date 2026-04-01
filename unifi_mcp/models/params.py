@@ -92,7 +92,8 @@ class UnifiParams(BaseModel):
         description=(
             "Set to true to confirm destructive operations "
             "(restart_device, block_client, forget_client, reconnect_client). "
-            "Bypass via ALLOW_DESTRUCTIVE=true or ALLOW_YOLO=true env vars."
+            "Bypass via UNIFI_MCP_ALLOW_DESTRUCTIVE=true or "
+            "UNIFI_MCP_ALLOW_YOLO=true env vars."
         ),
     )
 
@@ -163,7 +164,8 @@ class UnifiParams(BaseModel):
                 raise ValueError("minutes must be positive for authorize_guest action")
 
         # Note: destructive action gate is enforced at service layer (not here)
-        # so that ALLOW_DESTRUCTIVE / ALLOW_YOLO env vars can bypass it.
+        # so that UNIFI_MCP_ALLOW_DESTRUCTIVE / UNIFI_MCP_ALLOW_YOLO env vars
+        # can bypass it.
         # DESTRUCTIVE_ACTIONS is referenced here to keep the import alive.
         _ = DESTRUCTIVE_ACTIONS
 

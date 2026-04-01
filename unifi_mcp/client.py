@@ -339,7 +339,9 @@ class UnifiControllerClient:
         formatted_clients = await self.get_clients_formatted(site_name)
         if isinstance(formatted_clients, dict) and "error" in formatted_clients:
             return f"Error: {formatted_clients['error']}"
-        
+        if not isinstance(formatted_clients, list):
+            return "Error: Unexpected response format"
+
         if not formatted_clients:
             return "📱 No clients connected"
         
@@ -364,7 +366,9 @@ class UnifiControllerClient:
         formatted_devices = await self.get_devices_formatted(site_name)
         if isinstance(formatted_devices, dict) and "error" in formatted_devices:
             return f"Error: {formatted_devices['error']}"
-        
+        if not isinstance(formatted_devices, list):
+            return "Error: Unexpected response format"
+
         if not formatted_devices:
             return "📱 No devices found"
         
@@ -419,12 +423,14 @@ class UnifiControllerClient:
         formatted_sites = await self.get_sites_formatted()
         if isinstance(formatted_sites, dict) and "error" in formatted_sites:
             return f"Error: {formatted_sites['error']}"
+        if not isinstance(formatted_sites, list):
+            return "Error: Unexpected response format"
         
         if not formatted_sites:
             return "🏢 No sites found"
         
         summary = f"🏢 {len(formatted_sites)} sites: "
-        site_names = [s.get('name', 'Site') for s in formatted_sites[:3]]
+        site_names = [site.get('name', 'Site') for site in formatted_sites[:3]]
         summary += ", ".join(site_names)
         if len(formatted_sites) > 3:
             summary += f" +{len(formatted_sites) - 3} more"

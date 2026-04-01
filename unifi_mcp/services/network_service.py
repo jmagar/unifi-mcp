@@ -114,10 +114,13 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(wlans, params.action)
             if error_result:
                 return error_result
+            if not isinstance(wlans, list):
+                return self.create_error_result("Unexpected response format", wlans)
+            wlan_items = self.dict_items(wlans)
 
             # Format WLAN configs for clean output
             formatted_wlans = []
-            for wlan in wlans:
+            for wlan in wlan_items:
                 formatted_wlan = {
                     "name": wlan.get("name", "Unknown WLAN"),
                     # SSID is typically under 'ssid' (fallback to profile 'name')
@@ -133,7 +136,7 @@ class NetworkService(BaseService):
                 }
                 formatted_wlans.append(formatted_wlan)
 
-            summary_text = format_wlans_list(wlans)
+            summary_text = format_wlans_list(wlan_items)
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_wlans,
@@ -156,10 +159,13 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(networks, params.action)
             if error_result:
                 return error_result
+            if not isinstance(networks, list):
+                return self.create_error_result("Unexpected response format", networks)
+            network_items = self.dict_items(networks)
 
             # Format network configs for clean output
             formatted_networks = []
-            for network in networks:
+            for network in network_items:
                 formatted_network = {
                     "name": network.get("name", "Unknown Network"),
                     "purpose": network.get("purpose", "Unknown"),
@@ -175,7 +181,7 @@ class NetworkService(BaseService):
                 }
                 formatted_networks.append(formatted_network)
 
-            summary_text = format_networks_list(networks)
+            summary_text = format_networks_list(network_items)
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_networks,
@@ -198,10 +204,13 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(ports, params.action)
             if error_result:
                 return error_result
+            if not isinstance(ports, list):
+                return self.create_error_result("Unexpected response format", ports)
+            port_items = self.dict_items(ports)
 
             # Format port configs for clean output
             formatted_ports = []
-            for port in ports:
+            for port in port_items:
                 formatted_port = {
                     "name": port.get("name", "Unknown Port Profile"),
                     "enabled": port.get("enabled", False),
@@ -252,10 +261,13 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(rules, params.action)
             if error_result:
                 return error_result
+            if not isinstance(rules, list):
+                return self.create_error_result("Unexpected response format", rules)
+            rule_items = self.dict_items(rules)
 
             # Format port forwarding rules for clean output
             formatted_rules = []
-            for rule in rules:
+            for rule in rule_items:
                 formatted_rule = {
                     "name": rule.get("name", "Unknown Rule"),
                     "enabled": rule.get("enabled", False),
@@ -302,9 +314,11 @@ class NetworkService(BaseService):
                     structured_content=empty
                 )
 
+            rule_items = self.dict_items(rules)
+
             # Format firewall rules for clean output
             formatted_rules = []
-            for rule in rules:
+            for rule in rule_items:
                 formatted_rule = {
                     "name": rule.get("name", "Unnamed Rule"),
                     "enabled": rule.get("enabled", False),
@@ -345,10 +359,13 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(groups, params.action)
             if error_result:
                 return error_result
+            if not isinstance(groups, list):
+                return self.create_error_result("Unexpected response format", groups)
+            group_items = self.dict_items(groups)
 
             # Format firewall groups for clean output
             formatted_groups = []
-            for group in groups:
+            for group in group_items:
                 formatted_group = {
                     "name": group.get("name", "Unnamed Group"),
                     "group_type": group.get("group_type", "unknown"),
@@ -381,10 +398,13 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(routes, params.action)
             if error_result:
                 return error_result
+            if not isinstance(routes, list):
+                return self.create_error_result("Unexpected response format", routes)
+            route_items = self.dict_items(routes)
 
             # Format static routes for clean output
             formatted_routes = []
-            for route in routes:
+            for route in route_items:
                 formatted_route = {
                     "name": route.get("name", "Unnamed Route"),
                     "enabled": route.get("enabled", False),

@@ -43,7 +43,7 @@ uv run python -m unifi_mcp.main      # Run server directly
 - Apply to all tool responses with bandwidth/storage data
 
 ### MCP Patterns
-- **Tools**: Use `@mcp.tool()` for operations (get_devices, restart_device)
+- **Tools**: Expose the unified `unifi` tool plus `unifi_help`, not dozens of top-level tools
 - **Resources**: Use `@mcp.resource("unifi://path")` for data access
 - **Default site**: All operations default to "default" site when site_name omitted
 - **Return objects**: Resources return data objects, not JSON strings
@@ -72,15 +72,17 @@ Always normalize: `mac.lower().replace("-", ":").replace(".", ":")`
 ## Configuration Requirements
 
 Required environment variables:
-- `UNIFI_CONTROLLER_URL` - Full URL with port (https://IP:443 or https://IP:8443)
+- `UNIFI_URL` - Full URL with port (https://IP:443 or https://IP:8443)
 - `UNIFI_USERNAME` - Local admin account (not UniFi Cloud)
 - `UNIFI_PASSWORD` - Local admin password
+- `UNIFI_MCP_TOKEN` - Bearer token for HTTP auth unless `UNIFI_MCP_NO_AUTH=true`
 
 Optional logging and server management:
-- `MCP_LOG_FILE` - Override log file location (default: logs/unifi-mcp.log)
-- `MCP_PID_FILE` - Override PID file location (default: logs/unifi-mcp.pid)
-- `UNIFI_LOCAL_MCP_LOG_LEVEL` - Set logging level (DEBUG, INFO, WARNING, ERROR)
-- `UNIFI_LOCAL_MCP_LOG_FILE` - Server-specific log file setting
+- `UNIFI_MCP_HOST` - Bind host (default: `0.0.0.0`)
+- `UNIFI_MCP_PORT` - HTTP port (default: `8001`)
+- `UNIFI_MCP_LOG_LEVEL` - Set logging level (DEBUG, INFO, WARNING, ERROR)
+- `UNIFI_MCP_LOG_FILE` - Server-specific log file setting
+- `UNIFI_MCP_NO_AUTH` - Disable bearer auth for trusted local testing only
 
 Default settings handle most UDM Pro/Cloud Gateway Max setups.
 
@@ -88,7 +90,10 @@ Default settings handle most UDM Pro/Cloud Gateway Max setups.
 
 ```bash
 # Test via HTTP API
-curl -X POST http://localhost:8001/mcp/call -H "Content-Type: application/json" -d '{"method": "tools/call", "params": {"name": "get_devices"}}'
+curl -X POST http://localhost:8001/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $UNIFI_MCP_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"unifi","arguments":{"action":"get_devices"}}}'
 ```
 
 Server runs on port 8001 with endpoint `/mcp`.

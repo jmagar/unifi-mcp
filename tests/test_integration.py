@@ -19,7 +19,7 @@ from unifi_mcp.server import UniFiMCPServer
 def create_test_server(host: str, port: int) -> None:
     """Function to run server in subprocess for transport testing."""
     # Only run if we have integration config
-    controller_url = os.getenv("UNIFI_CONTROLLER_URL")
+    controller_url = os.getenv("UNIFI_URL", os.getenv("UNIFI_CONTROLLER_URL"))
     username = os.getenv("UNIFI_USERNAME")
     password = os.getenv("UNIFI_PASSWORD")
     
@@ -32,12 +32,13 @@ def create_test_server(host: str, port: int) -> None:
         password=password,
         verify_ssl=os.getenv("UNIFI_VERIFY_SSL", "false").lower() == "true",
         is_udm_pro=os.getenv("UNIFI_IS_UDM_PRO", "true").lower() == "true",
-        site_name=os.getenv("UNIFI_SITE_NAME", "default")
     )
     
     server_config = ServerConfig(host=host, port=port)
+    import asyncio
+
     server = UniFiMCPServer(unifi_config, server_config)
-    server.mcp.run(host=host, port=port)
+    asyncio.run(server.run())
 
 
 @pytest.mark.integration
@@ -77,17 +78,18 @@ class TestUniFiMCPIntegration:
         server = UniFiMCPServer(integration_config, server_config)
         
         try:
+            await server.initialize()
             async with Client(server.mcp) as client:
-                # Test device tools
-                devices_result = await client.call_tool("get_devices", {})
+                devices_result = await client.call_tool("unifi", {"action": "get_devices"})
                 assert devices_result is not None
                 
-                # Test client tools
-                clients_result = await client.call_tool("get_clients", {})
+                clients_result = await client.call_tool("unifi", {"action": "get_clients"})
                 assert clients_result is not None
                 
         except Exception as e:
             pytest.fail(f"Real server tools execution test failed: {e}")
+        finally:
+            await server.cleanup()
 
 
     async def test_real_server_resources_access(self, integration_config):
@@ -101,12 +103,12 @@ class TestUniFiMCPIntegration:
         server = UniFiMCPServer(integration_config, server_config)
         
         try:
+            await server.initialize()
             async with Client(server.mcp) as client:
-                resources = client.list_resources()
+                resources = await client.list_resources()
                 assert len(resources) > 0
                 
-                # Test devices resource
-                devices_resource = next((r for r in resources if "unifi://devices" in r.uri), None)
+                devices_resource = next((r for r in resources if "unifi://devices" in str(r.uri)), None)
                 if devices_resource:
                     content = await client.read_resource(devices_resource.uri)
                     assert content is not None
@@ -114,6 +116,8 @@ class TestUniFiMCPIntegration:
                 
         except Exception as e:
             pytest.fail(f"Real server resources access test failed: {e}")
+        finally:
+            await server.cleanup()
 
 
 @pytest.mark.integration
@@ -138,7 +142,7 @@ class TestUniFiMCPTransport:
                     assert ping_result is True
                     
                     # Test tool execution over HTTP
-                    devices_result = await client.call_tool("get_devices", {})
+                    devices_result = await client.call_tool("unifi", {"action": "get_devices"})
                     assert devices_result is not None
                     
         except Exception as e:
@@ -187,29 +191,32 @@ class TestUniFiMCPEndToEnd:
         server = UniFiMCPServer(integration_config, server_config)
         
         try:
+            await server.initialize()
             async with Client(server.mcp) as client:
                 # 1. Get all devices
-                devices_result = await client.call_tool("get_devices", {})
+                devices_result = await client.call_tool("unifi", {"action": "get_devices"})
                 assert devices_result is not None
                 
                 # 2. If we have devices, test individual device lookup
-                if (hasattr(devices_result, 'structured_content') and 
-                    isinstance(devices_result.structured_content, list) and
-                    len(devices_result.structured_content) > 0):
-                    
-                    device_mac = devices_result.structured_content[0].get("mac")
+                device_items = getattr(devices_result, "data", {}).get("data", [])
+                if isinstance(device_items, list) and len(device_items) > 0:
+                    device_mac = device_items[0].get("mac")
                     if device_mac:
                         # Test device lookup
-                        device_result = await client.call_tool("get_device_by_mac", {"mac": device_mac})
+                        device_result = await client.call_tool(
+                            "unifi", {"action": "get_device_by_mac", "mac": device_mac}
+                        )
                         assert device_result is not None
                         
                         # Test device resource
-                        device_uri = f"unifi://device/{device_mac}"
+                        device_uri = f"unifi://device/default/{device_mac}"
                         device_content = await client.read_resource(device_uri)
                         assert device_content is not None
                         
         except Exception as e:
             pytest.fail(f"Complete device workflow test failed: {e}")
+        finally:
+            await server.cleanup()
 
 
     async def test_complete_client_workflow(self, integration_config):
@@ -223,31 +230,33 @@ class TestUniFiMCPEndToEnd:
         server = UniFiMCPServer(integration_config, server_config)
         
         try:
+            await server.initialize()
             async with Client(server.mcp) as client:
                 # 1. Get all clients
-                clients_result = await client.call_tool("get_clients", {})
+                clients_result = await client.call_tool("unifi", {"action": "get_clients"})
                 assert clients_result is not None
                 
                 # 2. Test filtering
-                online_result = await client.call_tool("get_clients", {"online_only": True})
+                online_result = await client.call_tool(
+                    "unifi", {"action": "get_clients", "connected_only": True}
+                )
                 assert online_result is not None
                 
-                wired_result = await client.call_tool("get_clients", {"wired_only": True})
-                assert wired_result is not None
-                
                 # 3. If we have clients, test individual client lookup  
-                if (hasattr(clients_result, 'structured_content') and
-                    isinstance(clients_result.structured_content, list) and
-                    len(clients_result.structured_content) > 0):
-                    
-                    client_mac = clients_result.structured_content[0].get("mac")
+                client_items = getattr(clients_result, "data", {}).get("data", [])
+                if isinstance(client_items, list) and len(client_items) > 0:
+                    client_mac = client_items[0].get("mac")
                     if client_mac:
                         # Test client lookup
-                        client_result = await client.call_tool("get_client_by_mac", {"mac": client_mac})
+                        client_result = await client.call_tool(
+                            "unifi", {"action": "get_client_by_mac", "mac": client_mac}
+                        )
                         assert client_result is not None
                         
         except Exception as e:
             pytest.fail(f"Complete client workflow test failed: {e}")
+        finally:
+            await server.cleanup()
 
 
     async def test_error_handling_with_real_controller(self, integration_config):
@@ -261,21 +270,30 @@ class TestUniFiMCPEndToEnd:
         server = UniFiMCPServer(integration_config, server_config)
         
         try:
+            await server.initialize()
             async with Client(server.mcp) as client:
                 # Test with non-existent MAC addresses
-                nonexistent_device = await client.call_tool("get_device_by_mac", {"mac": "ff:ff:ff:ff:ff:ff"})
+                nonexistent_device = await client.call_tool(
+                    "unifi", {"action": "get_device_by_mac", "mac": "ff:ff:ff:ff:ff:ff"}
+                )
                 assert nonexistent_device is not None
                 # Should handle gracefully, not crash
                 
-                nonexistent_client = await client.call_tool("get_client_by_mac", {"mac": "ff:ff:ff:ff:ff:ff"})
+                nonexistent_client = await client.call_tool(
+                    "unifi", {"action": "get_client_by_mac", "mac": "ff:ff:ff:ff:ff:ff"}
+                )
                 assert nonexistent_client is not None
                 
                 # Test invalid site names
-                invalid_site_devices = await client.call_tool("get_devices", {"site_name": "nonexistent-site"})
+                invalid_site_devices = await client.call_tool(
+                    "unifi", {"action": "get_devices", "site_name": "nonexistent-site"}
+                )
                 assert invalid_site_devices is not None
                 
         except Exception as e:
             pytest.fail(f"Error handling test failed: {e}")
+        finally:
+            await server.cleanup()
 
 
 @pytest.mark.integration
@@ -295,12 +313,13 @@ class TestUniFiMCPPerformance:
         server = UniFiMCPServer(integration_config, server_config)
         
         try:
+            await server.initialize()
             async with Client(server.mcp) as client:
                 # Make multiple concurrent requests
                 tasks = []
                 for _ in range(5):
-                    tasks.append(client.call_tool("get_devices", {}))
-                    tasks.append(client.call_tool("get_clients", {}))
+                    tasks.append(client.call_tool("unifi", {"action": "get_devices"}))
+                    tasks.append(client.call_tool("unifi", {"action": "get_clients"}))
                 
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 
@@ -311,6 +330,8 @@ class TestUniFiMCPPerformance:
                     
         except Exception as e:
             pytest.fail(f"Concurrent requests test failed: {e}")
+        finally:
+            await server.cleanup()
 
 
     async def test_resource_cleanup(self, integration_config):
@@ -324,16 +345,19 @@ class TestUniFiMCPPerformance:
         server = UniFiMCPServer(integration_config, server_config)
         
         try:
+            await server.initialize()
             # Create and destroy multiple client connections
             for _ in range(3):
                 async with Client(server.mcp) as client:
                     await client.ping()
-                    result = await client.call_tool("get_devices", {})
+                    result = await client.call_tool("unifi", {"action": "get_devices"})
                     assert result is not None
                 # Connection should be cleaned up automatically
                 
         except Exception as e:
             pytest.fail(f"Resource cleanup test failed: {e}")
+        finally:
+            await server.cleanup()
 
 
 # Helper functions for integration tests

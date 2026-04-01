@@ -1,6 +1,6 @@
 [project]
 name = "unifi-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "UniFi MCP servers for cloud and local controller management"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,12 +24,12 @@ dev = [
     "pytest-cov>=6.0.0",
     "inline-snapshot>=0.13.0",
     "ruff>=0.12.7",
-    "mypy>=1.13.0",
+    "ty>=0.0.1a6",
 ]
 
 [project.scripts]
-unifi-cloud-mcp = "unifi_mcp.cloud_server:main"
-unifi-local-mcp = "unifi_mcp.local_server:main"
+unifi-mcp = "unifi_mcp.main:cli"
+unifi-local-mcp = "unifi_mcp.main:cli"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -38,3 +38,48 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["unifi_mcp*"]
 exclude = ["logs*", "docs*"]
+
+[tool.ruff]
+cache-dir = ".cache/ruff"
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "RUF"]
+
+[tool.ty]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=unifi_mcp",
+    "--cov-branch",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=80",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+cache_dir = ".cache/pytest"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "integration: marks tests requiring an external UniFi controller",
+    "client_process: marks tests that spawn separate client processes",
+    "slow: marks slow-running tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"

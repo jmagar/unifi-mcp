@@ -91,8 +91,8 @@ cp .env.example .env
 
 ```bash
 # 🏠 Controller Connection (scheme and port required)
-UNIFI_CONTROLLER_URL=https://10.1.0.1:443  # UniFi OS (UDM Pro, Cloud Gateway Max)
-# UNIFI_CONTROLLER_URL=https://10.1.0.1:8443  # Legacy controllers
+UNIFI_URL=https://10.1.0.1:443             # UniFi OS (UDM Pro, Cloud Gateway Max)
+# UNIFI_URL=https://10.1.0.1:8443          # Legacy controllers
 UNIFI_USERNAME=admin                        # Local controller admin username
 UNIFI_PASSWORD=your_password               # Local controller admin password
 
@@ -101,13 +101,14 @@ UNIFI_IS_UDM_PRO=true                 # true for UniFi OS devices, false for leg
 UNIFI_VERIFY_SSL=false                # false for self-signed certs, true for valid SSL
 
 # 🌐 Server Settings
-UNIFI_LOCAL_MCP_HOST=0.0.0.0          # Server bind address
-UNIFI_LOCAL_MCP_PORT=8001             # Server port
-UNIFI_LOCAL_MCP_LOG_LEVEL=INFO        # Logging level
+UNIFI_MCP_HOST=0.0.0.0                # Server bind address
+UNIFI_MCP_PORT=8001                   # Server port
+UNIFI_MCP_LOG_LEVEL=INFO              # Logging level
+UNIFI_MCP_TOKEN=change-me             # Bearer token for HTTP transport
+UNIFI_MCP_NO_AUTH=false               # Set true only for trusted local testing
 
 # 📋 Advanced Logging & Process Management
-MCP_LOG_FILE=logs/unifi-mcp.log       # Override default log file location
-MCP_PID_FILE=logs/unifi-mcp.pid       # Override default PID file location
+UNIFI_MCP_LOG_FILE=/tmp/unifi-mcp.log # Override log file location
 ```
 
 </details>
@@ -130,72 +131,23 @@ MCP_PID_FILE=logs/unifi-mcp.pid       # Override default PID file location
 
 ## 🛠️ Available Tools
 
-<div align="center">
+This server exposes two MCP tools:
 
-### 🎯 **Tool Categories**
+| Tool | Description |
+|------|-------------|
+| `unifi` | Unified action-based tool for all device, client, network, and monitoring operations |
+| `unifi_help` | Built-in markdown reference for actions and parameters |
 
-</div>
+Use `unifi` with an `action` argument such as:
 
-<details>
-<summary><b>📱 Device Management</b></summary>
+| Action Group | Actions |
+|-------------|---------|
+| Device management | `get_devices`, `get_device_by_mac`, `restart_device`, `locate_device` |
+| Client management | `get_clients`, `reconnect_client`, `block_client`, `unblock_client`, `forget_client`, `set_client_name`, `set_client_note` |
+| Network configuration | `get_sites`, `get_wlan_configs`, `get_network_configs`, `get_port_configs`, `get_port_forwarding_rules`, `get_firewall_rules`, `get_firewall_groups`, `get_static_routes` |
+| Monitoring and diagnostics | `get_controller_status`, `get_events`, `get_alarms`, `get_dpi_stats`, `get_rogue_aps`, `start_spectrum_scan`, `get_spectrum_scan_state`, `authorize_guest`, `get_speedtest_results`, `get_ips_events`, `get_user_info` |
 
-| Tool | Description | Output |
-|------|-------------|--------|
-| `get_devices` | List all devices | 🎨 Clean, formatted summaries |
-| `get_device_by_mac` | Specific device details | 📊 Formatted device info |
-| `restart_device` | Restart UniFi device | ⚡ Device reboot |
-| `locate_device` | Trigger locate LED | 💡 Visual device identification |
-
-</details>
-
-<details>
-<summary><b>👥 Client Management</b></summary>
-
-| Tool | Description | Output |
-|------|-------------|--------|
-| `get_clients` | Connected clients | 🔗 Connection details |
-| `reconnect_client` | Force reconnection | 🔄 Client refresh |
-| `block_client` | Block client network access | 🚫 Security enforcement |
-| `unblock_client` | Restore client network access | ✅ Access restoration |
-| `forget_client` | Remove client historical data | 🗑️ GDPR compliance |
-| `set_client_name` | Set/update client name | 📝 Device identification |
-| `set_client_note` | Add notes to client record | 📋 Documentation |
-
-</details>
-
-<details>
-<summary><b>🌐 Network Configuration</b></summary>
-
-| Tool | Description | Output |
-|------|-------------|--------|
-| `get_sites` | Controller sites | 🏢 Site information |
-| `get_wlan_configs` | Wireless networks | 📡 WiFi configurations |
-| `get_network_configs` | Network/VLAN setup | 🔧 Network topology |
-| `get_port_configs` | Switch port profiles | 🔌 Port configurations |
-| `get_port_forwarding_rules` | Port forwarding | ➡️ Traffic routing rules |
-| `get_firewall_rules` | Firewall security rules | 🔒 Security audit |
-| `get_firewall_groups` | Firewall address groups | 👥 Security management |
-| `get_static_routes` | Advanced routing configuration | 🗺️ Network routing |
-
-</details>
-
-<details>
-<summary><b>📊 Monitoring & Statistics</b></summary>
-
-| Tool | Description | Output |
-|------|-------------|--------|
-| `get_controller_status` | System information | 💻 Controller health |
-| `get_events` | Recent controller events | 📅 Event timeline |
-| `get_alarms` | Active system alarms | 🚨 Alert notifications |
-| `get_dpi_stats` | Deep Packet Inspection | 🔍 Traffic analysis |
-| `get_rogue_aps` | Rogue access points | ⚠️ Security threats |
-| `start_spectrum_scan` | RF spectrum analysis | 📡 Wireless diagnostics |
-| `get_spectrum_scan_state` | Scan results | 📊 RF environment data |
-| `authorize_guest` | Guest network access | 🎫 Visitor authorization |
-| `get_speedtest_results` | Historical speed test data | 📈 Performance analysis |
-| `get_ips_events` | Security threat detection | 🛡️ Threat monitoring |
-
-</details>
+Destructive actions require `confirm=true` unless `UNIFI_MCP_ALLOW_DESTRUCTIVE=true` or `UNIFI_MCP_ALLOW_YOLO=true` is set.
 
 ## 📋 MCP Resources
 
@@ -358,14 +310,16 @@ kill $(cat logs/unifi-mcp.pid)  # Stop background server
 
 ```bash
 # List available tools
-curl -X POST http://localhost:8001/mcp/call \
+curl -X POST http://localhost:8001/mcp \
   -H "Content-Type: application/json" \
-  -d '{"method": "tools/list"}'
+  -H "Authorization: Bearer $UNIFI_MCP_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":"1","method":"tools/list","params":{}}'
 
 # Test a specific tool
-curl -X POST http://localhost:8001/mcp/call \
+curl -X POST http://localhost:8001/mcp \
   -H "Content-Type: application/json" \
-  -d '{"method": "tools/call", "params": {"name": "get_devices"}}'
+  -H "Authorization: Bearer $UNIFI_MCP_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":"2","method":"tools/call","params":{"name":"unifi","arguments":{"action":"get_devices"}}}'
 ```
 
 </details>
@@ -376,7 +330,6 @@ curl -X POST http://localhost:8001/mcp/call \
 |----------|---------|-------------|
 | 💚 **Health** | `http://localhost:8001/health` | Server health check |
 | 🔗 **MCP** | `http://localhost:8001/mcp` | Main MCP endpoint |
-| ⚡ **Tools** | `http://localhost:8001/mcp/call` | Tool execution |
 
 ## 🔧 Troubleshooting
 

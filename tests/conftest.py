@@ -223,6 +223,16 @@ def mock_unifi_client(test_unifi_config, mock_device_data, mock_client_data, moc
     mock_client.unblock_client = AsyncMock(return_value={"message": "Client unblocked"})
     mock_client.set_client_name = AsyncMock(return_value={"message": "Name updated"})
     mock_client.set_client_note = AsyncMock(return_value={"message": "Note updated"})
+
+    async def _make_request(method, endpoint, site_name="default", data=None, params=None):
+        if method == "GET" and endpoint == "/list/user":
+            return [
+                {"_id": "user1", "mac": "aa:bb:cc:dd:ee:f1"},
+                {"_id": "user2", "mac": "aa:bb:cc:dd:ee:f2"},
+            ]
+        return {"meta": {"rc": "ok"}, "data": []}
+
+    mock_client._make_request = AsyncMock(side_effect=_make_request)
     
     return mock_client
 
@@ -280,11 +290,12 @@ def mock_http_responses():
 @pytest_asyncio.fixture
 async def test_server(test_unifi_config, test_server_config, mock_unifi_client) -> FastMCP:
     """Create test FastMCP server with mocked UniFi client."""
-    with patch('unifi_mcp.server.UnifiControllerClient', return_value=mock_unifi_client):
-        server = UniFiMCPServer(test_unifi_config, test_server_config)
-        await server.initialize()
-        yield server.mcp
-        await server.cleanup()
+    with patch.dict("os.environ", {"UNIFI_MCP_TOKEN": "test-token"}, clear=False):
+        with patch('unifi_mcp.server.UnifiControllerClient', return_value=mock_unifi_client):
+            server = UniFiMCPServer(test_unifi_config, test_server_config)
+            await server.initialize()
+            yield server.mcp
+            await server.cleanup()
 
 
 @pytest.fixture
@@ -292,7 +303,7 @@ def integration_config() -> Optional[UniFiConfig]:
     """Configuration for integration tests - returns None if env vars not set."""
     import os
     
-    controller_url = os.getenv("UNIFI_CONTROLLER_URL")
+    controller_url = os.getenv("UNIFI_URL", os.getenv("UNIFI_CONTROLLER_URL"))
     username = os.getenv("UNIFI_USERNAME") 
     password = os.getenv("UNIFI_PASSWORD")
     

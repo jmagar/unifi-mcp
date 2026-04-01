@@ -63,10 +63,13 @@ class DeviceService(BaseService):
             error_result = self.check_list_response(devices, params.action)
             if error_result:
                 return error_result
+            if not isinstance(devices, list):
+                return self.create_error_result("Unexpected response format", devices)
+            device_items = self.dict_items(devices)
 
             # Format each device for clean output
             formatted_devices = []
-            for device in devices:
+            for device in device_items:
                 try:
                     formatted_device = format_device_summary(device)
                     formatted_devices.append(formatted_device)
@@ -78,7 +81,7 @@ class DeviceService(BaseService):
                     })
 
             # Token-efficient human summary
-            summary_text = format_devices_list(devices)
+            summary_text = format_devices_list(device_items)
 
             return self.create_success_result(
                 text=summary_text,
@@ -102,12 +105,15 @@ class DeviceService(BaseService):
             error_result = self.check_list_response(devices, params.action)
             if error_result:
                 return error_result
+            if not isinstance(devices, list):
+                return self.create_error_result("Unexpected response format", devices)
+            device_items = self.dict_items(devices)
 
             # Normalize MAC address for comparison
-            normalized_mac = self.normalize_mac(params.mac)
+            normalized_mac = self.normalize_mac(self.require_mac(params))
 
             # Find matching device
-            for device in devices:
+            for device in device_items:
                 device_mac = self.normalize_mac(device.get("mac", ""))
                 if device_mac == normalized_mac:
                     formatted = format_device_summary(device)
@@ -133,8 +139,9 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
+            mac = self.require_mac(params)
 
-            result = await self.client.restart_device(params.mac, site_name)
+            result = await self.client.restart_device(mac, site_name)
 
             # Validate response
             is_valid, error_msg = self.validate_response(result, params.action)
@@ -143,11 +150,11 @@ class DeviceService(BaseService):
 
             resp = {
                 "success": True,
-                "message": f"Device {params.mac} restart command sent",
+                "message": f"Device {mac} restart command sent",
                 "details": result
             }
             return ToolResult(
-                content=[TextContent(type="text", text=f"Device restart requested: {params.mac}")],
+                content=[TextContent(type="text", text=f"Device restart requested: {mac}")],
                 structured_content=resp
             )
 
@@ -160,8 +167,9 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
+            mac = self.require_mac(params)
 
-            result = await self.client.locate_device(params.mac, site_name)
+            result = await self.client.locate_device(mac, site_name)
 
             # Check for error in response
             if isinstance(result, dict) and "error" in result:
@@ -174,11 +182,11 @@ class DeviceService(BaseService):
 
             resp = {
                 "success": True,
-                "message": f"Device {params.mac} locate LED activated",
+                "message": f"Device {mac} locate LED activated",
                 "details": result
             }
             return ToolResult(
-                content=[TextContent(type="text", text=f"Locate LED activated: {params.mac}")],
+                content=[TextContent(type="text", text=f"Locate LED activated: {mac}")],
                 structured_content=resp
             )
 

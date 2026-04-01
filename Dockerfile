@@ -21,11 +21,11 @@ FROM python:3.11-slim
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN useradd --create-home --shell /bin/sh --uid 1001 unifi
+RUN useradd --create-home --shell /bin/sh --uid 1000 unifi
 
 WORKDIR /app
 
@@ -47,11 +47,11 @@ RUN chown -R unifi:unifi /app
 USER unifi
 
 # Expose the MCP port
-EXPOSE 3003
+EXPOSE 8001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3003/health || exit 1
+    CMD wget -q --spider http://localhost:8001/health || exit 1
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "-m", "unifi_mcp.main"]

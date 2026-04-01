@@ -6,5 +6,5 @@ Provides direct access to local UniFi controllers with comprehensive device mana
 network monitoring, and real-time statistics.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __author__ = "UniFi MCP Server"

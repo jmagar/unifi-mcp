@@ -31,11 +31,9 @@ class TestUnifiControllerClientAuthentication:
             )
             
             await client.connect()
-            result = await client.authenticate()
             
-            assert result is True
             assert client.is_authenticated is True
-            assert client.csrf_token == "test-csrf"
+            assert client.csrf_token is None
             
             # Verify correct API endpoint was called
             mock_post.assert_called_once()
@@ -58,9 +56,7 @@ class TestUnifiControllerClientAuthentication:
             )
             
             await client.connect()
-            result = await client.authenticate()
             
-            assert result is True
             assert client.is_authenticated is True
             
             # Verify correct API endpoint was called
@@ -68,9 +64,9 @@ class TestUnifiControllerClientAuthentication:
             call_args = mock_post.call_args
             assert "/api/login" in call_args[0][0]
             
-            # Legacy uses form data
-            assert "username" in call_args[1]["data"]
-            assert "password" in call_args[1]["data"]
+            # Legacy mode still uses the shared JSON login payload.
+            assert "username" in call_args[1]["json"]
+            assert "password" in call_args[1]["json"]
 
 
     async def test_authentication_failure_invalid_credentials(self, test_unifi_config):
@@ -353,7 +349,6 @@ class TestUnifiControllerClientConfiguration:
             "username": client.config.username,
             "is_udm_pro": client.config.is_udm_pro,
             "verify_ssl": client.config.verify_ssl,
-            "site_name": client.config.site_name,
             "api_base": client.api_base
         }
         
@@ -362,6 +357,5 @@ class TestUnifiControllerClientConfiguration:
             "username": "admin", 
             "is_udm_pro": True,
             "verify_ssl": False,
-            "site_name": "default",
             "api_base": "/proxy/network/api"
         })

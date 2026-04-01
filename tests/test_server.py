@@ -6,11 +6,9 @@ Following FastMCP testing patterns with in-memory testing and single behavior pe
 
 import pytest
 import os
-from unittest.mock import patch, Mock
-from inline_snapshot import snapshot
+from unittest.mock import AsyncMock, patch, Mock
 
 from fastmcp import FastMCP, Client
-from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 from unifi_mcp.server import UniFiMCPServer
@@ -20,49 +18,26 @@ from unifi_mcp.config import UniFiConfig, ServerConfig
 @pytest.mark.asyncio
 async def test_server_initialization_with_basic_config(test_unifi_config, test_server_config):
     """Test that server initializes correctly with basic configuration."""
-    with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
-        mock_client = Mock()
-        mock_client_class.return_value = mock_client
-        
-        server = UniFiMCPServer(test_unifi_config, test_server_config)
-        
-        assert server.unifi_config == test_unifi_config
-        assert server.server_config == test_server_config
-        assert isinstance(server.mcp, FastMCP)
-        assert server.mcp.name == "UniFi Local Controller MCP Server"
+    with patch.dict(os.environ, {"UNIFI_MCP_TOKEN": "test-token"}, clear=False):
+        with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
+            mock_client = Mock()
+            mock_client_class.return_value = mock_client
+
+            server = UniFiMCPServer(test_unifi_config, test_server_config)
+
+            assert server.unifi_config == test_unifi_config
+            assert server.server_config == test_server_config
+            assert isinstance(server.mcp, FastMCP)
+            assert server.mcp.name == "UniFi Local Controller MCP Server"
 
 
 @pytest.mark.asyncio
 async def test_server_tools_registration(test_server):
-    """Test that all expected tools are registered with the server."""
+    """Test that the unified tool surface is registered with the server."""
     tools = await test_server._list_tools()
     tool_names = [tool.name for tool in tools]
-    
-    # Device tools
-    assert "get_devices" in tool_names
-    assert "get_device_by_mac" in tool_names
-    assert "restart_device" in tool_names
-    assert "locate_device" in tool_names
-    
-    # Client tools
-    assert "get_clients" in tool_names
-    assert "block_client" in tool_names
-    assert "unblock_client" in tool_names
-    assert "set_client_name" in tool_names
-    assert "set_client_note" in tool_names
-    
-    # Network tools
-    assert "get_network_configs" in tool_names  # Actual name
-    assert "get_wlan_configs" in tool_names
-    assert "get_port_configs" in tool_names
-    
-    # Monitoring tools
-    assert "get_events" in tool_names
-    assert "get_alarms" in tool_names
-    
-    # Additional tools that should be present
-    assert "get_sites" in tool_names
-    assert "get_controller_status" in tool_names
+
+    assert tool_names == ["unifi", "unifi_help"]
 
 
 @pytest.mark.asyncio
@@ -97,25 +72,29 @@ async def test_server_resources_registration(test_server):
 
 @pytest.mark.asyncio
 async def test_server_tool_execution_with_mock_client(test_server):
-    """Test that tools execute successfully with mocked client."""
+    """Test that the unified tool and help tool execute successfully."""
     async with Client(test_server) as client:
-        # Test device tool
-        result = await client.call_tool("get_devices", {})
-        assert isinstance(result, ToolResult)
+        result = await client.call_tool("unifi", {"action": "get_devices"})
         assert len(result.content) > 0
         assert isinstance(result.content[0], TextContent)
-        
-        # Test client tool
-        result = await client.call_tool("get_clients", {})
-        assert isinstance(result, ToolResult)
-        assert len(result.content) > 0
-        assert isinstance(result.content[0], TextContent)
+
+        help_result = await client.call_tool("unifi_help", {})
+        assert len(help_result.content) > 0
+        assert isinstance(help_result.content[0], TextContent)
+        assert "Tool Reference" in help_result.content[0].text
 
 
 @pytest.mark.asyncio
 async def test_server_with_oauth_configuration():
     """Test server initialization with OAuth configuration."""
-    with patch.dict(os.environ, {"FASTMCP_SERVER_AUTH": "fastmcp.server.auth.providers.google.GoogleProvider"}):
+    with patch.dict(
+        os.environ,
+        {
+            "FASTMCP_SERVER_AUTH": "fastmcp.server.auth.providers.google.GoogleProvider",
+            "UNIFI_MCP_TOKEN": "test-token",
+        },
+        clear=False,
+    ):
         with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
@@ -129,14 +108,13 @@ async def test_server_with_oauth_configuration():
             
             server = UniFiMCPServer(config, server_config)
             
-            # Should detect OAuth configuration
-            assert hasattr(server, '_auth_enabled')
+            assert isinstance(server.mcp, FastMCP)
 
 
 @pytest.mark.asyncio
 async def test_server_without_oauth_configuration():
     """Test server initialization without OAuth configuration."""
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, {"UNIFI_MCP_TOKEN": "test-token"}, clear=True):
         with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
@@ -150,64 +128,51 @@ async def test_server_without_oauth_configuration():
             
             server = UniFiMCPServer(config, server_config)
             
-            # Should not have OAuth enabled
-            assert hasattr(server, '_auth_enabled')
-            assert server._auth_enabled is False
+            assert isinstance(server.mcp, FastMCP)
 
 
 @pytest.mark.asyncio
 async def test_server_handles_tool_errors_gracefully(test_unifi_config, test_server_config, mock_failed_unifi_client):
     """Test that server handles tool execution errors gracefully."""
-    with patch('unifi_mcp.server.UnifiControllerClient', return_value=mock_failed_unifi_client):
-        server = UniFiMCPServer(test_unifi_config, test_server_config)
-        
-        async with Client(server.mcp) as client:
-            result = await client.call_tool("get_devices", {})
-            
-            # Should return error response, not raise exception
-            assert isinstance(result, ToolResult)
-            assert len(result.content) > 0
-            
-            # Content should indicate error
-            content_text = result.content[0].text
-            assert "error" in content_text.lower()
+    with patch.dict(os.environ, {"UNIFI_MCP_TOKEN": "test-token"}, clear=False):
+        with patch('unifi_mcp.server.UnifiControllerClient', return_value=mock_failed_unifi_client):
+            server = UniFiMCPServer(test_unifi_config, test_server_config)
+            await server.initialize()
+
+            async with Client(server.mcp) as client:
+                result = await client.call_tool("unifi", {"action": "get_devices"})
+
+                assert len(result.content) > 0
+
+                content_text = result.content[0].text
+                assert "error" in content_text.lower()
+
+            await server.cleanup()
 
 
 @pytest.mark.asyncio
 async def test_server_tool_schema_generation(test_server):
     """Test that tool schemas are generated correctly."""
-    tools = test_server._list_tools()
-    get_devices_tool = next(tool for tool in tools if tool.name == "get_devices")
-    
-    schema = get_devices_tool.inputSchema
-    
-    # Should have proper schema structure
-    assert schema == snapshot({
-        "type": "object",
-        "properties": {
-            "site_name": {
-                "type": "string", 
-                "default": "default",
-                "description": "UniFi site name (default: \"default\")"
-            }
-        },
-        "additionalProperties": False
-    })
+    tools = await test_server._list_tools()
+    unifi_tool = next(tool for tool in tools if tool.name == "unifi")
+
+    schema = unifi_tool.parameters
+
+    assert schema["type"] == "object"
+    assert "action" in schema["properties"]
+    assert "site_name" in schema["properties"]
+    assert "confirm" in schema["properties"]
+    assert schema["required"] == ["action"]
 
 
 @pytest.mark.asyncio
 async def test_server_resource_uri_patterns(test_server):
-    """Test that resource URI patterns are correctly configured."""
+    """Test that core device resource URIs are registered."""
     resources = await test_server._list_resources()
     
-    # Find device resource
-    device_resources = [r for r in resources if "unifi://device/" in str(r.uri)]
-    assert len(device_resources) > 0
-    
-    device_resource = device_resources[0]
-    assert device_resource.name
-    assert device_resource.description
-    assert "mac" in str(device_resource.uri).lower()
+    resource_uris = {str(resource.uri) for resource in resources}
+    assert "unifi://devices" in resource_uris
+    assert "unifi://device-tags" in resource_uris
 
 
 @pytest.mark.asyncio
@@ -228,14 +193,15 @@ async def test_server_with_different_site_configurations():
         password="test"
     )
     
-    with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
-        mock_client = Mock()
-        mock_client_class.return_value = mock_client
-        
-        server_config = ServerConfig()
-        server = UniFiMCPServer(custom_config, server_config)
-        
-        assert server.unifi_config.controller_url == "https://test.local"
+    with patch.dict(os.environ, {"UNIFI_MCP_TOKEN": "test-token"}, clear=False):
+        with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            server_config = ServerConfig()
+            server = UniFiMCPServer(custom_config, server_config)
+
+            assert server.unifi_config.controller_url == "https://test.local"
 
 
 @pytest.mark.asyncio
@@ -262,15 +228,18 @@ async def test_server_initialization_with_udm_pro_config():
     
     server_config = ServerConfig()
     
-    with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
-        mock_client = Mock()
-        mock_client_class.return_value = mock_client
-        
-        server = UniFiMCPServer(udm_config, server_config)
-        
-        # Verify client is initialized with UDM Pro config
-        mock_client_class.assert_called_once_with(udm_config)
-        assert server.unifi_config.is_udm_pro is True
+    with patch.dict(os.environ, {"UNIFI_MCP_TOKEN": "test-token"}, clear=False):
+        with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            server = UniFiMCPServer(udm_config, server_config)
+            await server.initialize()
+
+            mock_client_class.assert_called_once_with(udm_config)
+            assert server.unifi_config.is_udm_pro is True
+
+            await server.cleanup()
 
 
 @pytest.mark.asyncio
@@ -285,12 +254,15 @@ async def test_server_initialization_with_legacy_config():
     
     server_config = ServerConfig()
     
-    with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
-        mock_client = Mock()
-        mock_client_class.return_value = mock_client
-        
-        server = UniFiMCPServer(legacy_config, server_config)
-        
-        # Verify client is initialized with legacy config
-        mock_client_class.assert_called_once_with(legacy_config)
-        assert server.unifi_config.is_udm_pro is False
+    with patch.dict(os.environ, {"UNIFI_MCP_TOKEN": "test-token"}, clear=False):
+        with patch('unifi_mcp.server.UnifiControllerClient') as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            server = UniFiMCPServer(legacy_config, server_config)
+            await server.initialize()
+
+            mock_client_class.assert_called_once_with(legacy_config)
+            assert server.unifi_config.is_udm_pro is False
+
+            await server.cleanup()

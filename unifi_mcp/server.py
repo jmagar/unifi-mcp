@@ -7,11 +7,14 @@ and server lifecycle management.
 
 import logging
 import os
+from datetime import datetime, timezone
+from hmac import compare_digest
 from typing import Annotated, Optional
 
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from pydantic import Field
+from mcp.types import TextContent
 
 from .client import UnifiControllerClient
 from .config import ServerConfig, UniFiConfig, validate_auth_config
@@ -81,11 +84,13 @@ class UniFiMCPServer:
             return None
 
         # Path 1: env bypass (CI / automation)
-        if os.getenv("ALLOW_DESTRUCTIVE") == "true":
+        if os.getenv(
+            "UNIFI_MCP_ALLOW_DESTRUCTIVE", os.getenv("ALLOW_DESTRUCTIVE", "false")
+        ) == "true":
             return None
 
         # Path 2: ALLOW_YOLO skips elicitation
-        if os.getenv("ALLOW_YOLO") == "true":
+        if os.getenv("UNIFI_MCP_ALLOW_YOLO", os.getenv("ALLOW_YOLO", "false")) == "true":
             return None
 
         # Path 3: explicit confirmation param
@@ -98,8 +103,9 @@ class UniFiMCPServer:
                     "type": "text",
                     "text": (
                         f"'{params.action.value}' is a destructive operation. "
-                        "Pass confirm=true to proceed, or set ALLOW_DESTRUCTIVE=true / "
-                        "ALLOW_YOLO=true in the environment to bypass."
+                        "Pass confirm=true to proceed, or set "
+                        "UNIFI_MCP_ALLOW_DESTRUCTIVE=true / "
+                        "UNIFI_MCP_ALLOW_YOLO=true in the environment to bypass."
                     ),
                 }
             ],
@@ -137,7 +143,7 @@ class UniFiMCPServer:
                         status_code=401,
                     )
                 token = auth_header[len("Bearer ") :]
-                if token != expected_token:
+                if not compare_digest(token, expected_token):
                     return JSONResponse(
                         {"error": "Invalid bearer token"},
                         status_code=403,
@@ -295,7 +301,8 @@ class UniFiMCPServer:
             - Authentication: get_user_info
 
             Destructive actions (restart_device, block_client, forget_client, reconnect_client)
-            require confirm=true unless ALLOW_DESTRUCTIVE=true or ALLOW_YOLO=true is set.
+            require confirm=true unless UNIFI_MCP_ALLOW_DESTRUCTIVE=true
+            or UNIFI_MCP_ALLOW_YOLO=true is set.
             """
             try:
                 try:
@@ -359,8 +366,12 @@ class UniFiMCPServer:
                                 }
                             )
                         elif hasattr(item, "text"):
-                            item.text = _truncate_response(item.text)
-                            capped.append(item)
+                            capped.append(
+                                TextContent(
+                                    type="text",
+                                    text=_truncate_response(str(item.text)),
+                                )
+                            )
                         else:
                             capped.append(item)
                     result = ToolResult(
@@ -465,8 +476,8 @@ Single action-based tool for all UniFi operations.
 
 Actions marked **Destructive** require one of:
 1. `confirm=true` parameter
-2. `ALLOW_DESTRUCTIVE=true` environment variable
-3. `ALLOW_YOLO=true` environment variable
+2. `UNIFI_MCP_ALLOW_DESTRUCTIVE=true` environment variable
+3. `UNIFI_MCP_ALLOW_YOLO=true` environment variable
 
 ## Tool: `unifi_help`
 
@@ -496,7 +507,7 @@ Returns this help text.
         from starlette.responses import JSONResponse
         from starlette.routing import Route
 
-        base_app = self.mcp.http_app
+        base_app = self.mcp.http_app()
 
         # Add /health endpoint by wrapping in a Starlette app
         async def health(_request):
@@ -504,8 +515,7 @@ Returns this help text.
                 {
                     "status": "ok",
                     "service": "unifi-mcp",
-                    "timestamp": __import__("datetime").datetime.utcnow().isoformat()
-                    + "Z",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
 

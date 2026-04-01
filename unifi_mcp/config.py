@@ -4,8 +4,8 @@ Configuration and environment management for UniFi MCP Server.
 Handles environment variables, logging configuration, and settings validation.
 """
 
-import os
 import logging
+import os
 from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
@@ -93,12 +93,15 @@ class UniFiConfig:
     def from_env(cls) -> "UniFiConfig":
         """Create configuration from environment variables."""
         # Required settings
-        controller_url = os.getenv("UNIFI_CONTROLLER_URL")
+        controller_url = os.getenv("UNIFI_URL", os.getenv("UNIFI_CONTROLLER_URL"))
         username = os.getenv("UNIFI_USERNAME")
         password = os.getenv("UNIFI_PASSWORD")
 
         if not controller_url:
-            raise ValueError("UNIFI_CONTROLLER_URL environment variable is required")
+            raise ValueError(
+                "UNIFI_URL environment variable is required "
+                "(UNIFI_CONTROLLER_URL is accepted as a legacy fallback)"
+            )
         if not username:
             raise ValueError("UNIFI_USERNAME environment variable is required")
         if not password:
@@ -122,7 +125,7 @@ class ServerConfig:
     """MCP server configuration settings."""
 
     host: str = "0.0.0.0"
-    port: int = 3003
+    port: int = 8001
     log_level: str = "INFO"
     log_file: Optional[str] = None
     transport: str = "http"
@@ -130,13 +133,17 @@ class ServerConfig:
     @classmethod
     def from_env(cls) -> "ServerConfig":
         """Create server configuration from environment variables."""
-        host = os.getenv("UNIFI_LOCAL_MCP_HOST", "0.0.0.0")
-        # UNIFI_MCP_PORT is canonical; UNIFI_LOCAL_MCP_PORT is legacy fallback
+        host = os.getenv("UNIFI_MCP_HOST", os.getenv("UNIFI_LOCAL_MCP_HOST", "0.0.0.0"))
+        # UNIFI_MCP_PORT is canonical; UNIFI_LOCAL_MCP_PORT is a legacy fallback.
         port = int(
-            os.getenv("UNIFI_MCP_PORT", os.getenv("UNIFI_LOCAL_MCP_PORT", "3003"))
+            os.getenv("UNIFI_MCP_PORT", os.getenv("UNIFI_LOCAL_MCP_PORT", "8001"))
         )
-        log_level = os.getenv("UNIFI_LOCAL_MCP_LOG_LEVEL", "INFO")
-        log_file = os.getenv("UNIFI_LOCAL_MCP_LOG_FILE", "/tmp/unifi-mcp.log")
+        log_level = os.getenv(
+            "UNIFI_MCP_LOG_LEVEL", os.getenv("UNIFI_LOCAL_MCP_LOG_LEVEL", "INFO")
+        )
+        log_file = os.getenv(
+            "UNIFI_MCP_LOG_FILE", os.getenv("UNIFI_LOCAL_MCP_LOG_FILE", "/tmp/unifi-mcp.log")
+        )
         transport = os.getenv("UNIFI_MCP_TRANSPORT", "http")
 
         return cls(
@@ -151,6 +158,16 @@ class ServerConfig:
 def setup_logging(config: ServerConfig) -> None:
     """Configure logging based on server configuration."""
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, config.log_level.upper()))
+
+    # Reset handlers so repeated setup calls do not duplicate log output.
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+        try:
+            handler.close()
+        except Exception:
+            pass
 
     # Configure basic logging
     logging.basicConfig(
@@ -160,7 +177,7 @@ def setup_logging(config: ServerConfig) -> None:
     # Add console handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter(log_format))
-    logging.getLogger().addHandler(console_handler)
+    root_logger.addHandler(console_handler)
 
     # Add file handler if specified
     if config.log_file:
@@ -171,7 +188,7 @@ def setup_logging(config: ServerConfig) -> None:
         # Use our custom clearing file handler with 10MB limit
         file_handler = ClearingFileHandler(config.log_file, max_bytes=10 * 1024 * 1024)
         file_handler.setFormatter(logging.Formatter(log_format))
-        logging.getLogger().addHandler(file_handler)
+        root_logger.addHandler(file_handler)
 
     # Set specific logger levels
     logging.getLogger("unifi_mcp").setLevel(getattr(logging, config.log_level.upper()))
@@ -189,16 +206,17 @@ def normalize_service_url(url: str) -> str:
 def validate_auth_config() -> Optional[str]:
     """Return the Bearer token, or exit(1) if required but missing.
 
-    Returns None only when NO_AUTH=true (auth intentionally disabled).
+    Returns None only when UNIFI_MCP_NO_AUTH=true (auth intentionally disabled).
     """
     token = os.getenv("UNIFI_MCP_TOKEN")
-    no_auth = os.getenv("NO_AUTH", "false").lower() == "true"
+    no_auth = os.getenv("UNIFI_MCP_NO_AUTH", os.getenv("NO_AUTH", "false")).lower() == "true"
 
     if not token and not no_auth:
         import sys
 
         logging.getLogger(__name__).error(
-            "UNIFI_MCP_TOKEN must be set (or set NO_AUTH=true to disable auth)"
+            "UNIFI_MCP_TOKEN must be set "
+            "(or set UNIFI_MCP_NO_AUTH=true to disable auth)"
         )
         sys.exit(1)
 

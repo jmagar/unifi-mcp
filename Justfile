@@ -23,9 +23,9 @@ lint:
 fmt:
     uv run ruff format .
 
-# Type-check with mypy
+# Type-check with ty
 typecheck:
-    uv run mypy unifi_mcp/
+    uv run ty check unifi_mcp
 
 # Run all quality checks
 check: lint typecheck
@@ -44,8 +44,8 @@ test:
 
 # Run live integration tests (requires running server)
 test-live:
-    @echo "Running live integration tests against localhost:3003..."
-    curl -sf http://localhost:3003/health | python3 -m json.tool
+    @echo "Running live integration tests against localhost:8001..."
+    curl -sf http://localhost:8001/health | python3 -m json.tool
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ logs:
 
 # Check health endpoint
 health:
-    curl -sf http://localhost:3003/health | python3 -m json.tool
+    curl -sf http://localhost:8001/health | python3 -m json.tool
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -93,6 +93,6 @@ validate-skills:
 
 # Remove build artifacts and caches
 clean:
-    rm -rf dist/ build/ *.egg-info __pycache__ .mypy_cache .ruff_cache .pytest_cache
+    rm -rf dist/ build/ *.egg-info __pycache__ .cache .ruff_cache .pytest_cache .mypy_cache
     find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
     find . -name "*.pyc" -delete 2>/dev/null || true
