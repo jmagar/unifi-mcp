@@ -9,12 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files and install
+# Copy dependency files and application source, then install
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir --prefix=/install -e .
-
-# Copy application code
 COPY unifi_mcp/ ./unifi_mcp/
+RUN pip install --no-cache-dir --prefix=/install .
 
 # Runtime stage: minimal image
 FROM python:3.11-slim

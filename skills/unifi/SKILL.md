@@ -13,9 +13,9 @@ Manages UniFi network infrastructure via the `unifi` action-router tool (and `un
 
 **HTTP fallback mode**: UniFi requires session-based authentication (login → cookie → requests). This is complex to replicate in curl. **Strongly prefer keeping the MCP server running.** For emergencies only, see fallback section below.
 
-**Transport**: Controlled by `UNIFI_MCP_TRANSPORT` env var — `http` (default, port 3003) or `stdio`.
+**Transport**: Controlled by `UNIFI_MCP_TRANSPORT` env var — `http` (default, port 8001) or `stdio`.
 
-**MCP URL**: `${user_config.unifi_mcp_url}` (default `http://localhost:3003/mcp`)
+**MCP URL**: `${user_config.unifi_mcp_url}` (default `http://localhost:8001/mcp`)
 
 ---
 

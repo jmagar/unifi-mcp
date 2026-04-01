@@ -8,13 +8,13 @@ services:
     # NOTE: No environment: block — all vars come from .env via env_file above.
     # Do NOT add environment: here. Put all variables in .env and .env.example.
     ports:
-      - "${UNIFI_MCP_PORT:-8001}:8001/tcp"
+      - "${UNIFI_MCP_PORT:-8001}:${UNIFI_MCP_PORT:-8001}/tcp"
     volumes:
       - ${UNIFI_MCP_VOLUME:-unifi-mcp-data}:/data
     networks:
-      - proxy
+      - jakenet
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8001/health || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:${UNIFI_MCP_PORT:-8001}/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -29,6 +29,6 @@ volumes:
   unifi-mcp-data:
 
 networks:
-  proxy:
-    name: ${DOCKER_NETWORK:-unifi-mcp}
+  jakenet:
+    name: ${DOCKER_NETWORK:-jakenet}
     external: true

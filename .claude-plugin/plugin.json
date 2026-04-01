@@ -22,7 +22,7 @@
       "type": "string",
       "title": "MCP Server Bearer Token",
       "description": "Bearer token for authenticating with the MCP server. Must match UNIFI_MCP_TOKEN in .env. Generate with: openssl rand -hex 32",
-      "sensitive": false
+      "sensitive": true
     },
     "unifi_url": {
       "type": "string",

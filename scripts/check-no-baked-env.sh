@@ -51,11 +51,11 @@ echo "=== No Baked Env Vars Check: $PROJECT_DIR ==="
 COMPOSE_FILE="$PROJECT_DIR/docker-compose.yaml"
 if [[ -f "$COMPOSE_FILE" ]]; then
   # Check for environment: key under services
-  if grep -qE '^\s+environment:' "$COMPOSE_FILE"; then
+  if grep -qE '^[[:space:]]+environment:' "$COMPOSE_FILE"; then
     fail "No environment: block in docker-compose.yaml" \
       "Found 'environment:' block — all env vars must come from env_file: .env only"
     echo "    Offending lines:"
-    grep -nE '^\s+environment:|^\s+-\s+\w+=' "$COMPOSE_FILE" | head -10 | while IFS= read -r line; do
+    grep -nE '^[[:space:]]+environment:|^[[:space:]]+-[[:space:]]+[[:alnum:]_]+=' "$COMPOSE_FILE" | head -10 | while IFS= read -r line; do
       echo "      $line"
     done
     echo
@@ -67,7 +67,7 @@ if [[ -f "$COMPOSE_FILE" ]]; then
   fi
 
   # Verify env_file is present
-  if grep -qE '^\s+env_file:' "$COMPOSE_FILE"; then
+  if grep -qE '^[[:space:]]+env_file:' "$COMPOSE_FILE"; then
     pass "env_file: directive present"
   else
     fail "env_file: directive" "No env_file: found — services won't receive credentials"
@@ -75,7 +75,7 @@ if [[ -f "$COMPOSE_FILE" ]]; then
 
   # Check for hardcoded values in compose environment blocks (not variable references)
   # Filter: lines that set KEY=VALUE where VALUE doesn't start with $ (variable ref)
-  HARDCODED=$(grep -nE '^\s+-\s+\w+=[^$]' "$COMPOSE_FILE" | grep -vE '=(true|false)$' || true)
+  HARDCODED=$(grep -nE '^[[:space:]]+-[[:space:]]+[[:alnum:]_]+=[^$]' "$COMPOSE_FILE" | grep -vE '=(true|false)$' || true)
   if [[ -n "$HARDCODED" ]]; then
     # Filter out known safe patterns
     SUSPICIOUS=$(echo "$HARDCODED" | grep -vE '(build:|image:|container_name:|restart:|test:|interval:|timeout:|retries:|start_period:|memory:|cpus:|name:)' || true)
@@ -97,7 +97,7 @@ if [[ -f "$DOCKERFILE" ]]; then
   SENSITIVE_RE='(API_KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|PRIVATE_KEY|AUTH_TOKEN|BEARER)'
 
   # Check ENV directives for sensitive variable names with values
-  SENSITIVE_ENVS=$(grep -nE "^ENV\s+\S*${SENSITIVE_RE}\S*\s*=" "$DOCKERFILE" || true)
+  SENSITIVE_ENVS=$(grep -nE "^ENV[[:space:]]+[^[:space:]]*${SENSITIVE_RE}[^[:space:]]*[[:space:]]*=" "$DOCKERFILE" || true)
   if [[ -n "$SENSITIVE_ENVS" ]]; then
     fail "No sensitive ENV in Dockerfile" "Found ENV directives with sensitive variable names:"
     echo "$SENSITIVE_ENVS" | while IFS= read -r line; do
@@ -108,7 +108,7 @@ if [[ -f "$DOCKERFILE" ]]; then
   fi
 
   # Check for ENV with hardcoded URLs (might contain credentials)
-  URL_ENVS=$(grep -nE '^ENV\s+\S+\s*=\s*https?://' "$DOCKERFILE" || true)
+  URL_ENVS=$(grep -nE '^ENV[[:space:]]+[^[:space:]]+[[:space:]]*=[[:space:]]*https?://' "$DOCKERFILE" || true)
   if [[ -n "$URL_ENVS" ]]; then
     warn "Hardcoded URLs in ENV" "Found ENV with hardcoded URLs (may contain credentials):"
     echo "$URL_ENVS" | while IFS= read -r line; do
@@ -119,7 +119,7 @@ if [[ -f "$DOCKERFILE" ]]; then
   fi
 
   # Check for COPY .env into image
-  if grep -qE '^COPY\s+.*\.env\s' "$DOCKERFILE"; then
+  if grep -qE '^COPY[[:space:]]+.*\.env[[:space:]]' "$DOCKERFILE"; then
     fail "No .env in image" "Dockerfile copies .env into the image — credentials will be baked in"
   else
     pass "No .env copied into image"
@@ -128,7 +128,7 @@ if [[ -f "$DOCKERFILE" ]]; then
   # Check .dockerignore excludes .env
   DOCKERIGNORE="$PROJECT_DIR/.dockerignore"
   if [[ -f "$DOCKERIGNORE" ]]; then
-    if grep -qE '^\s*\.env\s*$' "$DOCKERIGNORE"; then
+    if grep -qE '^[[:space:]]*\.env[[:space:]]*$' "$DOCKERIGNORE"; then
       pass ".dockerignore excludes .env"
     else
       fail ".dockerignore" ".env not excluded — secrets may leak into build context"
@@ -143,7 +143,7 @@ fi
 # ── 3. entrypoint.sh — no hardcoded credentials ──────────────────────────────
 ENTRYPOINT="$PROJECT_DIR/entrypoint.sh"
 if [[ -f "$ENTRYPOINT" ]]; then
-  CRED_PATTERNS='(password|secret|token|api.key)\s*=\s*["\x27][^$]'
+  CRED_PATTERNS='(password|secret|token|api.key)[[:space:]]*=[[:space:]]*["'"'"'][^$]'
   HARDCODED_CREDS=$(grep -inE "$CRED_PATTERNS" "$ENTRYPOINT" || true)
   if [[ -n "$HARDCODED_CREDS" ]]; then
     fail "No hardcoded creds in entrypoint.sh" "Found suspicious hardcoded values:"

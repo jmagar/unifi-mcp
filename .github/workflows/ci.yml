@@ -29,7 +29,7 @@ jobs:
         with:
           version: "latest"
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --extra dev
       - name: Ty
         run: uv run ty check unifi_mcp
 

@@ -135,6 +135,7 @@ except:
 " 2>/dev/null || echo "0")
     if [[ "$VULN_COUNT" -gt 0 ]]; then
       echo "  ⚠ Found $VULN_COUNT known vulnerabilities — run 'npm audit' for details"
+      FOUND_OUTDATED=1
     else
       echo "  ✓ No known vulnerabilities"
     fi
