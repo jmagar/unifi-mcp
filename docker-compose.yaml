@@ -4,7 +4,7 @@ services:
     container_name: unifi-mcp
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
-    env_file: .env
+    env_file: ~/.claude-homelab/.env
     # NOTE: No environment: block — all vars come from .env via env_file above.
     # Do NOT add environment: here. Put all variables in .env and .env.example.
     ports:
