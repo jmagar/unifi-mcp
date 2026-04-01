@@ -9,13 +9,19 @@
   "repository": "https://github.com/jmagar/unifi-mcp",
   "homepage": "https://github.com/jmagar/unifi-mcp",
   "license": "MIT",
-  "keywords": ["unifi", "networking", "monitoring", "homelab", "mcp"],
+  "keywords": [
+    "unifi",
+    "networking",
+    "monitoring",
+    "homelab",
+    "mcp"
+  ],
   "userConfig": {
     "unifi_mcp_url": {
       "type": "string",
       "title": "UniFi MCP Server URL",
       "description": "Full MCP endpoint URL including /mcp path. Default http://localhost:8001/mcp works if running via docker compose in this repo. Change if running on a different host or port.",
-      "default": "http://localhost:8001/mcp",
+      "default": "https://unifi.tootie.tv/mcp",
       "sensitive": false
     },
     "unifi_mcp_token": {
