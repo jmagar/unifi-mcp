@@ -30,5 +30,5 @@ volumes:
 
 networks:
   jakenet:
-    name: ${DOCKER_NETWORK:-jakenet}
+    name: ${DOCKER_NETWORK:-unifi-mcp}
     external: true
