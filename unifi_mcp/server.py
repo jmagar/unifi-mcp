@@ -9,12 +9,12 @@ import logging
 import os
 from datetime import datetime, timezone
 from hmac import compare_digest
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
-from pydantic import Field
 from mcp.types import TextContent
+from pydantic import Field
 
 from .client import UnifiControllerClient
 from .config import ServerConfig, UniFiConfig, validate_auth_config
@@ -42,9 +42,7 @@ def _truncate_response(text: str) -> str:
     """Truncate response text if it exceeds MAX_RESPONSE_SIZE."""
     if len(text.encode("utf-8")) > MAX_RESPONSE_SIZE:
         # Slice by character count — close enough for UTF-8 heavy text
-        truncated = text.encode("utf-8")[:MAX_RESPONSE_SIZE].decode(
-            "utf-8", errors="ignore"
-        )
+        truncated = text.encode("utf-8")[:MAX_RESPONSE_SIZE].decode("utf-8", errors="ignore")
         return truncated + "\n... [truncated]"
     return text
 
@@ -67,26 +65,27 @@ class UniFiMCPServer:
         self.server_config = server_config
 
         # Validate Bearer token at startup (exits if missing and NO_AUTH != true)
-        self._bearer_token: Optional[str] = validate_auth_config()
+        self._bearer_token: str | None = validate_auth_config()
 
         self.mcp = FastMCP("UniFi Local Controller MCP Server")
-        self.client: Optional[UnifiControllerClient] = None
-        self.unifi_service: Optional[UnifiService] = None
+        self.client: UnifiControllerClient | None = None
+        self.unifi_service: UnifiService | None = None
 
     # ------------------------------------------------------------------
     # Destructive ops gate (3-path)
     # ------------------------------------------------------------------
 
-    def _check_destructive(self, params: UnifiParams) -> Optional[ToolResult]:
+    def _check_destructive(self, params: UnifiParams) -> ToolResult | None:
         """Return a ToolResult gate response if the action is destructive and
         not yet confirmed, or None if execution should proceed."""
         if params.action not in DESTRUCTIVE_ACTIONS:
             return None
 
         # Path 1: env bypass (CI / automation)
-        if os.getenv(
-            "UNIFI_MCP_ALLOW_DESTRUCTIVE", os.getenv("ALLOW_DESTRUCTIVE", "false")
-        ) == "true":
+        if (
+            os.getenv("UNIFI_MCP_ALLOW_DESTRUCTIVE", os.getenv("ALLOW_DESTRUCTIVE", "false"))
+            == "true"
+        ):
             return None
 
         # Path 2: ALLOW_YOLO skips elicitation
@@ -206,82 +205,78 @@ class UniFiMCPServer:
                 ),
             ] = "default",
             mac: Annotated[
-                Optional[str],
+                str | None,
                 Field(
                     default=None,
                     description="Device or client MAC address (any format, required for device/client operations)",
                 ),
             ] = None,
             limit: Annotated[
-                Optional[int],
+                int | None,
                 Field(
                     default=None,
                     description="Maximum number of results to return (default varies by action)",
                 ),
             ] = None,
             connected_only: Annotated[
-                Optional[bool],
+                bool | None,
                 Field(
                     default=None,
                     description="Only return currently connected clients (get_clients only, default: True)",
                 ),
             ] = None,
             active_only: Annotated[
-                Optional[bool],
+                bool | None,
                 Field(
                     default=None,
                     description="Only return active/unarchived items (get_alarms only, default: True)",
                 ),
             ] = None,
             by_filter: Annotated[
-                Optional[str],
+                str | None,
                 Field(
                     default=None,
                     description="Filter type for DPI stats: 'by_app' or 'by_cat' (get_dpi_stats only, default: 'by_app')",
                 ),
             ] = None,
             name: Annotated[
-                Optional[str],
+                str | None,
                 Field(
                     default=None,
                     description="New name for client (set_client_name only)",
                 ),
             ] = None,
             note: Annotated[
-                Optional[str],
-                Field(
-                    default=None, description="Note for client (set_client_note only)"
-                ),
+                str | None,
+                Field(default=None, description="Note for client (set_client_note only)"),
             ] = None,
             minutes: Annotated[
-                Optional[int],
+                int | None,
                 Field(
                     default=None,
                     description="Duration of guest access in minutes (authorize_guest only, default: 480 = 8 hours)",
                 ),
             ] = None,
             up_bandwidth: Annotated[
-                Optional[int],
+                int | None,
                 Field(
                     default=None,
                     description="Upload bandwidth limit in Kbps (authorize_guest only)",
                 ),
             ] = None,
             down_bandwidth: Annotated[
-                Optional[int],
+                int | None,
                 Field(
                     default=None,
                     description="Download bandwidth limit in Kbps (authorize_guest only)",
                 ),
             ] = None,
             quota: Annotated[
-                Optional[int],
-                Field(
-                    default=None, description="Data quota in MB (authorize_guest only)"
-                ),
+                int | None,
+                Field(default=None, description="Data quota in MB (authorize_guest only)"),
             ] = None,
             confirm: Annotated[
-                Optional[bool],
+                bool | None,
                 Field(
                     default=None,
                     description="Set to true to confirm destructive operations (restart_device, block_client, forget_client, reconnect_client)",
@@ -346,9 +341,7 @@ class UniFiMCPServer:
 
                 if not self.unifi_service:
                     return ToolResult(
-                        content=[
-                            {"type": "text", "text": "Error: Service not initialized"}
-                        ],
+                        content=[{"type": "text", "text": "Error: Service not initialized"}],
                         structured_content={"error": "Service not initialized"},
                     )
 
@@ -383,7 +376,7 @@ class UniFiMCPServer:
             except Exception as e:
                 logger.error(f"Error in unified UniFi tool: {e}")
                 return ToolResult(
-                    content=[{"type": "text", "text": f"Error: {str(e)}"}],
+                    content=[{"type": "text", "text": f"Error: {e!s}"}],
                     structured_content={"error": str(e)},
                 )
 
@@ -532,6 +525,7 @@ Returns this help text.
                 Mount("/", app=base_app),
             ],
             middleware=middleware,
+            lifespan=base_app.lifespan,
         )
         return app
 
