@@ -1,0 +1,38 @@
+{
+  "name": "unifi-mcp",
+  "version": "1.0.0",
+  "description": "UniFi network management via MCP tools. Monitor devices, clients, network health, firewall rules, and perform management operations.",
+  "mcpServers": {
+    "unifi-mcp": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "unifi_mcp.main"],
+      "cwd": "${extensionPath}"
+    }
+  },
+  "settings": [
+    {
+      "name": "UniFi Controller URL",
+      "description": "URL of your UniFi controller (e.g., https://192.168.1.1:8443)",
+      "envVar": "UNIFI_URL",
+      "sensitive": false
+    },
+    {
+      "name": "UniFi Username",
+      "description": "Username for UniFi controller authentication",
+      "envVar": "UNIFI_USERNAME",
+      "sensitive": false
+    },
+    {
+      "name": "UniFi Password",
+      "description": "Password for UniFi controller authentication",
+      "envVar": "UNIFI_PASSWORD",
+      "sensitive": true
+    },
+    {
+      "name": "UDM Pro Mode",
+      "description": "Set to true if using a UDM Pro or UDM SE (default: true)",
+      "envVar": "UNIFI_IS_UDM_PRO",
+      "sensitive": false
+    }
+  ]
+}
