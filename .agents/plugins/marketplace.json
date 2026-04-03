@@ -1,0 +1,20 @@
+{
+  "name": "unifi-mcp",
+  "interface": {
+    "displayName": "UniFi MCP"
+  },
+  "plugins": [
+    {
+      "name": "unifi-mcp",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Infrastructure"
+    }
+  ]
+}
