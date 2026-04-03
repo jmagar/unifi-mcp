@@ -8,43 +8,45 @@ on:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint & Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v5
         with:
-          version: "latest"
+          version: "0.9.25"
       - name: Install dependencies
-        run: uv sync
-      - name: Ruff lint
-        run: uv run ruff check .
+        run: uv sync --extra dev
+      - name: Ruff check
+        run: uv run ruff check unifi_mcp/ tests/
+      - name: Ruff format
+        run: uv run ruff format --check unifi_mcp/ tests/
 
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v5
         with:
-          version: "latest"
+          version: "0.9.25"
       - name: Install dependencies
         run: uv sync --extra dev
-      - name: Ty
-        run: uv run ty check unifi_mcp
+      - name: ty check
+        run: uv run ty check unifi_mcp/
 
   test:
-    name: Tests
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v5
         with:
-          version: "latest"
+          version: "0.9.25"
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --extra dev
       - name: Run tests
-        run: uv run pytest tests/ -v
+        run: uv run pytest -m "not slow and not integration" -v --tb=short -q
 
   version-sync:
     name: Version Sync
