@@ -5,24 +5,24 @@ Routes actions to appropriate domain services and handles authentication.
 """
 
 import logging
+
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
-from .device_service import DeviceService
-from .client_service import ClientService
-from .network_service import NetworkService
-from .monitoring_service import MonitoringService
 from ..client import UnifiControllerClient
 from ..models.enums import (
-    UnifiAction,
-    DEVICE_ACTIONS,
+    AUTH_ACTIONS,
     CLIENT_ACTIONS,
-    NETWORK_ACTIONS,
+    DEVICE_ACTIONS,
     MONITORING_ACTIONS,
-    AUTH_ACTIONS
+    NETWORK_ACTIONS,
+    UnifiAction,
 )
 from ..models.params import UnifiParams
+from .client_service import ClientService
+from .device_service import DeviceService
+from .monitoring_service import MonitoringService
+from .network_service import NetworkService
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +70,7 @@ class UnifiService:
             elif params.action in AUTH_ACTIONS:
                 return await self._handle_auth_action(params)
             else:
-                return self._create_error_result(
-                    f"Unknown action: {params.action}"
-                )
+                return self._create_error_result(f"Unknown action: {params.action}")
 
         except Exception as e:
             logger.error(f"Error executing action {params.action}: {e}")
@@ -90,9 +88,7 @@ class UnifiService:
         if params.action == UnifiAction.GET_USER_INFO:
             return await self._get_user_info()
         else:
-            return self._create_error_result(
-                f"Authentication action {params.action} not supported"
-            )
+            return self._create_error_result(f"Authentication action {params.action} not supported")
 
     async def _get_user_info(self) -> ToolResult:
         """Get authenticated user information (OAuth only).
@@ -102,8 +98,9 @@ class UnifiService:
         """
         try:
             # Import here to avoid issues if not using authentication
-            from fastmcp.server.dependencies import get_access_token
             from datetime import datetime, timezone
+
+            from fastmcp.server.dependencies import get_access_token
 
             def _to_iso(ts):
                 try:
@@ -111,11 +108,24 @@ class UnifiService:
                 except Exception:
                     return ts
 
-            token = get_access_token()
-            # If get_access_token becomes async in future versions:
-            # token = await get_access_token()
+            try:
+                token = get_access_token()
+            except Exception:
+                token = None
             if token is None:
-                raise RuntimeError("No access token available")
+                return ToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="OAuth not configured — get_user_info requires MCP OAuth authentication",
+                        )
+                    ],
+                    structured_content={
+                        "error": "OAuth not configured",
+                        "authenticated": False,
+                        "hint": "get_user_info requires MCP OAuth (e.g. Google). UniFi controller auth is separate.",
+                    },
+                )
             # The GoogleProvider stores user data in token claims
             user_info = {
                 "google_id": token.claims.get("sub"),
@@ -131,18 +141,22 @@ class UnifiService:
 
             logger.debug("User authenticated.")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Authenticated as: {user_info.get('email', 'Unknown')}")],
-                structured_content=user_info
+                content=[
+                    TextContent(
+                        type="text", text=f"Authenticated as: {user_info.get('email', 'Unknown')}"
+                    )
+                ],
+                structured_content=user_info,
             )
 
         except Exception as e:
             logger.error(f"Error getting user info: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={
-                    "error": f"Failed to get user info: {str(e)}",
-                    "authenticated": False
-                }
+                    "error": f"Failed to get user info: {e!s}",
+                    "authenticated": False,
+                },
             )
 
     @staticmethod
@@ -158,5 +172,5 @@ class UnifiService:
         """
         return ToolResult(
             content=[TextContent(type="text", text=f"Error: {message}")],
-            structured_content={"error": message, "raw": raw_data}
+            structured_content={"error": message, "raw": raw_data},
         )

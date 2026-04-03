@@ -6,22 +6,23 @@ port configurations, and security settings.
 """
 
 import logging
+
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
-from ..models.enums import UnifiAction
-from ..models.params import UnifiParams
 from ..formatters import (
-    format_site_summary,
-    format_sites_list,
-    format_wlans_list,
+    format_firewall_groups_list,
+    format_firewall_rules_list,
     format_networks_list,
     format_port_forwarding_list,
-    format_firewall_rules_list,
-    format_firewall_groups_list,
+    format_site_summary,
+    format_sites_list,
     format_static_routes_list,
+    format_wlans_list,
 )
+from ..models.enums import UnifiAction
+from ..models.params import UnifiParams
+from .base import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +56,7 @@ class NetworkService(BaseService):
 
         handler = action_map.get(params.action)
         if not handler:
-            return self.create_error_result(
-                f"Network action {params.action} not supported"
-            )
+            return self.create_error_result(f"Network action {params.action} not supported")
 
         try:
             return await handler(params)
@@ -72,7 +71,7 @@ class NetworkService(BaseService):
 
             # Check for error response
             if isinstance(sites, dict) and "error" in sites:
-                return self.create_error_result(sites.get('error','unknown error'), sites)
+                return self.create_error_result(sites.get("error", "unknown error"), sites)
 
             if not isinstance(sites, list):
                 return self.create_error_result("Unexpected response format")
@@ -85,17 +84,19 @@ class NetworkService(BaseService):
                     formatted_sites.append(formatted_site)
                 except Exception as e:
                     logger.error(f"Error formatting site {site.get('name', 'Unknown')}: {e}")
-                    formatted_sites.append({
-                        "name": site.get("name", "Unknown"),
-                        "description": site.get("desc", "Unknown"),
-                        "error": f"Formatting error: {str(e)}"
-                    })
+                    formatted_sites.append(
+                        {
+                            "name": site.get("name", "Unknown"),
+                            "description": site.get("desc", "Unknown"),
+                            "error": f"Formatting error: {e!s}",
+                        }
+                    )
 
             summary_text = format_sites_list(sites)
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_sites,
-                success_message=f"Retrieved {len(formatted_sites)} sites"
+                success_message=f"Retrieved {len(formatted_sites)} sites",
             )
 
         except Exception as e:
@@ -106,7 +107,7 @@ class NetworkService(BaseService):
         """Get wireless network (WLAN) configurations."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get('site_name', 'default')
+            site_name = defaults.get("site_name", "default")
 
             wlans = await self.client.get_wlan_configs(site_name)
 
@@ -132,7 +133,7 @@ class NetworkService(BaseService):
                     "guest_access": wlan.get("is_guest", False),
                     "hide_ssid": wlan.get("hide_ssid", False),
                     "mac_filter_enabled": wlan.get("mac_filter_enabled", False),
-                    "band_steering": wlan.get("band_steering", False)
+                    "band_steering": wlan.get("band_steering", False),
                 }
                 formatted_wlans.append(formatted_wlan)
 
@@ -140,7 +141,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_wlans,
-                success_message=f"Retrieved {len(formatted_wlans)} WLAN configurations"
+                success_message=f"Retrieved {len(formatted_wlans)} WLAN configurations",
             )
 
         except Exception as e:
@@ -151,7 +152,7 @@ class NetworkService(BaseService):
         """Get network/VLAN configurations."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get('site_name', 'default')
+            site_name = defaults.get("site_name", "default")
 
             networks = await self.client.get_network_configs(site_name)
 
@@ -174,10 +175,12 @@ class NetworkService(BaseService):
                     "dhcp_enabled": network.get("dhcpd_enabled", False),
                     "dhcp_range": {
                         "start": network.get("dhcpd_start"),
-                        "stop": network.get("dhcpd_stop")
-                    } if network.get("dhcpd_enabled") else None,
+                        "stop": network.get("dhcpd_stop"),
+                    }
+                    if network.get("dhcpd_enabled")
+                    else None,
                     "domain_name": network.get("domain_name"),
-                    "guest_access": network.get("is_guest", False)
+                    "guest_access": network.get("is_guest", False),
                 }
                 formatted_networks.append(formatted_network)
 
@@ -185,7 +188,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_networks,
-                success_message=f"Retrieved {len(formatted_networks)} network configurations"
+                success_message=f"Retrieved {len(formatted_networks)} network configurations",
             )
 
         except Exception as e:
@@ -196,7 +199,7 @@ class NetworkService(BaseService):
         """Get switch port profile configurations."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get('site_name', 'default')
+            site_name = defaults.get("site_name", "default")
 
             ports = await self.client.get_port_configs(site_name)
 
@@ -220,29 +223,33 @@ class NetworkService(BaseService):
                     "storm_control": port.get("storm_ctrl_enabled", False),
                     "poe_mode": port.get("poe_mode", "auto"),
                     "speed": port.get("speed", "auto"),
-                    "duplex": port.get("full_duplex", True)
+                    "duplex": port.get("full_duplex", True),
                 }
                 formatted_ports.append(formatted_port)
 
             # Compact summary: name | VLAN/native | PoE | Security
             lines = [f"Port Profiles ({len(formatted_ports)} total)"]
-            lines.append(f"  {'En':<2} {'Profile Name':<28} {'Native VLAN':<11} {'Tagged Count':<13} {'PoE Mode':<8} {'Port Security':<13}")
-            lines.append(f"  {'-'*2:<2} {'-'*28:<28} {'-'*11:<11} {'-'*13:<13} {'-'*8:<8} {'-'*13:<13}")
+            lines.append(
+                f"  {'En':<2} {'Profile Name':<28} {'Native VLAN':<11} {'Tagged Count':<13} {'PoE Mode':<8} {'Port Security':<13}"
+            )
+            lines.append(
+                f"  {'-' * 2:<2} {'-' * 28:<28} {'-' * 11:<11} {'-' * 13:<13} {'-' * 8:<8} {'-' * 13:<13}"
+            )
             for p in formatted_ports[:40]:
-                en = '✓' if p.get('enabled') else '✗'
-                name = str(p.get('name',''))[:28]
-                native = str(p.get('native_vlan','Default'))[:11]
-                tagged = str(len(p.get('tagged_vlans',[]) or []))[:13]
-                poe = str(p.get('poe_mode','auto'))[:8]
-                sec = '✓' if p.get('port_security') else '✗'
+                en = "✓" if p.get("enabled") else "✗"
+                name = str(p.get("name", ""))[:28]
+                native = str(p.get("native_vlan", "Default"))[:11]
+                tagged = str(len(p.get("tagged_vlans", []) or []))[:13]
+                poe = str(p.get("poe_mode", "auto"))[:8]
+                sec = "✓" if p.get("port_security") else "✗"
                 lines.append(f"  {en:<2} {name:<28} {native:<11} {tagged:<13} {poe:<8} {sec:<13}")
             if len(formatted_ports) > 40:
-                lines.append(f"  ... and {len(formatted_ports)-40} more")
+                lines.append(f"  ... and {len(formatted_ports) - 40} more")
             summary_text = "\n".join(lines)
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_ports,
-                success_message=f"Retrieved {len(formatted_ports)} port configurations"
+                success_message=f"Retrieved {len(formatted_ports)} port configurations",
             )
 
         except Exception as e:
@@ -253,7 +260,7 @@ class NetworkService(BaseService):
         """Get port forwarding rules."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get('site_name', 'default')
+            site_name = defaults.get("site_name", "default")
 
             rules = await self.client.get_port_forwarding_rules(site_name)
 
@@ -276,7 +283,7 @@ class NetworkService(BaseService):
                     "internal_ip": rule.get("fwd", "Unknown"),
                     "internal_port": rule.get("fwd_port", "Unknown"),
                     "log": rule.get("log", False),
-                    "source": rule.get("src", "any")
+                    "source": rule.get("src", "any"),
                 }
                 formatted_rules.append(formatted_rule)
 
@@ -284,7 +291,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_rules,
-                success_message=f"Retrieved {len(formatted_rules)} port forwarding rules"
+                success_message=f"Retrieved {len(formatted_rules)} port forwarding rules",
             )
 
         except Exception as e:
@@ -295,23 +302,27 @@ class NetworkService(BaseService):
         """Get firewall rules for security audit and management."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get('site_name', 'default')
+            site_name = defaults.get("site_name", "default")
 
-            rules = await self.client._make_request("GET", "/rest/firewallrule", site_name=site_name)
+            rules = await self.client._make_request(
+                "GET", "/rest/firewallrule", site_name=site_name
+            )
 
             # Check for error response
             if isinstance(rules, dict) and "error" in rules:
-                return self.create_error_result(rules.get('error','unknown error'), rules)
+                return self.create_error_result(rules.get("error", "unknown error"), rules)
 
             if not isinstance(rules, list):
-                return self.create_error_result(f"Unexpected response format: {type(rules).__name__}", {"error": f"Unexpected response format: {type(rules).__name__}", "data": rules})
+                return self.create_error_result(
+                    f"Unexpected response format: {type(rules).__name__}",
+                    {"error": f"Unexpected response format: {type(rules).__name__}", "data": rules},
+                )
 
             # Add debug info if no rules found
             if not rules:
-                empty = [{"message": "No firewall rules found", "rule_count": 0}]
                 return ToolResult(
                     content=[TextContent(type="text", text="Firewall Rules (0 total)\n  -")],
-                    structured_content=empty
+                    structured_content={"message": "No firewall rules found", "rule_count": 0},
                 )
 
             rule_items = self.dict_items(rules)
@@ -332,7 +343,7 @@ class NetworkService(BaseService):
                     "index": rule.get("rule_index", None),
                     "logging": rule.get("logging", False),
                     "established": rule.get("state_established", False),
-                    "related": rule.get("state_related", False)
+                    "related": rule.get("state_related", False),
                 }
                 formatted_rules.append(formatted_rule)
 
@@ -340,7 +351,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_rules,
-                success_message=f"Retrieved {len(formatted_rules)} firewall rules"
+                success_message=f"Retrieved {len(formatted_rules)} firewall rules",
             )
 
         except Exception as e:
@@ -351,9 +362,11 @@ class NetworkService(BaseService):
         """Get firewall groups for security management."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get('site_name', 'default')
+            site_name = defaults.get("site_name", "default")
 
-            groups = await self.client._make_request("GET", "/rest/firewallgroup", site_name=site_name)
+            groups = await self.client._make_request(
+                "GET", "/rest/firewallgroup", site_name=site_name
+            )
 
             # Check for error response
             error_result = self.check_list_response(groups, params.action)
@@ -371,7 +384,7 @@ class NetworkService(BaseService):
                     "group_type": group.get("group_type", "unknown"),
                     "group_members": group.get("group_members", []),
                     "member_count": len(group.get("group_members", [])),
-                    "description": group.get("description", "No description")
+                    "description": group.get("description", "No description"),
                 }
                 formatted_groups.append(formatted_group)
 
@@ -379,7 +392,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_groups,
-                success_message=f"Retrieved {len(formatted_groups)} firewall groups"
+                success_message=f"Retrieved {len(formatted_groups)} firewall groups",
             )
 
         except Exception as e:
@@ -390,7 +403,7 @@ class NetworkService(BaseService):
         """Get static routes for advanced network routing analysis."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get('site_name', 'default')
+            site_name = defaults.get("site_name", "default")
 
             routes = await self.client._make_request("GET", "/rest/routing", site_name=site_name)
 
@@ -412,7 +425,7 @@ class NetworkService(BaseService):
                     "distance": route.get("static-route_distance", "unknown"),
                     "gateway": route.get("static-route_nexthop", "unknown"),
                     "interface": route.get("static-route_interface", "auto"),
-                    "type": route.get("type", "static")
+                    "type": route.get("type", "static"),
                 }
                 formatted_routes.append(formatted_route)
 
@@ -420,7 +433,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_routes,
-                success_message=f"Retrieved {len(formatted_routes)} static routes"
+                success_message=f"Retrieved {len(formatted_routes)} static routes",
             )
 
         except Exception as e:

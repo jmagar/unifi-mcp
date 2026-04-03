@@ -70,8 +70,22 @@ class MonitoringService(BaseService):
     async def _get_controller_status(self, params: UnifiParams) -> ToolResult:
         """Get controller system information and status."""
         try:
-            # Get basic controller status
-            result = await self.client._make_request("GET", "/status", site_name="")
+            # On UDM Pro, /proxy/network/api/status doesn't exist —
+            # use /api/system (UniFi OS system endpoint) directly
+            if self.client.config.is_udm_pro:
+                await self.client.ensure_authenticated()
+                resp = await self.client.session.get(
+                    f"{self.client.config.controller_url}/api/system",
+                    headers={"X-CSRF-Token": self.client.csrf_token}
+                    if self.client.csrf_token
+                    else {},
+                )
+                if resp.status_code == 200:
+                    result = resp.json()
+                else:
+                    result = {"error": f"Request failed with status {resp.status_code}"}
+            else:
+                result = await self.client._make_request("GET", "/status", site_name="")
 
             if isinstance(result, dict) and "error" in result:
                 return ToolResult(
