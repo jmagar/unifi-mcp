@@ -1,1 +1,43 @@
-{"name":"unifi-mcp","version":"1.0.0","description":"UniFi network management via MCP","interface":{"type":"mcp","displayName":"UniFi MCP","transport":"http","url":"http://localhost:8001/mcp"}}
+{
+  "name": "unifi-mcp",
+  "version": "1.0.0",
+  "description": "UniFi network management via MCP.",
+  "homepage": "https://github.com/jmagar/unifi-mcp",
+  "repository": "https://github.com/jmagar/unifi-mcp",
+  "license": "MIT",
+  "keywords": [
+    "unifi",
+    "networking",
+    "monitoring",
+    "homelab",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "UniFi MCP",
+    "shortDescription": "Monitor devices, clients, and network health",
+    "longDescription": "Monitor UniFi devices, clients, network health, and controller operations through MCP tools and bundled skills.",
+    "developerName": "Jacob Magar",
+    "category": "Infrastructure",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/unifi-mcp",
+    "defaultPrompt": [
+      "List UniFi devices on my network.",
+      "Show active UniFi clients.",
+      "Check UniFi alerts and controller health."
+    ],
+    "brandColor": "#0559C9",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.svg"
+  },
+  "author": {
+    "name": "Jacob Magar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  }
+}

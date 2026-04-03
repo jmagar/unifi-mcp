@@ -47,6 +47,33 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "RUF"]
 
+[tool.coverage.run]
+source = ["unifi_mcp"]
+branch = true
+data_file = ".cache/.coverage"
+omit = ["*/tests/*", "*/test_*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self\\.debug",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+]
+ignore_errors = true
+skip_covered = true
+show_missing = true
+
+[tool.coverage.html]
+directory = ".cache/htmlcov"
+
+[tool.mypy]
+cache_dir = ".cache/mypy"
+
 [tool.ty]
 
 [tool.pytest.ini_options]
@@ -58,7 +85,7 @@ addopts = [
     "--cov=unifi_mcp",
     "--cov-branch",
     "--cov-report=term-missing:skip-covered",
-    "--cov-report=html:htmlcov",
+    "--cov-report=html:.cache/htmlcov",
     "--cov-fail-under=80",
 ]
 asyncio_mode = "auto"

@@ -3,13 +3,13 @@
 .env.*
 !.env.example
 
-# ── Runtime / hook artifacts ─────────────────────────────────────────────────
-backups/*
-!backups/.gitkeep
-logs/*
-!logs/.gitkeep
+# ── Runtime artifacts ────────────────────────────────────────────────────────
+logs/
+backups/
 *.log
 *.pid
+*.bak
+*.bak-*
 
 # ── Claude Code / AI tooling ────────────────────────────────────────────────
 .claude/settings.local.json
@@ -17,8 +17,13 @@ logs/*
 .omc/
 .lavra/
 .beads/
+.dolt/
+*.db
+*.db-shm
+*.db-wal
+.beads-credential-key
 .serena/
-.worktrees
+.worktrees/
 .full-review/
 .full-review-archive-*
 .bivvy
@@ -28,28 +33,42 @@ logs/*
 .cursor/
 .windsurf/
 .1code/
+.idea/
+.zed/
+*.iml
+*.swp
+*.swo
+*~
+.emdash.json
 
-# ── Caches (ALL tool artifacts go here — see .cache Convention) ──────────────
+# ── OS generated ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Caches (ALL tool caches go here) ─────────────────────────────────────────
 .cache/
 
-# ── Documentation artifacts ───────────────────────────────────────────────────
+# ── Documentation artifacts (session/plan docs, not reference) ───────────────
+.docs/
 docs/plans/
 docs/sessions/
 docs/reports/
 docs/research/
 docs/superpowers/
+specs/
 
 # ── Python ───────────────────────────────────────────────────────────────────
 .venv/
-.venv-backend/
 __pycache__/
 *.py[oc]
 *.egg-info/
 *.egg
-dist/
 build/
+dist/
 sdist/
 wheels/
+pip-wheel-metadata/
+*.whl
 .hypothesis/
 .pytest_cache/
 .ruff_cache/
@@ -65,5 +84,3 @@ coverage.xml
 .tox/
 .nox/
 pip-log.txt
-pip-wheel-metadata/
-*.whl
