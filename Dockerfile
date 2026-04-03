@@ -1,53 +1,49 @@
-# Multi-stage build for UniFi MCP Server
-# Builder stage: install deps and compile
+# syntax=docker/dockerfile:1
+
+# ── builder ──────────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS builder
 
-WORKDIR /build
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy dependency files and application source, then install
-COPY pyproject.toml ./
-COPY unifi_mcp/ ./unifi_mcp/
-RUN pip install --no-cache-dir --prefix=/install .
-
-# Runtime stage: minimal image
-FROM python:3.11-slim
-
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN useradd --create-home --shell /bin/sh --uid 1000 unifi
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /install /usr/local
+# Install dependencies first (layer cache)
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
-# Copy application code
-COPY --from=builder /build/unifi_mcp/ ./unifi_mcp/
-COPY pyproject.toml ./
+# Copy source and install project
+COPY unifi_mcp/ ./unifi_mcp/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+# ── runtime ──────────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+RUN useradd --create-home --shell /bin/sh --uid 1000 unifi && \
+    apt-get update && apt-get install -y --no-install-recommends wget && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built venv and source from builder
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/unifi_mcp /app/unifi_mcp
+COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
 # Copy entrypoint
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    chown -R unifi:unifi /app
 
-# Set ownership
-RUN chown -R unifi:unifi /app
-
-# Switch to non-root user
 USER unifi
 
-# Expose the MCP port
 EXPOSE 8001
 
-# Health check
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget -q --spider http://localhost:8001/health || exit 1
 
