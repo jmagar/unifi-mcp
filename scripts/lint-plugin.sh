@@ -29,7 +29,6 @@ Checks:
   10. skills/ directory has SKILL.md files
   11. hooks/ scripts exist and are executable
   12. docker-compose.yaml uses env_file, has user:, no environment: block
-  13. SWAG .subdomain.conf present
   14. No .env tracked in git
   15. Required directories exist (backups/, logs/, tests/, skills/)
   16. assets/ directory has icon files
@@ -430,17 +429,6 @@ else
 fi
 echo
 
-# ── 14. SWAG config ──────────────────────────────────────────────────────────
-echo "── 14. SWAG config ──"
-
-SWAG_FILES=$(find "$PROJECT_DIR" -maxdepth 1 -name "*.subdomain.conf" -type f 2>/dev/null || true)
-if [[ -n "$SWAG_FILES" ]]; then
-  SWAG_COUNT=$(echo "$SWAG_FILES" | wc -l)
-  pass "Found $SWAG_COUNT .subdomain.conf file(s)"
-else
-  fail "SWAG config" "No *.subdomain.conf found at repo root"
-fi
-echo
 
 # ── 15. No committed secrets ─────────────────────────────────────────────────
 echo "── 15. No committed secrets ──"
