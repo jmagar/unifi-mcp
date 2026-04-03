@@ -1,70 +1,49 @@
-# Version control
 .git
-.gitignore
-
-# Environment / secrets
+.github
+.claude-plugin
+.codex-plugin
+.agents
+.beads
+.dolt
+.omc
+.lavra
+.serena
+.cache
+.worktrees
+.full-review
+.full-review-archive-*
+.vscode
+.cursor
+.windsurf
+.1code
+.idea
 .env
 .env.*
-.cache/
-
-# Node / Python artifacts
-node_modules/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-pip-log.txt
-.tox
-.coverage
-.coverage.*
-nosetests.xml
-coverage.xml
-*.cover
+!.env.example
 *.log
-.mypy_cache
-.pytest_cache
-.hypothesis
-*.egg-info/
-build/
-dist/
-
-# Dev tooling
-.lavra/
-.omc/
-.serena/
-.vscode/
-.idea/
-.ipynb_checkpoints/
-
-# Docs and markdown (keep README)
+logs/
+backups/
+docs/
+specs/
 *.md
 !README.md
-docs/
-LICENSE
-
-# Tests
-tests/
-test_*
-*_test.py
-
-# Docker meta (not needed inside image)
-Dockerfile*
-docker-compose*
-.dockerignore
-
-# CI / tooling config
-.github/
-.pre-commit-config.yaml
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+.hypothesis
+node_modules
+dist
+coverage
+*.tsbuildinfo
+target
 Justfile
+biome.json
+.pre-commit-config.yaml
+.prettierrc
+.prettierignore
+tests/
 
-# Backups / logs
-backups/
-logs/
-
-# OS artifacts
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-*~
