@@ -231,10 +231,21 @@ class UnifiControllerClient:
             if resp.status_code == 200:
                 body = resp.json()
                 return body.get("data", body) if isinstance(body, dict) else body
-            # Fall through to legacy endpoint on failure
+            # Fall through to legacy endpoint
             logger.debug(f"v2 events returned {resp.status_code}, trying legacy endpoint")
-        data = {"_limit": limit}
-        return await self._make_request("POST", "/stat/event", site_name=site_name, data=data)
+        result = await self._make_request(
+            "POST", "/stat/event", site_name=site_name, data={"_limit": limit}
+        )
+        # Both v2 and legacy paths return 404 on Network Application 10.x —
+        # surface a clear message instead of a raw error
+        if isinstance(result, dict) and "error" in result:
+            return {
+                "error": "Events API not available on this controller version",
+                "detail": result.get("error", ""),
+                "hint": "Network Application 10.x removed the legacy /stat/event endpoint. "
+                "Use get_alarms for active alerts instead.",
+            }
+        return result
 
     async def get_alarms(self, site_name: str = "default") -> dict[str, Any] | list:
         """Get active alarms."""
