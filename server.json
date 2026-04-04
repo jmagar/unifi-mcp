@@ -1,0 +1,43 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "tv.tootie/unifi-mcp",
+  "title": "UniFi MCP",
+  "description": "MCP server for UniFi network controller management.",
+  "repository": {
+    "url": "https://github.com/jmagar/unifi-mcp",
+    "source": "github"
+  },
+  "version": "1.0.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "mcp-unifi",
+      "version": "1.0.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "UNIFI_URL",
+          "description": "URL of your UniFi controller, e.g. https://192.168.1.1:443.",
+          "isRequired": true,
+          "isSecret": false
+        },
+        {
+          "name": "UNIFI_USERNAME",
+          "description": "UniFi controller admin username.",
+          "isRequired": true,
+          "isSecret": false
+        },
+        {
+          "name": "UNIFI_PASSWORD",
+          "description": "UniFi controller admin password.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
