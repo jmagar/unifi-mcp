@@ -1,5 +1,7 @@
 # UniFi MCP
 
+[![PyPI](https://img.shields.io/pypi/v/unifi-mcp)](https://pypi.org/project/unifi-mcp/) [![ghcr.io](https://img.shields.io/badge/ghcr.io-jmagar%2Funifi--mcp-blue?logo=docker)](https://github.com/jmagar/unifi-mcp/pkgs/container/unifi-mcp)
+
 FastMCP server for local UniFi controller management. Exposes a single `unifi` action router and a `unifi_help` reference tool covering devices, clients, network configuration, and controller monitoring.
 
 ## Overview
