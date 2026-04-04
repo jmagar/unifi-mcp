@@ -1,109 +1,140 @@
-# UniFi Local Controller MCP Server
+# UniFi MCP
 
-> **Direct, real-time management for local UniFi controllers via the Model Context Protocol.**
+FastMCP server for local UniFi controller management. The repo exposes a single `unifi` action router plus discovery/help tooling for devices, clients, network configuration, and controller monitoring.
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
-[![Python Version](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
-[![FastMCP](https://img.shields.io/badge/FastMCP-Enabled-brightgreen.svg)](https://github.com/jlowin/fastmcp)
-[![License](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
+## What this repository ships
 
----
+- `unifi_mcp/`: server, formatters, resources, and tool modules
+- `skills/unifi/`: client-facing UniFi skill
+- `docs/`: API notes, action-pattern docs, testing notes, and formatting references
+- `.claude-plugin/`, `.codex-plugin/`, `gemini-extension.json`: client manifests
+- `docker-compose.yaml`, `Dockerfile`: container deployment
+- `tests/`: unit, resource, and integration tests
 
-## ✨ Overview
-UniFi MCP provides direct integration with local UniFi controllers (UDM Pro, Cloud Gateway Max, etc.) without cloud dependencies. It delivers clean, human-readable network data and granular device control.
+## MCP surface
 
-### 🎯 Key Features
-| Feature | Description |
-|---------|-------------|
-| **Device Control** | Restart, locate, and manage network infrastructure |
-| **Client Management** | Reconnect, block, or rename connected clients |
-| **Network Insights** | Real-time dashboard, DPI stats, and subsystem health |
-| **Modular Design** | Site-aware resources with recursive data formatting |
+### Main tools
 
----
+| Tool | Purpose |
+| --- | --- |
+| `unifi` | Action router for controller, client, device, and network operations |
+| `unifi_help` | Markdown help for all actions and parameters |
 
-## 🎯 Claude Code Integration
-The easiest way to use this plugin is through the Claude Code marketplace:
+### Supported action groups
+
+| Group | Actions |
+| --- | --- |
+| Device management | `get_devices`, `get_device_by_mac`, `restart_device`, `locate_device` |
+| Client management | `get_clients`, `reconnect_client`, `block_client`, `unblock_client`, `forget_client`, `set_client_name`, `set_client_note` |
+| Network config | `get_sites`, `get_wlan_configs`, `get_network_configs`, `get_port_configs`, `get_port_forwarding_rules`, `get_firewall_rules`, `get_firewall_groups`, `get_static_routes` |
+| Monitoring | `get_controller_status`, `get_events`, `get_alarms`, `get_dpi_stats`, `get_rogue_aps`, `start_spectrum_scan`, `get_spectrum_scan_state`, `authorize_guest`, `get_speedtest_results`, `get_ips_events` |
+| Identity | `get_user_info` |
+
+Destructive actions such as `restart_device`, `block_client`, `forget_client`, and `reconnect_client` require confirmation unless the server is explicitly configured to allow them.
+
+## Installation
+
+### Marketplace
 
 ```bash
-# Add the marketplace
 /plugin marketplace add jmagar/claude-homelab
-
-# Install the plugin
 /plugin install unifi-mcp @jmagar-claude-homelab
 ```
 
----
+### Local development
 
-## ⚙️ Configuration & Credentials
-Credentials follow the standardized `homelab-core` pattern.
-
-**Location:** `~/.unifi-mcp/.env` (also supports shared `~/.claude-homelab/.env`)
-
-### Required Variables
-```bash
-UNIFI_URL="https://10.1.0.1:443"         # UniFi OS (UDM/CGM)
-UNIFI_USERNAME="admin"                   # Local admin account
-UNIFI_PASSWORD="your-password"           # Local admin password
-UNIFI_IS_UDM_PRO=true                    # Set false for legacy controllers
-UNIFI_VERIFY_SSL=false                   # Usually false for self-signed certs
-```
-
----
-
-## 🛠️ Available Tools & Resources
-
-### 🔧 Primary Tools
-| Tool | Parameters | Description |
-|------|------------|-------------|
-| **`unifi`** | `action`, `confirm` | Unified tool for device, client, and network operations |
-| **`unifi_help`** | `none` | Reference for all actions and parameters |
-
-### 📊 Resources (`unifi://`)
-| URI | Description | Output Format |
-|-----|-------------|---------------|
-| `unifi://overview` | Site-wide infrastructure and client summary | Clean Summary |
-| `unifi://devices` | Detailed list of infrastructure devices | Prettified JSON |
-| `unifi://health` | Real-time subsystem health status | Status Report |
-| `unifi://dashboard` | Live bandwidth and traffic metrics | Real-time Stats |
-
----
-
-## 🏗️ Architecture & Design
-Built as a modular Python package powered by FastMCP:
-- **Smart Formatting:** Custom engine converts raw JSON walls into human-readable summaries.
-- **Session Management:** Handles JWT/CSRF tokens and persistent cookie authentication.
-- **Site-Aware:** Automatic mapping to the "default" site with full multi-site support.
-
----
-
-## 🔧 Development
-### Prerequisites
-- Python 3.11+
-- [uv](https://github.com/astral-sh/uv) package manager
-
-### Setup
 ```bash
 uv sync
 uv run python -m unifi_mcp.main
 ```
 
-### Background Execution
+Console script entrypoints from `pyproject.toml`:
+
 ```bash
-./run.sh              # Start in background and stream logs
-./run.sh logs         # Stream logs from running server
+uv run unifi-mcp
+uv run unifi-local-mcp
 ```
 
----
+## Configuration
 
-## 🐛 Troubleshooting
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| **401 Unauthorized** | Cloud/SSO Account | Use a **Local Admin** account |
-| **SSL Errors** | Self-signed Cert | Set `UNIFI_VERIFY_SSL=false` |
-| **Empty Devices** | Insufficient Perms | Verify admin-level access |
+Create `.env` from `.env.example` and set:
 
----
+```bash
+UNIFI_URL=https://192.168.1.1:443
+UNIFI_USERNAME=admin
+UNIFI_PASSWORD=your_password_here
+UNIFI_IS_UDM_PRO=true
+UNIFI_VERIFY_SSL=false
+UNIFI_MCP_HOST=0.0.0.0
+UNIFI_MCP_PORT=8001
+UNIFI_MCP_TRANSPORT=http
+UNIFI_MCP_TOKEN=...
+UNIFI_MCP_NO_AUTH=false
+UNIFI_MCP_ALLOW_YOLO=false
+UNIFI_MCP_ALLOW_DESTRUCTIVE=false
+UNIFI_MCP_LOG_LEVEL=INFO
+```
 
-## 📄 License
-MIT © jmagar
+Notes:
+
+- `http` and `stdio` are the supported transports documented in this repo.
+- HTTP mode uses Bearer auth unless `UNIFI_MCP_NO_AUTH=true`.
+- `UNIFI_VERIFY_SSL=false` is common for self-signed local-controller certificates.
+
+## Typical operations
+
+```text
+unifi action=get_clients connected_only=true
+unifi action=get_devices
+unifi action=get_controller_status
+unifi action=get_firewall_rules
+unifi action=get_speedtest_results limit=5
+unifi_help
+```
+
+## Development commands
+
+```bash
+just dev
+just lint
+just fmt
+just typecheck
+just test
+just up
+just logs
+just health
+```
+
+Important recipes:
+
+- `just dev`: run the server locally
+- `just build`: editable install with `uv pip install -e .`
+- `just check-contract`: skill/server contract lint
+
+## Verification
+
+Recommended:
+
+```bash
+just lint
+just typecheck
+just test
+```
+
+If you need a running-server check:
+
+```bash
+just health
+just test-live
+```
+
+## Related files
+
+- `unifi_mcp/server.py`: transport startup and HTTP serving
+- `skills/unifi/SKILL.md`: action reference and operational guidance
+- `docs/consolidated-action-pattern.md`: rationale for the unified action router
+- `docs/testing.md`: test strategy notes
+
+## License
+
+MIT

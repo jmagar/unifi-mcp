@@ -1,6 +1,6 @@
 [project]
 name = "unifi-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "UniFi MCP servers for cloud and local controller management"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,11 +1,16 @@
 {
   "name": "unifi-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "UniFi network management via MCP tools. Monitor devices, clients, network health, firewall rules, and perform management operations.",
   "mcpServers": {
     "unifi-mcp": {
       "command": "uv",
-      "args": ["run", "python", "-m", "unifi_mcp.main"],
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "unifi_mcp.main"
+      ],
       "cwd": "${extensionPath}"
     }
   },

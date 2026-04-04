@@ -1,11 +1,24 @@
 # Changelog
 
-All notable changes to unifi-mcp will be documented in this file.
+All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.1] - 2026-04-03
+
+### Fixed
+- **OAuth discovery 401 cascade**: BearerAuthMiddleware was blocking GET /.well-known/oauth-protected-resource, causing MCP clients to surface generic "unknown error". Added WellKnownMiddleware (RFC 9728) to return resource metadata.
+
+### Added
+- **docs/AUTHENTICATION.md**: New setup guide covering token generation and client config.
+- **README Authentication section**: Added quick-start examples and link to full guide.
+
+
+
+
 
 ## [0.1.0] - 2026-03-31
 
