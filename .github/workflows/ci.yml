@@ -82,3 +82,18 @@ jobs:
         run: bash scripts/check-no-baked-env.sh .
       - name: Check ignore files
         run: bash scripts/ensure-ignore-files.sh --check .
+
+  mcp-integration:
+    name: MCP Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test]
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Run integration tests
+        env:
+          UNIFI_URL: ${{ secrets.UNIFI_URL }}
+          UNIFI_USERNAME: ${{ secrets.UNIFI_USERNAME }}
+          UNIFI_PASSWORD: ${{ secrets.UNIFI_PASSWORD }}
+        run: bash tests/test_live.sh
