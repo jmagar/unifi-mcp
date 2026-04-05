@@ -4,11 +4,11 @@ Tests for UniFi MCP device resources.
 Following current FastMCP resource APIs and the repo's actual resource surface.
 """
 
-import pytest
 from unittest.mock import AsyncMock
-from inline_snapshot import snapshot
 
-from fastmcp import FastMCP, Client
+import pytest
+from fastmcp import Client, FastMCP
+from inline_snapshot import snapshot
 
 from unifi_mcp.client import UnifiControllerClient
 from unifi_mcp.resources.device_resources import register_device_resources
@@ -240,11 +240,10 @@ class TestDeviceResourcesIntegration:
         register_device_resources(mcp, client)
 
         try:
-            async with Client(mcp) as test_client:
-                async with client:
-                    content = await test_client.read_resource("unifi://devices")
-                    assert content is not None
-                    assert len(content) > 0
+            async with Client(mcp) as test_client, client:
+                content = await test_client.read_resource("unifi://devices")
+                assert content is not None
+                assert len(content) > 0
 
         except Exception as e:
             pytest.fail(f"Device resource integration test failed: {e}")
@@ -262,11 +261,10 @@ class TestDeviceResourcesIntegration:
         register_device_resources(mcp, client)
 
         try:
-            async with Client(mcp) as test_client:
-                async with client:
-                    device_uri = "unifi://device/default/aa:bb:cc:dd:ee:01"
-                    device_content = await test_client.read_resource(device_uri)
-                    assert device_content is not None
+            async with Client(mcp) as test_client, client:
+                device_uri = "unifi://device/default/aa:bb:cc:dd:ee:01"
+                device_content = await test_client.read_resource(device_uri)
+                assert device_content is not None
 
         except Exception as e:
             pytest.fail(f"Device lookup integration test failed: {e}")

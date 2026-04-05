@@ -80,10 +80,7 @@ class MonitoringService(BaseService):
                     if self.client.csrf_token
                     else {},
                 )
-                if resp.status_code == 200:
-                    result = resp.json()
-                else:
-                    result = {"error": f"Request failed with status {resp.status_code}"}
+                result = resp.json() if resp.status_code == 200 else {"error": f"Request failed with status {resp.status_code}"}
             else:
                 result = await self.client._make_request("GET", "/status", site_name="")
 

@@ -4,11 +4,12 @@ Configuration and environment management for UniFi MCP Server.
 Handles environment variables, logging configuration, and settings validation.
 """
 
+import contextlib
 import logging
 import os
-from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 
@@ -64,7 +65,7 @@ class ClearingFileHandler(logging.FileHandler):
                             )
                         )
 
-                except (OSError, IOError):
+                except OSError:
                     # If we can't check file size, just continue
                     pass
 
@@ -127,7 +128,7 @@ class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 8001
     log_level: str = "INFO"
-    log_file: Optional[str] = None
+    log_file: str | None = None
     transport: str = "http"
 
     @classmethod
@@ -164,10 +165,8 @@ def setup_logging(config: ServerConfig) -> None:
     # Reset handlers so repeated setup calls do not duplicate log output.
     for handler in list(root_logger.handlers):
         root_logger.removeHandler(handler)
-        try:
+        with contextlib.suppress(Exception):
             handler.close()
-        except Exception:
-            pass
 
     # Configure basic logging
     logging.basicConfig(
@@ -203,7 +202,7 @@ def normalize_service_url(url: str) -> str:
     return url
 
 
-def validate_auth_config() -> Optional[str]:
+def validate_auth_config() -> str | None:
     """Return the Bearer token, or exit(1) if required but missing.
 
     Returns None only when UNIFI_MCP_NO_AUTH=true (auth intentionally disabled).

@@ -158,16 +158,15 @@ class TestUniFiMCPTransport:
                 # Test multiple connections
                 async with Client(
                     transport=StreamableHttpTransport(f"{server_url}/mcp")
-                ) as client1:
-                    async with Client(
-                        transport=StreamableHttpTransport(f"{server_url}/mcp")
-                    ) as client2:
-                        # Both clients should work
-                        result1 = await client1.ping()
-                        result2 = await client2.ping()
+                ) as client1, Client(
+                    transport=StreamableHttpTransport(f"{server_url}/mcp")
+                ) as client2:
+                    # Both clients should work
+                    result1 = await client1.ping()
+                    result2 = await client2.ping()
 
-                        assert result1 is True
-                        assert result2 is True
+                    assert result1 is True
+                    assert result2 is True
 
         except Exception as e:
             pytest.fail(f"Server lifecycle test failed: {e}")

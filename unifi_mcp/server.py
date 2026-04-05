@@ -82,10 +82,7 @@ class UniFiMCPServer:
             return None
 
         # Path 1: env bypass (CI / automation)
-        if (
-            os.getenv("UNIFI_MCP_ALLOW_DESTRUCTIVE", os.getenv("ALLOW_DESTRUCTIVE", "false"))
-            == "true"
-        ):
+        if os.getenv("UNIFI_MCP_ALLOW_DESTRUCTIVE", os.getenv("ALLOW_DESTRUCTIVE", "false")) == "true":
             return None
 
         # Path 2: ALLOW_YOLO skips elicitation
@@ -193,9 +190,7 @@ class UniFiMCPServer:
         async def unifi(
             action: Annotated[
                 str,
-                Field(
-                    description="The action to perform. See UnifiAction enum for all available actions."
-                ),
+                Field(description="The action to perform. See UnifiAction enum for all available actions."),
             ],
             site_name: Annotated[
                 str,
@@ -290,9 +285,14 @@ class UniFiMCPServer:
 
             Available Actions:
             - Device Management: get_devices, get_device_by_mac, restart_device, locate_device
-            - Client Management: get_clients, reconnect_client, block_client, unblock_client, forget_client, set_client_name, set_client_note
-            - Network Configuration: get_sites, get_wlan_configs, get_network_configs, get_port_configs, get_port_forwarding_rules, get_firewall_rules, get_firewall_groups, get_static_routes
-            - Monitoring & Statistics: get_controller_status, get_events, get_alarms, get_dpi_stats, get_rogue_aps, start_spectrum_scan, get_spectrum_scan_state, authorize_guest, get_speedtest_results, get_ips_events
+            - Client Management: get_clients, reconnect_client, block_client, unblock_client,
+              forget_client, set_client_name, set_client_note
+            - Network Configuration: get_sites, get_wlan_configs, get_network_configs,
+              get_port_configs, get_port_forwarding_rules, get_firewall_rules,
+              get_firewall_groups, get_static_routes
+            - Monitoring & Statistics: get_controller_status, get_events, get_alarms,
+              get_dpi_stats, get_rogue_aps, start_spectrum_scan, get_spectrum_scan_state,
+              authorize_guest, get_speedtest_results, get_ips_events
             - Authentication: get_user_info
 
             Destructive actions (restart_device, block_client, forget_client, reconnect_client)
@@ -367,9 +367,7 @@ class UniFiMCPServer:
                             )
                         else:
                             capped.append(item)
-                    result = ToolResult(
-                        content=capped, structured_content=result.structured_content
-                    )
+                    result = ToolResult(content=capped, structured_content=result.structured_content)
 
                 return result
 
@@ -550,10 +548,7 @@ Returns this help text.
                     log_level=self.server_config.log_level.lower(),
                 )
                 server = uvicorn.Server(config)
-                logger.info(
-                    f"Starting UniFi MCP Server (HTTP) on "
-                    f"{self.server_config.host}:{self.server_config.port}"
-                )
+                logger.info(f"Starting UniFi MCP Server (HTTP) on {self.server_config.host}:{self.server_config.port}")
                 await server.serve()
 
         finally:

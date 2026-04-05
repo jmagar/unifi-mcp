@@ -4,7 +4,7 @@ Parameter models for UniFi MCP Server unified tool interface.
 Defines parameter validation and types for the consolidated unifi tool.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -32,62 +32,62 @@ class UnifiParams(BaseModel):
     )
 
     # Device and client identification
-    mac: Optional[str] = Field(
+    mac: str | None = Field(
         default=None, description="Device or client MAC address (any format)"
     )
 
     # Filtering and limits
-    limit: Optional[int] = Field(
+    limit: int | None = Field(
         default=None,
         description="Maximum number of results to return (default varies by action)",
     )
 
-    connected_only: Optional[bool] = Field(
+    connected_only: bool | None = Field(
         default=None,
         description="Only return currently connected clients (get_clients only, default: True)",
     )
 
-    active_only: Optional[bool] = Field(
+    active_only: bool | None = Field(
         default=None,
         description="Only return active/unarchived items (get_alarms only, default: True)",
     )
 
-    by_filter: Optional[str] = Field(
+    by_filter: str | None = Field(
         default=None,
         description="Filter type for DPI stats: 'by_app' or 'by_cat' (get_dpi_stats only, default: 'by_app')",
     )
 
     # Client management
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None, description="New name for client (set_client_name only)"
     )
 
-    note: Optional[str] = Field(
+    note: str | None = Field(
         default=None, description="Note for client (set_client_note only)"
     )
 
     # Guest authorization parameters
-    minutes: Optional[int] = Field(
+    minutes: int | None = Field(
         default=None,
         description="Duration of guest access in minutes (authorize_guest only, default: 480 = 8 hours)",
     )
 
-    up_bandwidth: Optional[int] = Field(
+    up_bandwidth: int | None = Field(
         default=None,
         description="Upload bandwidth limit in Kbps (authorize_guest only)",
     )
 
-    down_bandwidth: Optional[int] = Field(
+    down_bandwidth: int | None = Field(
         default=None,
         description="Download bandwidth limit in Kbps (authorize_guest only)",
     )
 
-    quota: Optional[int] = Field(
+    quota: int | None = Field(
         default=None, description="Data quota in MB (authorize_guest only)"
     )
 
     # Destructive operation gate
-    confirm: Optional[bool] = Field(
+    confirm: bool | None = Field(
         default=None,
         description=(
             "Set to true to confirm destructive operations "
@@ -99,7 +99,7 @@ class UnifiParams(BaseModel):
 
     @field_validator("up_bandwidth", "down_bandwidth", "quota")
     @classmethod
-    def validate_non_negative(cls, v: Optional[int]) -> Optional[int]:
+    def validate_non_negative(cls, v: int | None) -> int | None:
         """Validate that bandwidth and quota are non-negative."""
         if v is not None and v < 0:
             raise ValueError("bandwidth and quota values must be non-negative")
@@ -107,7 +107,7 @@ class UnifiParams(BaseModel):
 
     @field_validator("limit")
     @classmethod
-    def validate_limit_positive(cls, v: Optional[int]) -> Optional[int]:
+    def validate_limit_positive(cls, v: int | None) -> int | None:
         """Validate that limit is positive when provided."""
         if v is not None and v <= 0:
             raise ValueError("limit must be positive")
@@ -115,7 +115,7 @@ class UnifiParams(BaseModel):
 
     @field_validator("minutes")
     @classmethod
-    def validate_minutes_positive(cls, v: Optional[int]) -> Optional[int]:
+    def validate_minutes_positive(cls, v: int | None) -> int | None:
         """Validate that minutes is positive when provided."""
         if v is not None and v <= 0:
             raise ValueError("minutes must be positive")
@@ -123,7 +123,7 @@ class UnifiParams(BaseModel):
 
     @field_validator("by_filter")
     @classmethod
-    def validate_by_filter_values(cls, v: Optional[str]) -> Optional[str]:
+    def validate_by_filter_values(cls, v: str | None) -> str | None:
         """Validate by_filter has correct values."""
         if v is not None and v not in ["by_app", "by_cat"]:
             raise ValueError("by_filter must be 'by_app' or 'by_cat'")
@@ -133,35 +133,30 @@ class UnifiParams(BaseModel):
     def validate_action_requirements(self):
         """Validate cross-field requirements based on action."""
         # Validate MAC address requirement
-        if self.action in MAC_REQUIRED_ACTIONS:
-            if not self.mac:
-                raise ValueError(f"MAC address is required for action: {self.action}")
+        if self.action in MAC_REQUIRED_ACTIONS and not self.mac:
+            raise ValueError(f"MAC address is required for action: {self.action}")
 
         # Validate name requirement for set_client_name
-        if self.action == UnifiAction.SET_CLIENT_NAME:
-            if self.name is None:
-                raise ValueError(
-                    "name parameter is required for set_client_name action"
-                )
+        if self.action == UnifiAction.SET_CLIENT_NAME and self.name is None:
+            raise ValueError(
+                "name parameter is required for set_client_name action"
+            )
 
         # Validate note requirement for set_client_note
-        if self.action == UnifiAction.SET_CLIENT_NOTE:
-            if self.note is None:
-                raise ValueError(
-                    "note parameter is required for set_client_note action"
-                )
+        if self.action == UnifiAction.SET_CLIENT_NOTE and self.note is None:
+            raise ValueError(
+                "note parameter is required for set_client_note action"
+            )
 
         # Validate by_filter requirement for get_dpi_stats
-        if self.action == UnifiAction.GET_DPI_STATS and self.by_filter is not None:
-            if self.by_filter not in ["by_app", "by_cat"]:
-                raise ValueError(
-                    "by_filter must be 'by_app' or 'by_cat' for get_dpi_stats action"
-                )
+        if self.action == UnifiAction.GET_DPI_STATS and self.by_filter is not None and self.by_filter not in ["by_app", "by_cat"]:
+            raise ValueError(
+                "by_filter must be 'by_app' or 'by_cat' for get_dpi_stats action"
+            )
 
         # Validate minutes requirement for authorize_guest
-        if self.action == UnifiAction.AUTHORIZE_GUEST and self.minutes is not None:
-            if self.minutes <= 0:
-                raise ValueError("minutes must be positive for authorize_guest action")
+        if self.action == UnifiAction.AUTHORIZE_GUEST and self.minutes is not None and self.minutes <= 0:
+            raise ValueError("minutes must be positive for authorize_guest action")
 
         # Note: destructive action gate is enforced at service layer (not here)
         # so that UNIFI_MCP_ALLOW_DESTRUCTIVE / UNIFI_MCP_ALLOW_YOLO env vars
@@ -171,9 +166,9 @@ class UnifiParams(BaseModel):
 
         return self
 
-    def get_action_defaults(self) -> Dict[str, Any]:
+    def get_action_defaults(self) -> dict[str, Any]:
         """Get default parameter values for the specific action."""
-        defaults: Dict[str, Any] = {}
+        defaults: dict[str, Any] = {}
 
         # Set action-specific defaults
         if self.action == UnifiAction.GET_CLIENTS:
@@ -186,9 +181,7 @@ class UnifiParams(BaseModel):
             defaults["minutes"] = 480
         elif self.action == UnifiAction.GET_EVENTS:
             defaults["limit"] = 100
-        elif self.action == UnifiAction.GET_ROGUE_APS:
-            defaults["limit"] = 20
-        elif self.action == UnifiAction.GET_SPEEDTEST_RESULTS:
+        elif self.action == UnifiAction.GET_ROGUE_APS or self.action == UnifiAction.GET_SPEEDTEST_RESULTS:
             defaults["limit"] = 20
         elif self.action == UnifiAction.GET_IPS_EVENTS:
             defaults["limit"] = 50

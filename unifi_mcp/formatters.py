@@ -286,9 +286,7 @@ def get_device_model_name(model: str) -> str:
 
     # Fallback patterns
     model_upper = model.upper()
-    if ("U7" in model_upper and "AP" not in model_upper) or (
-        "U6" in model_upper and "AP" not in model_upper
-    ):
+    if ("U7" in model_upper and "AP" not in model_upper) or ("U6" in model_upper and "AP" not in model_upper):
         return f"UniFi {model} AP"
     elif "USW" in model_upper:
         return f"UniFi {model} Switch"
@@ -343,12 +341,8 @@ def format_device_summary(device: dict[str, Any]) -> dict[str, Any]:
                 "clients_5g": device.get("num-sta", 0),
                 "total_clients": device.get("num_sta", 0),
                 "wifi_radios": wifi_radios,
-                "channel_2g": device.get("radio_table", [{}])[0].get("channel")
-                if device.get("radio_table")
-                else None,
-                "channel_5g": device.get("radio_table", [{}])[1].get("channel")
-                if len(device.get("radio_table", [])) > 1
-                else None,
+                "channel_2g": device.get("radio_table", [{}])[0].get("channel") if device.get("radio_table") else None,
+                "channel_5g": device.get("radio_table", [{}])[1].get("channel") if len(device.get("radio_table", [])) > 1 else None,
                 "tx_power_2g": get_tx_power_str(device, 0),
                 "tx_power_5g": get_tx_power_str(device, 1),
             }
@@ -446,9 +440,7 @@ def format_site_summary(site: dict[str, Any]) -> dict[str, Any]:
         "site_id": site.get("name", "Unknown"),
         "role": site.get("role", "admin"),
         "health_score": f"{health_percentage:.1f}%",
-        "total_devices": sum(
-            site.get("num_" + device_type, 0) for device_type in ["ap", "gw", "sw"]
-        ),
+        "total_devices": sum(site.get("num_" + device_type, 0) for device_type in ["ap", "gw", "sw"]),
         "access_points": site.get("num_ap", 0),
         "gateways": site.get("num_gw", 0),
         "switches": site.get("num_sw", 0),
@@ -470,10 +462,7 @@ def format_device_text(device: dict[str, Any]) -> str:
     if uptime > 0:
         days = uptime // 86400
         hours = (uptime % 86400) // 3600
-        if days > 0:
-            uptime_str = f"{days}d {hours}h"
-        else:
-            uptime_str = f"{hours}h"
+        uptime_str = f"{days}d {hours}h" if days > 0 else f"{hours}h"
     else:
         uptime_str = "Unknown"
 
@@ -505,10 +494,7 @@ def format_client_text(client: dict[str, Any]) -> str:
     # Signal strength for wireless
     if not is_wired:
         rssi = client.get("rssi")
-        if rssi:
-            signal = f", {rssi}dBm"
-        else:
-            signal = ""
+        signal = f", {rssi}dBm" if rssi else ""
     else:
         signal = ""
 
@@ -639,7 +625,7 @@ def format_networks_list(networks: list[dict[str, Any]]) -> str:
     return f"Network Configurations ({len(networks)} total): " + " | ".join(network_texts)
 
 
-# --- Additional token‑efficient formatters for tools ---
+# --- Additional token-efficient formatters for tools ---
 
 
 def format_port_forwarding_list(rules: list[dict[str, Any]]) -> str:
@@ -672,12 +658,8 @@ def format_firewall_rules_list(rules: list[dict[str, Any]]) -> str:
         return "Firewall Rules (0 total)\n  -"
     lines: list[str] = [f"Firewall Rules ({len(rules)} total)"]
     # Header
-    lines.append(
-        f"  {'En':<2} {'Act':<6} {'Proto':<5} {'Src':<18} {'SPort':<7} {'Dst':<18} {'DPort':<7} {'Log':<3}"
-    )
-    lines.append(
-        f"  {'-' * 2:<2} {'-' * 6:<6} {'-' * 5:<5} {'-' * 18:<18} {'-' * 7:<7} {'-' * 18:<18} {'-' * 7:<7} {'-' * 3:<3}"
-    )
+    lines.append(f"  {'En':<2} {'Act':<6} {'Proto':<5} {'Src':<18} {'SPort':<7} {'Dst':<18} {'DPort':<7} {'Log':<3}")
+    lines.append(f"  {'-' * 2:<2} {'-' * 6:<6} {'-' * 5:<5} {'-' * 18:<18} {'-' * 7:<7} {'-' * 18:<18} {'-' * 7:<7} {'-' * 3:<3}")
     for r in rules:
         en = "✓" if r.get("enabled") else "✗"
         act = str(r.get("action", "?")).lower()[:6]
@@ -687,9 +669,7 @@ def format_firewall_rules_list(rules: list[dict[str, Any]]) -> str:
         dst = str(r.get("dst_address", "any"))[:18]
         dport = str(r.get("dst_port", "any"))[:7]
         log = "✓" if r.get("logging") or r.get("log") else "✗"
-        lines.append(
-            f"  {en:<2} {act:<6} {proto:<5} {src:<18} {sport:<7} {dst:<18} {dport:<7} {log:<3}"
-        )
+        lines.append(f"  {en:<2} {act:<6} {proto:<5} {src:<18} {sport:<7} {dst:<18} {dport:<7} {log:<3}")
     return "\n".join(lines)
 
 
@@ -879,9 +859,7 @@ def format_wlans_list(wlans: list[dict[str, Any]]) -> str:
     return f"WLAN Configurations ({len(wlans)} total): " + " | ".join(wlan_texts)
 
 
-def format_generic_list(
-    items: list[dict[str, Any]], resource_type: str, key_fields: list[str]
-) -> str:
+def format_generic_list(items: list[dict[str, Any]], resource_type: str, key_fields: list[str]) -> str:
     """Generic formatter for any list of items with configurable key fields."""
     if not items:
         return f"No {resource_type.lower()} found."
@@ -929,17 +907,13 @@ def format_data_values(data: Any) -> Any:
                     formatted[key] = value
                 formatted[f"{key}_formatted"] = format_summary_bytes(value)
             # Handle timestamp values
-            elif key in ("time", "last_seen", "first_see", "blocked_time") and isinstance(
-                value, (int, float)
-            ):
+            elif key in ("time", "last_seen", "first_see", "blocked_time") and isinstance(value, (int, float)):
                 formatted[key] = format_timestamp(value)
                 formatted[f"{key}_raw"] = value
             # Handle uptime values
             elif key in ("uptime", "duration"):
                 formatted[key] = value
-                formatted[f"{key}_formatted"] = (
-                    format_detailed_uptime(value) if key == "uptime" else format_uptime(value)
-                )
+                formatted[f"{key}_formatted"] = format_detailed_uptime(value) if key == "uptime" else format_uptime(value)
                 if isinstance(value, (int, float)):
                     formatted[f"{key}_raw"] = value
             # Recursively format nested data
@@ -990,9 +964,7 @@ def format_overview_data(
         }
 
     # Recent threats summary
-    recent_threats = len(
-        [t for t in threats if t.get("time", 0) > (datetime.now().timestamp() - 86400)]
-    )
+    recent_threats = len([t for t in threats if t.get("time", 0) > (datetime.now().timestamp() - 86400)])
 
     return {
         "network_summary": {

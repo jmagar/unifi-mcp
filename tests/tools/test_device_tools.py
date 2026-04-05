@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastmcp import Client, FastMCP
+from fastmcp.tools.tool import ToolResult
 from inline_snapshot import snapshot
 from mcp.types import TextContent
 
@@ -161,9 +162,7 @@ class TestRestartDeviceTool:
         nonexistent_mac = "ff:ff:ff:ff:ff:ff"
 
         mock_client = AsyncMock(spec=UnifiControllerClient)
-        mock_client.restart_device = AsyncMock(
-            return_value={"error": f"Device {nonexistent_mac} not found"}
-        )
+        mock_client.restart_device = AsyncMock(return_value={"error": f"Device {nonexistent_mac} not found"})
 
         mcp = FastMCP("NotFoundRestartTestServer")
         register_device_tools(mcp, mock_client)
@@ -324,15 +323,14 @@ class TestDeviceToolsIntegration:
         register_device_tools(mcp, client)
 
         try:
-            async with Client(mcp) as test_client:
-                async with client:
-                    result = await test_client.call_tool("get_devices", {})
+            async with Client(mcp) as test_client, client:
+                result = await test_client.call_tool("get_devices", {})
 
-                    assert isinstance(result, ToolResult)
-                    assert len(result.content) > 0
+                assert isinstance(result, ToolResult)
+                assert len(result.content) > 0
 
-                    # Should have structured content
-                    assert result.structured_content is not None
+                # Should have structured content
+                assert result.structured_content is not None
 
         except Exception as e:
             pytest.fail(f"Integration test failed: {e}")
@@ -350,22 +348,16 @@ class TestDeviceToolsIntegration:
         register_device_tools(mcp, client)
 
         try:
-            async with Client(mcp) as test_client:
-                async with client:
-                    # First get devices to find a valid MAC
-                    devices_result = await test_client.call_tool("get_devices", {})
+            async with Client(mcp) as test_client, client:
+                # First get devices to find a valid MAC
+                devices_result = await test_client.call_tool("get_devices", {})
 
-                    if (
-                        isinstance(devices_result.structured_content, list)
-                        and len(devices_result.structured_content) > 0
-                    ):
-                        device_mac = devices_result.structured_content[0].get("mac")
-                        if device_mac:
-                            # Test locate (safer than restart)
-                            locate_result = await test_client.call_tool(
-                                "locate_device", {"mac": device_mac}
-                            )
-                            assert isinstance(locate_result, ToolResult)
+                if isinstance(devices_result.structured_content, list) and len(devices_result.structured_content) > 0:
+                    device_mac = devices_result.structured_content[0].get("mac")
+                    if device_mac:
+                        # Test locate (safer than restart)
+                        locate_result = await test_client.call_tool("locate_device", {"mac": device_mac})
+                        assert isinstance(locate_result, ToolResult)
 
         except Exception as e:
             pytest.fail(f"Device operations integration test failed: {e}")

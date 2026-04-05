@@ -5,13 +5,14 @@ Handles all device management operations including listing, control, and monitor
 """
 
 import logging
+
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
+from ..formatters import format_device_summary, format_devices_list
 from ..models.enums import UnifiAction
 from ..models.params import UnifiParams
-from ..formatters import format_device_summary, format_devices_list
+from .base import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ class DeviceService(BaseService):
                     logger.error(f"Error formatting device {device.get('name', 'Unknown')}: {e}")
                     formatted_devices.append({
                         "name": device.get("name", "Unknown"),
-                        "error": f"Formatting error: {str(e)}"
+                        "error": f"Formatting error: {e!s}"
                     })
 
             # Token-efficient human summary
@@ -118,7 +119,7 @@ class DeviceService(BaseService):
                 if device_mac == normalized_mac:
                     formatted = format_device_summary(device)
                     lines = [
-                        f"Device Details",
+                        "Device Details",
                         f"  {formatted.get('name','Unknown')} | {formatted.get('model','Unknown')} ({formatted.get('type','Device')})",
                         f"  Status: {formatted.get('status','Unknown')} | IP: {formatted.get('ip','Unknown')} | Uptime: {formatted.get('uptime','Unknown')}",
                         f"  MAC: {formatted.get('mac','').upper()} | Version: {formatted.get('version','Unknown')}"

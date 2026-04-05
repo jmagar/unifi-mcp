@@ -7,6 +7,7 @@ Provides shared functionality and common patterns for all domain services.
 import logging
 from abc import ABC
 from typing import Any
+
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -17,7 +18,7 @@ from ..models.params import UnifiParams
 logger = logging.getLogger(__name__)
 
 
-class BaseService(ABC):
+class BaseService(ABC):  # noqa: B024
     """Base service providing shared functionality for all domain services.
 
     This class centralizes common patterns like MAC address normalization,
@@ -69,10 +70,7 @@ class BaseService(ABC):
         Returns:
             ToolResult with error information
         """
-        return ToolResult(
-            content=[TextContent(type="text", text=f"Error: {message}")],
-            structured_content={"error": message, "raw": raw_data}
-        )
+        return ToolResult(content=[TextContent(type="text", text=f"Error: {message}")], structured_content={"error": message, "raw": raw_data})
 
     @staticmethod
     def create_success_result(
@@ -92,22 +90,11 @@ class BaseService(ABC):
         """
         structured_content = data
         if success_message and isinstance(data, dict):
-            structured_content = {
-                "success": True,
-                "message": success_message,
-                **data
-            }
+            structured_content = {"success": True, "message": success_message, **data}
         elif success_message:
-            structured_content = {
-                "success": True,
-                "message": success_message,
-                "data": data
-            }
+            structured_content = {"success": True, "message": success_message, "data": data}
 
-        return ToolResult(
-            content=[TextContent(type="text", text=text)],
-            structured_content=structured_content
-        )
+        return ToolResult(content=[TextContent(type="text", text=text)], structured_content=structured_content)
 
     def validate_response(self, response: Any, action: UnifiAction) -> tuple[bool, str]:
         """Validate API response for common error patterns.
@@ -132,9 +119,7 @@ class BaseService(ABC):
 
         return True, ""
 
-    def check_list_response(
-        self, response: Any, action: UnifiAction
-    ) -> ToolResult | None:
+    def check_list_response(self, response: Any, action: UnifiAction) -> ToolResult | None:
         """Check if response is a valid list and handle common error cases.
 
         Args:
@@ -186,7 +171,7 @@ class BaseService(ABC):
                 return self.create_success_result(text, formatted_data)
             except Exception as e:
                 logger.error(f"Error formatting response for {action.value}: {e}")
-                return self.create_error_result(f"Formatting error: {str(e)}", response)
+                return self.create_error_result(f"Formatting error: {e!s}", response)
 
         # Return raw response if no formatter
         text = success_text or f"{action.value} completed"
@@ -204,6 +189,4 @@ class BaseService(ABC):
         Returns:
             ToolResult with action response
         """
-        return self.create_error_result(
-            f"Action {params.action} not implemented in {self.__class__.__name__}"
-        )
+        return self.create_error_result(f"Action {params.action} not implemented in {self.__class__.__name__}")
