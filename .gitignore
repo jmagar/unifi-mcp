@@ -89,8 +89,4 @@ pip-log.txt
 CLAUDE.md.local
 logs/
 backups/
-
-# Runtime artifacts
-logs/
-backups/
 data/
