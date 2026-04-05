@@ -1,8 +1,18 @@
 {
   "mcpServers": {
     "unifi-mcp": {
-      "type": "http",
-      "url": "${UNIFI_MCP_URL}"
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "unifi_mcp.main"
+      ],
+      "cwd": "./",
+      "env": {
+        "UNIFI_MCP_TRANSPORT": "stdio",
+        "UNIFI_MCP_NO_AUTH": "true"
+      }
     }
   }
 }
