@@ -74,11 +74,10 @@ class MonitoringService(BaseService):
             # use /api/system (UniFi OS system endpoint) directly
             if self.client.config.is_udm_pro:
                 await self.client.ensure_authenticated()
+                assert self.client.session is not None, "Session must be initialized after ensure_authenticated"
                 resp = await self.client.session.get(
                     f"{self.client.config.controller_url}/api/system",
-                    headers={"X-CSRF-Token": self.client.csrf_token}
-                    if self.client.csrf_token
-                    else {},
+                    headers={"X-CSRF-Token": self.client.csrf_token} if self.client.csrf_token else {},
                 )
                 result = resp.json() if resp.status_code == 200 else {"error": f"Request failed with status {resp.status_code}"}
             else:
@@ -86,11 +85,7 @@ class MonitoringService(BaseService):
 
             if isinstance(result, dict) and "error" in result:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text", text=f"Error: {result.get('error', 'unknown error')}"
-                        )
-                    ],
+                    content=[TextContent(type="text", text=f"Error: {result.get('error', 'unknown error')}")],
                     structured_content={
                         "error": result.get("error", "unknown error"),
                         "raw": result,
@@ -107,9 +102,7 @@ class MonitoringService(BaseService):
             }
             up_icon = "✓" if resp.get("up") else "✗"
             text = f"Controller Status\n  Version: {resp['server_version']} | Up: {up_icon}"
-            return ToolResult(
-                content=[TextContent(type="text", text=text)], structured_content=resp
-            )
+            return ToolResult(content=[TextContent(type="text", text=text)], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error getting controller status: {e}")
@@ -129,11 +122,7 @@ class MonitoringService(BaseService):
 
             if isinstance(events, dict) and "error" in events:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text", text=f"Error: {events.get('error', 'unknown error')}"
-                        )
-                    ],
+                    content=[TextContent(type="text", text=f"Error: {events.get('error', 'unknown error')}")],
                     structured_content={
                         "error": events.get("error", "unknown error"),
                         "raw": events,
@@ -149,9 +138,7 @@ class MonitoringService(BaseService):
 
             # Format events for clean output
             formatted_events = []
-            events_sorted = sorted(
-                event_items, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True
-            )[:limit]
+            events_sorted = sorted(event_items, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True)[:limit]
             for event in events_sorted:
                 formatted_event = {
                     "timestamp": format_timestamp(event.get("time", 0)),
@@ -160,11 +147,7 @@ class MonitoringService(BaseService):
                     "device": event.get("ap", event.get("gw", event.get("sw", "Unknown"))),
                     "user": event.get("user", "System"),
                     "subsystem": event.get("subsystem", "Unknown"),
-                    "details": {
-                        k: v
-                        for k, v in event.items()
-                        if k not in ["time", "key", "msg", "ap", "gw", "sw", "user", "subsystem"]
-                    },
+                    "details": {k: v for k, v in event.items() if k not in ["time", "key", "msg", "ap", "gw", "sw", "user", "subsystem"]},
                 }
                 formatted_events.append(formatted_event)
 
@@ -187,21 +170,13 @@ class MonitoringService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get("site_name", "default")
-            active_only = (
-                params.active_only
-                if params.active_only is not None
-                else defaults.get("active_only", True)
-            )
+            active_only = params.active_only if params.active_only is not None else defaults.get("active_only", True)
 
             alarms = await self.client.get_alarms(site_name)
 
             if isinstance(alarms, dict) and "error" in alarms:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text", text=f"Error: {alarms.get('error', 'unknown error')}"
-                        )
-                    ],
+                    content=[TextContent(type="text", text=f"Error: {alarms.get('error', 'unknown error')}")],
                     structured_content={
                         "error": alarms.get("error", "unknown error"),
                         "raw": alarms,
@@ -320,27 +295,21 @@ class MonitoringService(BaseService):
             rogue_items = self.dict_items(rogue_aps)
 
             # Sort by signal strength (strongest first) and limit results
-            filtered_rogues = sorted(rogue_items, key=lambda x: x.get("rssi", -100), reverse=True)[
-                :limit
-            ]
+            filtered_rogues = sorted(rogue_items, key=lambda x: x.get("rssi", -100), reverse=True)[:limit]
 
             # Format rogue APs for clean output
             formatted_rogues = []
 
             # Add summary if results were limited
             if len(rogue_items) > limit:
-                formatted_rogues.append(
-                    {
-                        "summary": f"Showing top {limit} of {len(rogue_items)} detected rogue APs (sorted by signal strength)"
-                    }
-                )
+                formatted_rogues.append({"summary": f"Showing top {limit} of {len(rogue_items)} detected rogue APs (sorted by signal strength)"})
 
             for rogue in filtered_rogues:
                 rssi = rogue.get("rssi", "Unknown")
-                signal_str = f"{rssi} dBm" if isinstance(rssi, (int, float)) else str(rssi)
+                signal_str = f"{rssi} dBm" if isinstance(rssi, int | float) else str(rssi)
 
                 # Determine threat level based on signal strength
-                if isinstance(rssi, (int, float)):
+                if isinstance(rssi, int | float):
                     if rssi > -60:
                         threat_level = "High"
                     elif rssi > -80:
@@ -365,15 +334,9 @@ class MonitoringService(BaseService):
                 formatted_rogues.append(formatted_rogue)
 
             # Build compact text; include summary if present at index 0
-            text_items = [
-                item for item in formatted_rogues if isinstance(item, dict) and item.get("ssid")
-            ]
+            text_items = [item for item in formatted_rogues if isinstance(item, dict) and item.get("ssid")]
             header = next(
-                (
-                    item.get("summary")
-                    for item in formatted_rogues
-                    if isinstance(item, dict) and "summary" in item
-                ),
+                (item.get("summary") for item in formatted_rogues if isinstance(item, dict) and "summary" in item),
                 None,
             )
             summary_text = format_rogue_aps_list(text_items)
@@ -404,17 +367,11 @@ class MonitoringService(BaseService):
 
             data = {"cmd": "spectrum-scan", "mac": normalized_mac}
 
-            result = await self.client._make_request(
-                "POST", "/cmd/devmgr", site_name=site_name, data=data
-            )
+            result = await self.client._make_request("POST", "/cmd/devmgr", site_name=site_name, data=data)
 
             if isinstance(result, dict) and "error" in result:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text", text=f"Error: {result.get('error', 'unknown error')}"
-                        )
-                    ],
+                    content=[TextContent(type="text", text=f"Error: {result.get('error', 'unknown error')}")],
                     structured_content=result,
                 )
 
@@ -445,25 +402,17 @@ class MonitoringService(BaseService):
             mac = self.require_mac(params)
             normalized_mac = self.normalize_mac(mac)
 
-            result = await self.client._make_request(
-                "GET", f"/stat/spectrum-scan/{normalized_mac}", site_name=site_name
-            )
+            result = await self.client._make_request("GET", f"/stat/spectrum-scan/{normalized_mac}", site_name=site_name)
 
             if isinstance(result, dict) and "error" in result:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text", text=f"Error: {result.get('error', 'unknown error')}"
-                        )
-                    ],
+                    content=[TextContent(type="text", text=f"Error: {result.get('error', 'unknown error')}")],
                     structured_content=result,
                 )
 
             resp = {"mac": mac, "scan_data": result}
             text = f"Spectrum Scan State\n  MAC: {mac} | Data: {'✓' if bool(result) else '✗'}"
-            return ToolResult(
-                content=[TextContent(type="text", text=text)], structured_content=resp
-            )
+            return ToolResult(content=[TextContent(type="text", text=text)], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error getting spectrum scan state for {params.mac}: {e}")
@@ -491,9 +440,7 @@ class MonitoringService(BaseService):
                 return self.create_error_result("minutes must be > 0", {"error": "invalid_minutes"})
             for k, v in (("up", up_bandwidth), ("down", down_bandwidth), ("bytes_mb", quota)):
                 if v is not None and v < 0:
-                    return self.create_error_result(
-                        f"{k} must be non-negative", {"error": f"invalid_{k}"}
-                    )
+                    return self.create_error_result(f"{k} must be non-negative", {"error": f"invalid_{k}"})
 
             data = {"cmd": "authorize-guest", "mac": normalized_mac, "minutes": minutes}
 
@@ -504,17 +451,11 @@ class MonitoringService(BaseService):
             if quota is not None:
                 data["bytes"] = quota * 1024 * 1024  # Convert MB to bytes
 
-            result = await self.client._make_request(
-                "POST", "/cmd/stamgr", site_name=site_name, data=data
-            )
+            result = await self.client._make_request("POST", "/cmd/stamgr", site_name=site_name, data=data)
 
             if isinstance(result, dict) and "error" in result:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text", text=f"Error: {result.get('error', 'unknown error')}"
-                        )
-                    ],
+                    content=[TextContent(type="text", text=f"Error: {result.get('error', 'unknown error')}")],
                     structured_content=result,
                 )
 
@@ -524,9 +465,7 @@ class MonitoringService(BaseService):
                 "details": result,
             }
             text = f"Guest authorized: {mac} | {minutes} min"
-            return ToolResult(
-                content=[TextContent(type="text", text=text)], structured_content=resp
-            )
+            return ToolResult(content=[TextContent(type="text", text=text)], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error authorizing guest {params.mac}: {e}")
@@ -552,9 +491,7 @@ class MonitoringService(BaseService):
                 "attrs": ["time", "xput_download", "xput_upload", "latency", "ping", "jitter"],
             }
 
-            results = await self.client._make_request(
-                "POST", "/stat/report/archive.speedtest", site_name=site_name, data=data
-            )
+            results = await self.client._make_request("POST", "/stat/report/archive.speedtest", site_name=site_name, data=data)
 
             if isinstance(results, dict) and "error" in results:
                 return self.create_error_result(results.get("error", "unknown error"), results)
@@ -572,18 +509,8 @@ class MonitoringService(BaseService):
             formatted_results = []
             for result in results[-limit:]:  # Get the most recent results
                 # Try different possible field names for speed values
-                download_speed = (
-                    result.get("xput_download", 0)
-                    or result.get("download", 0)
-                    or result.get("download_speed", 0)
-                    or result.get("down", 0)
-                )
-                upload_speed = (
-                    result.get("xput_upload", 0)
-                    or result.get("upload", 0)
-                    or result.get("upload_speed", 0)
-                    or result.get("up", 0)
-                )
+                download_speed = result.get("xput_download", 0) or result.get("download", 0) or result.get("download_speed", 0) or result.get("down", 0)
+                upload_speed = result.get("xput_upload", 0) or result.get("upload", 0) or result.get("upload_speed", 0) or result.get("up", 0)
 
                 formatted_result = {
                     "timestamp": format_timestamp(result.get("time", 0)),
@@ -638,17 +565,11 @@ class MonitoringService(BaseService):
                 ],
             }
 
-            events = await self.client._make_request(
-                "POST", "/stat/ips/event", site_name=site_name, data=data
-            )
+            events = await self.client._make_request("POST", "/stat/ips/event", site_name=site_name, data=data)
 
             if isinstance(events, dict) and "error" in events:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text", text=f"Error: {events.get('error', 'unknown error')}"
-                        )
-                    ],
+                    content=[TextContent(type="text", text=f"Error: {events.get('error', 'unknown error')}")],
                     structured_content={
                         "error": events.get("error", "unknown error"),
                         "raw": events,
@@ -663,9 +584,7 @@ class MonitoringService(BaseService):
 
             # Format IPS events for clean output
             formatted_events = []
-            events_sorted = sorted(
-                events, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True
-            )[:limit]
+            events_sorted = sorted(events, key=lambda e: e.get("time", e.get("timestamp", 0)), reverse=True)[:limit]
             for event in events_sorted:
                 formatted_event = {
                     "timestamp": format_timestamp(event.get("time", 0)),

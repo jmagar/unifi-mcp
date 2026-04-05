@@ -520,7 +520,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     sec_icon = "❓"
 
                 # Determine signal strength icon
-                if isinstance(rssi, (int, float)):
+                if isinstance(rssi, int | float):
                     if rssi > -50:
                         signal_icon = "📦"
                     elif rssi > -70:
@@ -599,7 +599,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                     sec_icon = "❓"
 
                 # Determine signal strength icon
-                if isinstance(rssi, (int, float)):
+                if isinstance(rssi, int | float):
                     if rssi > -50:
                         signal_icon = "📦"
                     elif rssi > -70:
@@ -660,7 +660,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
             timezone = sysinfo.get("timezone", "Unknown")
 
             # Format uptime
-            if isinstance(uptime, (int, float)):
+            if isinstance(uptime, int | float):
                 days = int(uptime // 86400)
                 hours = int((uptime % 86400) // 3600)
                 uptime_str = f"{days} days, {hours} hours"
@@ -716,7 +716,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
 
             # Filter system info to essential details
             uptime = sysinfo.get("uptime", 0)
-            if isinstance(uptime, (int, float)):
+            if isinstance(uptime, int | float):
                 days = int(uptime // 86400)
                 hours = int((uptime % 86400) // 3600)
                 uptime_str = f"{days} days, {hours} hours"

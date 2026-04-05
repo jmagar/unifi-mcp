@@ -46,9 +46,7 @@ class TestBytesFormatting:
     def test_format_bytes_edge_cases(self):
         """Test byte formatting edge cases."""
         assert format_bytes(None) == "0 B"
-        assert (
-            format_bytes(-1) == "-1 B"
-        )  # Actual implementation doesn't handle negatives specially
+        assert format_bytes(-1) == "-1 B"  # Actual implementation doesn't handle negatives specially
         assert format_bytes("invalid") == "0 B"
 
 
@@ -57,20 +55,27 @@ class TestTimestampFormatting:
 
     def test_format_timestamp_unix_epoch(self):
         """Test timestamp formatting with Unix epoch values."""
-        # Test known timestamp (2024-01-01 00:00:00 UTC = 2023-12-31 19:00:00 EST)
+        from datetime import datetime
+
+        # Test known timestamp: 2024-01-01 00:00:00 UTC
         timestamp = 1704067200
         result = format_timestamp(timestamp)
 
         assert isinstance(result, str)
         assert len(result) > 0
-        assert "2023" in result  # Will be 2023 in EST timezone
+        # Compare against the local-time representation of the same timestamp
+        expected = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        assert result == expected
 
     def test_format_timestamp_edge_cases(self):
         """Test timestamp formatting edge cases."""
-        assert format_timestamp(0) == "1969-12-31 19:00:00"  # EST timezone
+        from datetime import datetime
+
+        # Epoch 0: local time representation varies by timezone
+        assert format_timestamp(0) == datetime.fromtimestamp(0).strftime("%Y-%m-%d %H:%M:%S")
         assert format_timestamp(None) == "Unknown"
         assert format_timestamp("invalid") == "Unknown"
-        assert format_timestamp(-1) == "1969-12-31 18:59:59"  # -1 second from epoch
+        assert format_timestamp(-1) == datetime.fromtimestamp(-1).strftime("%Y-%m-%d %H:%M:%S")
 
 
 class TestUptimeFormatting:

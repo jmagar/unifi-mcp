@@ -150,9 +150,7 @@ class UnifiControllerClient:
         try:
             logger.debug(f"Making {method} request to {url}")
 
-            response = await self.session.request(
-                method, url, json=data, params=params, headers=headers
-            )
+            response = await self.session.request(method, url, json=data, params=params, headers=headers)
 
             if response.status_code == 401:
                 logger.warning("Received 401, re-authenticating")
@@ -160,9 +158,7 @@ class UnifiControllerClient:
                 await self.authenticate()
 
                 # Retry the request
-                retry_response = await self.session.request(
-                    method, url, json=data, params=params, headers=headers
-                )
+                retry_response = await self.session.request(method, url, json=data, params=params, headers=headers)
 
                 if retry_response.status_code != 200:
                     logger.error(f"Request failed with status {retry_response.status_code}")
@@ -213,9 +209,7 @@ class UnifiControllerClient:
         data = {"cmd": "kick-sta", "mac": mac.lower().replace("-", ":").replace(".", ":")}
         return await self._make_request("POST", "/cmd/stamgr", site_name=site_name, data=data)
 
-    async def get_events(
-        self, site_name: str = "default", limit: int = 100
-    ) -> dict[str, Any] | list:
+    async def get_events(self, site_name: str = "default", limit: int = 100) -> dict[str, Any] | list:
         """Get recent events.
 
         Tries v2 API first (UDM Pro firmware 5.x+), falls back to legacy /stat/event.
@@ -223,6 +217,7 @@ class UnifiControllerClient:
         if self.config.is_udm_pro:
             # v2 API — available on modern UDM firmware
             await self.ensure_authenticated()
+            assert self.session is not None, "Session must be initialized after ensure_authenticated"
             url = f"{self.config.controller_url}/proxy/network/v2/api/site/{site_name}/events"
             headers = {"Content-Type": "application/json"}
             if self.csrf_token:
@@ -233,17 +228,14 @@ class UnifiControllerClient:
                 return body.get("data", body) if isinstance(body, dict) else body
             # Fall through to legacy endpoint
             logger.debug(f"v2 events returned {resp.status_code}, trying legacy endpoint")
-        result = await self._make_request(
-            "POST", "/stat/event", site_name=site_name, data={"_limit": limit}
-        )
+        result = await self._make_request("POST", "/stat/event", site_name=site_name, data={"_limit": limit})
         # Both v2 and legacy paths return 404 on Network Application 10.x —
         # surface a clear message instead of a raw error
         if isinstance(result, dict) and "error" in result:
             return {
                 "error": "Events API not available on this controller version",
                 "detail": result.get("error", ""),
-                "hint": "Network Application 10.x removed the legacy /stat/event endpoint. "
-                "Use get_alarms for active alerts instead.",
+                "hint": "Network Application 10.x removed the legacy /stat/event endpoint. Use get_alarms for active alerts instead.",
             }
         return result
 
@@ -287,9 +279,7 @@ class UnifiControllerClient:
     async def get_speedtest_results(self, site_name: str = "default") -> dict[str, Any] | list:
         """Get speed test results."""
         data = {"attrs": ["xput_download", "xput_upload", "latency", "time"]}
-        return await self._make_request(
-            "POST", "/stat/report/archive.speedtest", site_name=site_name, data=data
-        )
+        return await self._make_request("POST", "/stat/report/archive.speedtest", site_name=site_name, data=data)
 
     async def get_threat_events(self, site_name: str = "default") -> dict[str, Any] | list:
         """Get IPS threat detection events."""
@@ -364,15 +354,11 @@ class UnifiControllerClient:
 
         if wireless:
             top_names = [c.get("name", "Device") for c in wireless[:2]]
-            parts.append(
-                f"📶{len(wireless)} wireless ({', '.join(top_names)}{'...' if len(wireless) > 2 else ''})"
-            )
+            parts.append(f"📶{len(wireless)} wireless ({', '.join(top_names)}{'...' if len(wireless) > 2 else ''})")
 
         if wired:
             top_names = [c.get("name", "Device") for c in wired[:2]]
-            parts.append(
-                f"🔌{len(wired)} wired ({', '.join(top_names)}{'...' if len(wired) > 2 else ''})"
-            )
+            parts.append(f"🔌{len(wired)} wired ({', '.join(top_names)}{'...' if len(wired) > 2 else ''})")
 
         return summary + " | ".join(parts)
 
@@ -464,9 +450,7 @@ class UnifiControllerClient:
         if not active_alarms:
             return "✅ No active alarms"
 
-        critical = len(
-            [a for a in active_alarms if a.get("catname", "").lower() in ["critical", "high"]]
-        )
+        critical = len([a for a in active_alarms if a.get("catname", "").lower() in ["critical", "high"]])
         summary = f"🚨 {len(active_alarms)} alarms"
         if critical > 0:
             summary += f" ({critical} critical)"

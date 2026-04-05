@@ -876,9 +876,9 @@ def format_generic_list(items: list[dict[str, Any]], resource_type: str, key_fie
                     if isinstance(value, bool):
                         value = "✅" if value else "❌"
                     # Format numeric values with units if needed
-                    elif isinstance(value, (int, float)) and field.endswith(("_bytes", "bytes")):
+                    elif isinstance(value, int | float) and field.endswith(("_bytes", "bytes")):
                         value = format_bytes(value)
-                    elif isinstance(value, (int, float)) and field in ("uptime", "duration"):
+                    elif isinstance(value, int | float) and field in ("uptime", "duration"):
                         value = format_uptime(value)
 
                     parts.append(str(value))
@@ -900,21 +900,21 @@ def format_data_values(data: Any) -> Any:
         for key, value in data.items():
             # Handle byte values
             if key.endswith(("_bytes", "-bytes", "bytes")):
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     formatted[key] = format_bytes(value)
                     formatted[f"{key}_raw"] = value
                 else:
                     formatted[key] = value
                 formatted[f"{key}_formatted"] = format_summary_bytes(value)
             # Handle timestamp values
-            elif key in ("time", "last_seen", "first_see", "blocked_time") and isinstance(value, (int, float)):
+            elif key in ("time", "last_seen", "first_see", "blocked_time") and isinstance(value, int | float):
                 formatted[key] = format_timestamp(value)
                 formatted[f"{key}_raw"] = value
             # Handle uptime values
             elif key in ("uptime", "duration"):
                 formatted[key] = value
                 formatted[f"{key}_formatted"] = format_detailed_uptime(value) if key == "uptime" else format_uptime(value)
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     formatted[f"{key}_raw"] = value
             # Recursively format nested data
             else:

@@ -300,10 +300,10 @@ def register_monitoring_tools(mcp: FastMCP, client: UnifiControllerClient) -> No
 
             for rogue in filtered_rogues:
                 rssi = rogue.get("rssi", "Unknown")
-                signal_str = f"{rssi} dBm" if isinstance(rssi, (int, float)) else str(rssi)
+                signal_str = f"{rssi} dBm" if isinstance(rssi, int | float) else str(rssi)
 
                 # Determine threat level based on signal strength
-                if isinstance(rssi, (int, float)):
+                if isinstance(rssi, int | float):
                     if rssi > -60:
                         threat_level = "High"
                     elif rssi > -80:

@@ -1,6 +1,6 @@
 {
   "name": "unifi-mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "UniFi network management via MCP tools. Monitor devices, clients, network health, firewall rules, and perform management operations.",
   "mcpServers": {
     "unifi-mcp": {

@@ -273,7 +273,7 @@ class TestUnifiControllerClientIntegration:
 
                 # Test basic API call
                 devices = await client.get_devices()
-                assert isinstance(devices, (list, dict))
+                assert isinstance(devices, list | dict)
 
                 if isinstance(devices, list):
                     # Successful response
@@ -299,7 +299,7 @@ class TestUnifiControllerClientIntegration:
             async with client:
                 # Test sites retrieval
                 sites = await client.get_sites()
-                assert isinstance(sites, (list, dict))
+                assert isinstance(sites, list | dict)
 
                 if isinstance(sites, list):
                     assert len(sites) >= 1  # Should have at least default site

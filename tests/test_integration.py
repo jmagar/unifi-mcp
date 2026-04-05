@@ -58,10 +58,10 @@ class TestUniFiMCPIntegration:
 
                 # Test basic functionality
                 devices = await client.get_devices()
-                assert isinstance(devices, (list, dict))
+                assert isinstance(devices, list | dict)
 
                 clients = await client.get_clients()
-                assert isinstance(clients, (list, dict))
+                assert isinstance(clients, list | dict)
 
         except Exception as e:
             pytest.fail(f"Real controller connection test failed: {e}")

@@ -155,7 +155,7 @@ def register_device_resources(mcp: FastMCP, client: UnifiControllerClient) -> No
                     uptime = device.get("uptime", 0)
 
                     # Format uptime
-                    if isinstance(uptime, (int, float)):
+                    if isinstance(uptime, int | float):
                         days = int(uptime // 86400)
                         hours = int((uptime % 86400) // 3600)
                         uptime_str = f"{days}d {hours}h"

@@ -54,7 +54,7 @@ def format_client_uptime(uptime, from_timestamp=False):
             return f"{seconds_ago // 3600}h ago"
         else:
             return f"{seconds_ago // 86400}d ago"
-    elif isinstance(uptime, (int, float)) and uptime > 0:
+    elif isinstance(uptime, int | float) and uptime > 0:
         days = int(uptime // 86400)
         hours = int((uptime % 86400) // 3600)
         if days > 0:
