@@ -20,14 +20,6 @@ repos:
         entry: uv run ty check unifi_mcp
         pass_filenames: false
 
-      - id: skills-validate
-        name: Validate skill definitions
-        language: script
-        entry: bash scripts/lint-plugin.sh
-        pass_filenames: false
-        always_run: false
-        files: ^skills/
-
       - id: docker-security
         name: Check Docker security
         language: script

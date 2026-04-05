@@ -20,7 +20,6 @@ GitHub Actions configuration for unifi-mcp.
 | `typecheck` | ubuntu-latest | ty check unifi_mcp/ |
 | `test` | ubuntu-latest | pytest (excludes slow, integration) |
 | `version-sync` | ubuntu-latest | Verify version across pyproject.toml, plugin.json, .app.json |
-| `contract-drift` | ubuntu-latest | scripts/lint-plugin.sh |
 | `docker-security` | ubuntu-latest | Dockerfile security, no baked env, ignore files |
 | `mcp-integration` | ubuntu-latest | Live tests (requires secrets, runs after lint+typecheck+test) |
 

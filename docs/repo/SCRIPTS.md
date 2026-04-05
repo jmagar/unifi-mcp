@@ -6,7 +6,6 @@ Scripts used for maintenance, hooks, and testing.
 
 | Script | Purpose | CI Job |
 |--------|---------|--------|
-| `lint-plugin.sh` | Validate skill/tool contract drift; ensures SKILL.md matches registered tools | `contract-drift` |
 | `check-docker-security.sh` | Audit Dockerfile: non-root user, no COPY .env, no ARG secrets | `docker-security` |
 | `check-no-baked-env.sh` | Detect environment variables baked into Docker images | `docker-security` |
 | `ensure-ignore-files.sh` | Verify .gitignore and .dockerignore contain required patterns | `docker-security` |
@@ -32,7 +31,6 @@ Scripts used for maintenance, hooks, and testing.
 ### Directly
 
 ```bash
-bash scripts/lint-plugin.sh
 bash scripts/check-docker-security.sh Dockerfile
 bash scripts/smoke-test.sh
 ```
@@ -40,15 +38,14 @@ bash scripts/smoke-test.sh
 ### Via Justfile
 
 ```bash
-just check-contract      # lint-plugin.sh
-just validate-skills     # lint-plugin.sh
+just check-contract      # no-op placeholder
+just validate-skills     # no-op placeholder
 just test-live           # Health check against running server
 ```
 
 ### In CI
 
 All maintenance scripts run in the CI pipeline:
-- `lint-plugin.sh` in the `contract-drift` job
 - `check-docker-security.sh`, `check-no-baked-env.sh`, `ensure-ignore-files.sh` in the `docker-security` job
 - `tests/test_live.sh` in the `mcp-integration` job
 

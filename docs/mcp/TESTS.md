@@ -94,19 +94,6 @@ bash scripts/smoke-test.sh
 
 Quick verification that the server starts, responds to health checks, and handles basic tool calls.
 
-## Contract Drift
-
-```bash
-just check-contract
-# or
-bash scripts/lint-plugin.sh
-```
-
-Validates that:
-- Skill definitions match actual tool surface
-- Plugin manifests are consistent
-- Tool names in SKILL.md match registered tools
-
 ## Running in CI
 
 CI configuration in `.github/workflows/ci.yml`:
@@ -117,7 +104,6 @@ CI configuration in `.github/workflows/ci.yml`:
 | `typecheck` | `ty check unifi_mcp/` |
 | `test` | `pytest -m "not slow and not integration"` |
 | `version-sync` | Version consistency across all manifests |
-| `contract-drift` | `scripts/lint-plugin.sh` |
 | `docker-security` | Dockerfile security + no baked env + ignore files |
 | `mcp-integration` | `tests/test_live.sh` (requires secrets) |
 

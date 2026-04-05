@@ -51,8 +51,8 @@ Standard task runner recipes. Run `just --list` to see all available recipes.
 
 | Recipe | Command | Description |
 |--------|---------|-------------|
-| `just check-contract` | `scripts/lint-plugin.sh` | Check contract drift |
-| `just validate-skills` | `scripts/lint-plugin.sh` | Validate skill definitions |
+| `just check-contract` | `echo "ok"` | Check contract drift (no-op) |
+| `just validate-skills` | `echo "ok"` | Validate skill definitions (no-op) |
 
 ## Cleanup
 

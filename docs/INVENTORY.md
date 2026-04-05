@@ -155,7 +155,6 @@ See [CONFIG](CONFIG.md) for the full reference. Summary:
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/lint-plugin.sh` | Validate skill/tool contract drift |
 | `scripts/check-docker-security.sh` | Dockerfile security audit |
 | `scripts/check-no-baked-env.sh` | Detect baked env vars in Docker |
 | `scripts/ensure-ignore-files.sh` | Validate .gitignore/.dockerignore |

@@ -31,7 +31,6 @@ unifi-mcp/
 │       ├── fix-env-perms.sh     # Fix .env permissions
 │       └── ensure-ignore-files.sh
 ├── scripts/
-│   ├── lint-plugin.sh           # Contract drift validation
 │   ├── check-docker-security.sh
 │   ├── check-no-baked-env.sh
 │   ├── check-outdated-deps.sh
