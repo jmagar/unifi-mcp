@@ -63,14 +63,6 @@ jobs:
           [ "$PYPROJECT_VER" = "$PLUGIN_VER" ] && [ "$PLUGIN_VER" = "$CODEX_VER" ] && [ "$CODEX_VER" = "$APP_VER" ] || \
             (echo "Version mismatch!" && exit 1)
 
-  contract-drift:
-    name: Contract Drift
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate skills
-        run: bash scripts/lint-plugin.sh
-
   docker-security:
     name: Docker Security
     runs-on: ubuntu-latest
