@@ -83,11 +83,9 @@ coverage.xml
 .nox/
 pip-log.txt
 
-backups/*
-!backups/.gitkeep
-logs/*
-!logs/.gitkeep
 .worktrees
 
 # Personal local cheatsheet (never commit)
 CLAUDE.md.local
+logs/
+backups/
