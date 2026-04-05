@@ -1,6 +1,6 @@
 {
   "name": "unifi-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "UniFi network management via MCP.",
   "homepage": "https://github.com/jmagar/unifi-mcp",
   "repository": "https://github.com/jmagar/unifi-mcp",

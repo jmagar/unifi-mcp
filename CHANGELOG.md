@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-04-04
+
+### Added
+- **Full documentation structure**: Added `tests/TEST_COVERAGE.md` with test coverage details and documentation improvements.
+
 ## [1.0.1] - 2026-04-03
 
 ### Fixed
@@ -31,5 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hooks: sync-env, fix-env-perms, ensure-ignore-files
 - SWAG reverse proxy configuration
 
-[Unreleased]: https://github.com/jmagar/unifi-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jmagar/unifi-mcp/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/jmagar/unifi-mcp/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/jmagar/unifi-mcp/compare/v0.1.0...v1.0.1
 [0.1.0]: https://github.com/jmagar/unifi-mcp/releases/tag/v0.1.0
