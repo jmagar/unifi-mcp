@@ -141,11 +141,7 @@ class UnifiService:
 
             logger.debug("User authenticated.")
             return ToolResult(
-                content=[
-                    TextContent(
-                        type="text", text=f"Authenticated as: {user_info.get('email', 'Unknown')}"
-                    )
-                ],
+                content=[TextContent(type="text", text=f"Authenticated as: {user_info.get('email', 'Unknown')}")],
                 structured_content=user_info,
             )
 

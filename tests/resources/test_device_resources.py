@@ -113,10 +113,7 @@ class TestDeviceStatsResource:
             content = await client.read_resource(stats_uri)
 
             content_text = get_text_content(content)
-            assert any(
-                keyword in content_text.lower()
-                for keyword in ["traffic", "system", "uptime", "active_ports"]
-            )
+            assert any(keyword in content_text.lower() for keyword in ["traffic", "system", "uptime", "active_ports"])
 
     async def test_device_stats_resource_not_found(self, device_resources_server):
         """Test device statistics resource for non-existent device."""

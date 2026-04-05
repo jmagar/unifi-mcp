@@ -229,12 +229,8 @@ class NetworkService(BaseService):
 
             # Compact summary: name | VLAN/native | PoE | Security
             lines = [f"Port Profiles ({len(formatted_ports)} total)"]
-            lines.append(
-                f"  {'En':<2} {'Profile Name':<28} {'Native VLAN':<11} {'Tagged Count':<13} {'PoE Mode':<8} {'Port Security':<13}"
-            )
-            lines.append(
-                f"  {'-' * 2:<2} {'-' * 28:<28} {'-' * 11:<11} {'-' * 13:<13} {'-' * 8:<8} {'-' * 13:<13}"
-            )
+            lines.append(f"  {'En':<2} {'Profile Name':<28} {'Native VLAN':<11} {'Tagged Count':<13} {'PoE Mode':<8} {'Port Security':<13}")
+            lines.append(f"  {'-' * 2:<2} {'-' * 28:<28} {'-' * 11:<11} {'-' * 13:<13} {'-' * 8:<8} {'-' * 13:<13}")
             for p in formatted_ports[:40]:
                 en = "✓" if p.get("enabled") else "✗"
                 name = str(p.get("name", ""))[:28]
@@ -304,9 +300,7 @@ class NetworkService(BaseService):
             defaults = params.get_action_defaults()
             site_name = defaults.get("site_name", "default")
 
-            rules = await self.client._make_request(
-                "GET", "/rest/firewallrule", site_name=site_name
-            )
+            rules = await self.client._make_request("GET", "/rest/firewallrule", site_name=site_name)
 
             # Check for error response
             if isinstance(rules, dict) and "error" in rules:
@@ -364,9 +358,7 @@ class NetworkService(BaseService):
             defaults = params.get_action_defaults()
             site_name = defaults.get("site_name", "default")
 
-            groups = await self.client._make_request(
-                "GET", "/rest/firewallgroup", site_name=site_name
-            )
+            groups = await self.client._make_request("GET", "/rest/firewallgroup", site_name=site_name)
 
             # Check for error response
             error_result = self.check_list_response(groups, params.action)

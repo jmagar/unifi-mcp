@@ -32,9 +32,7 @@ class UnifiParams(BaseModel):
     )
 
     # Device and client identification
-    mac: str | None = Field(
-        default=None, description="Device or client MAC address (any format)"
-    )
+    mac: str | None = Field(default=None, description="Device or client MAC address (any format)")
 
     # Filtering and limits
     limit: int | None = Field(
@@ -58,13 +56,9 @@ class UnifiParams(BaseModel):
     )
 
     # Client management
-    name: str | None = Field(
-        default=None, description="New name for client (set_client_name only)"
-    )
+    name: str | None = Field(default=None, description="New name for client (set_client_name only)")
 
-    note: str | None = Field(
-        default=None, description="Note for client (set_client_note only)"
-    )
+    note: str | None = Field(default=None, description="Note for client (set_client_note only)")
 
     # Guest authorization parameters
     minutes: int | None = Field(
@@ -82,9 +76,7 @@ class UnifiParams(BaseModel):
         description="Download bandwidth limit in Kbps (authorize_guest only)",
     )
 
-    quota: int | None = Field(
-        default=None, description="Data quota in MB (authorize_guest only)"
-    )
+    quota: int | None = Field(default=None, description="Data quota in MB (authorize_guest only)")
 
     # Destructive operation gate
     confirm: bool | None = Field(
@@ -138,21 +130,15 @@ class UnifiParams(BaseModel):
 
         # Validate name requirement for set_client_name
         if self.action == UnifiAction.SET_CLIENT_NAME and self.name is None:
-            raise ValueError(
-                "name parameter is required for set_client_name action"
-            )
+            raise ValueError("name parameter is required for set_client_name action")
 
         # Validate note requirement for set_client_note
         if self.action == UnifiAction.SET_CLIENT_NOTE and self.note is None:
-            raise ValueError(
-                "note parameter is required for set_client_note action"
-            )
+            raise ValueError("note parameter is required for set_client_note action")
 
         # Validate by_filter requirement for get_dpi_stats
         if self.action == UnifiAction.GET_DPI_STATS and self.by_filter is not None and self.by_filter not in ["by_app", "by_cat"]:
-            raise ValueError(
-                "by_filter must be 'by_app' or 'by_cat' for get_dpi_stats action"
-            )
+            raise ValueError("by_filter must be 'by_app' or 'by_cat' for get_dpi_stats action")
 
         # Validate minutes requirement for authorize_guest
         if self.action == UnifiAction.AUTHORIZE_GUEST and self.minutes is not None and self.minutes <= 0:

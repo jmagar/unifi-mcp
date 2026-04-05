@@ -22,12 +22,9 @@ class TestUnifiControllerClientAuthentication:
         client = UnifiControllerClient(test_unifi_config)
 
         # Mock successful login response
-        with patch('httpx.AsyncClient.post') as mock_post:
+        with patch("httpx.AsyncClient.post") as mock_post:
             mock_post.return_value = Mock(
-                status_code=200,
-                json=Mock(return_value={}),
-                cookies=httpx.Cookies({"TOKEN": "test-token"}),
-                headers={"x-csrf-token": "test-csrf"}
+                status_code=200, json=Mock(return_value={}), cookies=httpx.Cookies({"TOKEN": "test-token"}), headers={"x-csrf-token": "test-csrf"}
             )
 
             await client.connect()
@@ -42,17 +39,13 @@ class TestUnifiControllerClientAuthentication:
             assert call_args[1]["json"]["username"] == "admin"
             assert call_args[1]["json"]["password"] == "password123"
 
-
     async def test_legacy_controller_authentication_success(self, test_legacy_unifi_config, mock_http_responses):
         """Test successful authentication with legacy controller."""
         client = UnifiControllerClient(test_legacy_unifi_config)
 
-        with patch('httpx.AsyncClient.post') as mock_post:
+        with patch("httpx.AsyncClient.post") as mock_post:
             mock_post.return_value = Mock(
-                status_code=200,
-                json=Mock(return_value={"data": [], "meta": {"rc": "ok"}}),
-                cookies=httpx.Cookies({"unifises": "test-session"}),
-                headers={}
+                status_code=200, json=Mock(return_value={"data": [], "meta": {"rc": "ok"}}), cookies=httpx.Cookies({"unifises": "test-session"}), headers={}
             )
 
             await client.connect()
@@ -68,18 +61,12 @@ class TestUnifiControllerClientAuthentication:
             assert "username" in call_args[1]["json"]
             assert "password" in call_args[1]["json"]
 
-
     async def test_authentication_failure_invalid_credentials(self, test_unifi_config):
         """Test authentication failure with invalid credentials."""
         client = UnifiControllerClient(test_unifi_config)
 
-        with patch('httpx.AsyncClient.post') as mock_post:
-            mock_post.return_value = Mock(
-                status_code=401,
-                json=Mock(return_value={"error": "Invalid credentials"}),
-                cookies=httpx.Cookies({}),
-                headers={}
-            )
+        with patch("httpx.AsyncClient.post") as mock_post:
+            mock_post.return_value = Mock(status_code=401, json=Mock(return_value={"error": "Invalid credentials"}), cookies=httpx.Cookies({}), headers={})
 
             await client.connect()
             result = await client.authenticate()
@@ -88,12 +75,11 @@ class TestUnifiControllerClientAuthentication:
             assert client.is_authenticated is False
             assert client.csrf_token is None
 
-
     async def test_authentication_network_error(self, test_unifi_config):
         """Test authentication failure due to network error."""
         client = UnifiControllerClient(test_unifi_config)
 
-        with patch('httpx.AsyncClient.post') as mock_post:
+        with patch("httpx.AsyncClient.post") as mock_post:
             mock_post.side_effect = httpx.ConnectError("Connection failed")
 
             await client.connect()
@@ -101,7 +87,6 @@ class TestUnifiControllerClientAuthentication:
 
             assert result is False
             assert client.is_authenticated is False
-
 
     async def test_session_initialization_and_cleanup(self, test_unifi_config):
         """Test session lifecycle management."""
@@ -111,19 +96,16 @@ class TestUnifiControllerClientAuthentication:
         assert client.session is None
         assert client.is_authenticated is False
 
-        with patch('httpx.AsyncClient') as mock_session_class:
+        with patch("httpx.AsyncClient") as mock_session_class:
             mock_session = AsyncMock()
             mock_session_class.return_value = mock_session
 
-            with patch.object(client, 'authenticate', return_value=True):
+            with patch.object(client, "authenticate", return_value=True):
                 await client.connect()
 
                 # Session should be initialized
                 assert client.session is not None
-                mock_session_class.assert_called_once_with(
-                    verify=test_unifi_config.verify_ssl,
-                    timeout=30.0
-                )
+                mock_session_class.assert_called_once_with(verify=test_unifi_config.verify_ssl, timeout=30.0)
 
                 await client.disconnect()
 
@@ -142,12 +124,10 @@ class TestUnifiControllerClientAPIRequests:
         client = UnifiControllerClient(test_unifi_config)
         assert client.api_base == "/proxy/network/api"
 
-
     async def test_api_base_path_legacy(self, test_legacy_unifi_config):
         """Test API base path configuration for legacy controller."""
         client = UnifiControllerClient(test_legacy_unifi_config)
         assert client.api_base == "/api"
-
 
     async def test_get_devices_success(self, mock_unifi_client, mock_device_data):
         """Test successful device retrieval."""
@@ -159,7 +139,6 @@ class TestUnifiControllerClientAPIRequests:
         assert result[0]["name"] == "Main Switch"
         assert result[1]["name"] == "Living Room AP"
 
-
     async def test_get_clients_success(self, mock_unifi_client, mock_client_data):
         """Test successful client retrieval."""
         result = await mock_unifi_client.get_clients()
@@ -170,7 +149,6 @@ class TestUnifiControllerClientAPIRequests:
         assert result[0]["name"] == "John's iPhone"
         assert result[1]["name"] == "Desktop PC"
 
-
     async def test_get_networks_success(self, mock_unifi_client, mock_network_data):
         """Test successful network configuration retrieval."""
         result = await mock_unifi_client.get_networks()
@@ -180,7 +158,6 @@ class TestUnifiControllerClientAPIRequests:
         assert len(result) == 2
         assert result[0]["name"] == "LAN"
         assert result[1]["name"] == "Guest"
-
 
     async def test_device_management_operations(self, mock_unifi_client):
         """Test device management operations."""
@@ -193,7 +170,6 @@ class TestUnifiControllerClientAPIRequests:
         # Test locate device
         result = await mock_unifi_client.locate_device(device_mac)
         assert result["message"] == "Device locate started"
-
 
     async def test_client_management_operations(self, mock_unifi_client):
         """Test client management operations."""
@@ -227,17 +203,15 @@ class TestUnifiControllerClientErrorHandling:
         assert "error" in result
         assert result["error"] == "Authentication required"
 
-
     async def test_context_manager_usage(self, test_unifi_config):
         """Test using client as async context manager."""
         client = UnifiControllerClient(test_unifi_config)
 
-        with patch.object(client, 'connect') as mock_connect, patch.object(client, 'disconnect') as mock_disconnect:
+        with patch.object(client, "connect") as mock_connect, patch.object(client, "disconnect") as mock_disconnect:
             async with client:
                 mock_connect.assert_called_once()
 
             mock_disconnect.assert_called_once()
-
 
     async def test_ensure_authenticated_method(self, test_unifi_config):
         """Test ensure_authenticated method behavior."""
@@ -245,13 +219,13 @@ class TestUnifiControllerClientErrorHandling:
 
         # Mock authenticated state
         client.is_authenticated = True
-        with patch.object(client, 'authenticate') as mock_auth:
+        with patch.object(client, "authenticate") as mock_auth:
             await client.ensure_authenticated()
             mock_auth.assert_not_called()  # Should not re-authenticate
 
         # Mock unauthenticated state
         client.is_authenticated = False
-        with patch.object(client, 'authenticate', return_value=True) as mock_auth:
+        with patch.object(client, "authenticate", return_value=True) as mock_auth:
             await client.ensure_authenticated()
             mock_auth.assert_called_once()  # Should authenticate
 
@@ -286,7 +260,6 @@ class TestUnifiControllerClientIntegration:
         except Exception as e:
             pytest.fail(f"Integration test failed: {e}")
 
-
     @pytest.mark.integration
     async def test_real_controller_site_operations(self, integration_config):
         """Test site operations with real controller."""
@@ -315,29 +288,17 @@ class TestUnifiControllerClientConfiguration:
 
     def test_client_initialization_with_ssl_verification(self):
         """Test client initialization with SSL verification enabled."""
-        config = UniFiConfig(
-            controller_url="https://test.local",
-            username="admin",
-            password="password",
-            verify_ssl=True
-        )
+        config = UniFiConfig(controller_url="https://test.local", username="admin", password="password", verify_ssl=True)
 
         client = UnifiControllerClient(config)
         assert client.config.verify_ssl is True
 
-
     def test_client_initialization_without_ssl_verification(self):
         """Test client initialization with SSL verification disabled."""
-        config = UniFiConfig(
-            controller_url="https://test.local",
-            username="admin",
-            password="password",
-            verify_ssl=False
-        )
+        config = UniFiConfig(controller_url="https://test.local", username="admin", password="password", verify_ssl=False)
 
         client = UnifiControllerClient(config)
         assert client.config.verify_ssl is False
-
 
     def test_client_configuration_snapshot(self, test_unifi_config):
         """Test client configuration structure using snapshots."""
@@ -348,13 +309,9 @@ class TestUnifiControllerClientConfiguration:
             "username": client.config.username,
             "is_udm_pro": client.config.is_udm_pro,
             "verify_ssl": client.config.verify_ssl,
-            "api_base": client.api_base
+            "api_base": client.api_base,
         }
 
-        assert config_dict == snapshot({
-            "controller_url": "https://192.168.1.1:443",
-            "username": "admin",
-            "is_udm_pro": True,
-            "verify_ssl": False,
-            "api_base": "/proxy/network/api"
-        })
+        assert config_dict == snapshot(
+            {"controller_url": "https://192.168.1.1:443", "username": "admin", "is_udm_pro": True, "verify_ssl": False, "api_base": "/proxy/network/api"}
+        )

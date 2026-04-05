@@ -106,9 +106,7 @@ class TestUniFiMCPIntegration:
                 resources = await client.list_resources()
                 assert len(resources) > 0
 
-                devices_resource = next(
-                    (r for r in resources if "unifi://devices" in str(r.uri)), None
-                )
+                devices_resource = next((r for r in resources if "unifi://devices" in str(r.uri)), None)
                 if devices_resource:
                     content = await client.read_resource(devices_resource.uri)
                     assert content is not None
@@ -156,11 +154,10 @@ class TestUniFiMCPTransport:
                 from fastmcp.client.transports import StreamableHttpTransport
 
                 # Test multiple connections
-                async with Client(
-                    transport=StreamableHttpTransport(f"{server_url}/mcp")
-                ) as client1, Client(
-                    transport=StreamableHttpTransport(f"{server_url}/mcp")
-                ) as client2:
+                async with (
+                    Client(transport=StreamableHttpTransport(f"{server_url}/mcp")) as client1,
+                    Client(transport=StreamableHttpTransport(f"{server_url}/mcp")) as client2,
+                ):
                     # Both clients should work
                     result1 = await client1.ping()
                     result2 = await client2.ping()
@@ -200,9 +197,7 @@ class TestUniFiMCPEndToEnd:
                     device_mac = device_items[0].get("mac")
                     if device_mac:
                         # Test device lookup
-                        device_result = await client.call_tool(
-                            "unifi", {"action": "get_device_by_mac", "mac": device_mac}
-                        )
+                        device_result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": device_mac})
                         assert device_result is not None
 
                         # Test device resource
@@ -233,9 +228,7 @@ class TestUniFiMCPEndToEnd:
                 assert clients_result is not None
 
                 # 2. Test filtering
-                online_result = await client.call_tool(
-                    "unifi", {"action": "get_clients", "connected_only": True}
-                )
+                online_result = await client.call_tool("unifi", {"action": "get_clients", "connected_only": True})
                 assert online_result is not None
 
                 # 3. If we have clients, test individual client lookup
@@ -244,9 +237,7 @@ class TestUniFiMCPEndToEnd:
                     client_mac = client_items[0].get("mac")
                     if client_mac:
                         # Test client lookup
-                        client_result = await client.call_tool(
-                            "unifi", {"action": "get_client_by_mac", "mac": client_mac}
-                        )
+                        client_result = await client.call_tool("unifi", {"action": "get_client_by_mac", "mac": client_mac})
                         assert client_result is not None
 
         except Exception as e:
@@ -268,21 +259,15 @@ class TestUniFiMCPEndToEnd:
             await server.initialize()
             async with Client(server.mcp) as client:
                 # Test with non-existent MAC addresses
-                nonexistent_device = await client.call_tool(
-                    "unifi", {"action": "get_device_by_mac", "mac": "ff:ff:ff:ff:ff:ff"}
-                )
+                nonexistent_device = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "ff:ff:ff:ff:ff:ff"})
                 assert nonexistent_device is not None
                 # Should handle gracefully, not crash
 
-                nonexistent_client = await client.call_tool(
-                    "unifi", {"action": "get_client_by_mac", "mac": "ff:ff:ff:ff:ff:ff"}
-                )
+                nonexistent_client = await client.call_tool("unifi", {"action": "get_client_by_mac", "mac": "ff:ff:ff:ff:ff:ff"})
                 assert nonexistent_client is not None
 
                 # Test invalid site names
-                invalid_site_devices = await client.call_tool(
-                    "unifi", {"action": "get_devices", "site_name": "nonexistent-site"}
-                )
+                invalid_site_devices = await client.call_tool("unifi", {"action": "get_devices", "site_name": "nonexistent-site"})
                 assert invalid_site_devices is not None
 
         except Exception as e:
@@ -358,10 +343,6 @@ class TestUniFiMCPPerformance:
 # Helper functions for integration tests
 def pytest_configure(config):
     """Configure pytest for integration tests."""
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests requiring external resources"
-    )
-    config.addinivalue_line(
-        "markers", "client_process: marks tests that spawn separate client processes"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests requiring external resources")
+    config.addinivalue_line("markers", "client_process: marks tests that spawn separate client processes")
     config.addinivalue_line("markers", "slow: marks tests as slow running (>1 second)")

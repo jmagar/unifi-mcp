@@ -24,7 +24,7 @@ def filter_client_data(clients):
             "connection_type": "Wired" if client.get("is_wired", False) else "Wireless",
             "uptime": format_client_uptime(client.get("uptime", 0)),
             "last_seen": format_client_uptime(client.get("last_seen", 0), from_timestamp=True),
-            "network": client.get("network", "Unknown")
+            "network": client.get("network", "Unknown"),
         }
 
         # Add wireless-specific info
@@ -40,11 +40,13 @@ def filter_client_data(clients):
 
     return filtered_clients
 
+
 def format_client_uptime(uptime, from_timestamp=False):
     """Format uptime in human readable format."""
     if from_timestamp and uptime > 0:
         # Convert timestamp to "time ago"
         import time
+
         seconds_ago = int(time.time()) - uptime
         if seconds_ago < 60:
             return "Just now"
@@ -63,6 +65,7 @@ def format_client_uptime(uptime, from_timestamp=False):
             return f"{hours}h"
     return "Unknown"
 
+
 def get_vendor_name(oui):
     """Get simplified vendor name from OUI."""
     if not oui:
@@ -78,6 +81,7 @@ def get_vendor_name(oui):
         return "Intel"
     else:
         return oui.split(",")[0] if "," in oui else oui
+
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +106,6 @@ def register_client_resources(mcp: FastMCP, client: UnifiControllerClient) -> No
 
         except Exception as e:
             return f"Error retrieving clients: {e!s}"
-
 
     @mcp.resource("unifi://clients/{site_name}")
     async def resource_site_clients(site_name: str):

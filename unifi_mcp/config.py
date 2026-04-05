@@ -16,9 +16,7 @@ from dotenv import load_dotenv
 class ClearingFileHandler(logging.FileHandler):
     """Custom file handler that clears the log file when it exceeds max_bytes."""
 
-    def __init__(
-        self, filename, max_bytes=10 * 1024 * 1024, mode="a", encoding=None, delay=False
-    ):
+    def __init__(self, filename, max_bytes=10 * 1024 * 1024, mode="a", encoding=None, delay=False):
         """
         Initialize handler with file size limit.
 
@@ -99,10 +97,7 @@ class UniFiConfig:
         password = os.getenv("UNIFI_PASSWORD")
 
         if not controller_url:
-            raise ValueError(
-                "UNIFI_URL environment variable is required "
-                "(UNIFI_CONTROLLER_URL is accepted as a legacy fallback)"
-            )
+            raise ValueError("UNIFI_URL environment variable is required (UNIFI_CONTROLLER_URL is accepted as a legacy fallback)")
         if not username:
             raise ValueError("UNIFI_USERNAME environment variable is required")
         if not password:
@@ -136,15 +131,9 @@ class ServerConfig:
         """Create server configuration from environment variables."""
         host = os.getenv("UNIFI_MCP_HOST", os.getenv("UNIFI_LOCAL_MCP_HOST", "0.0.0.0"))
         # UNIFI_MCP_PORT is canonical; UNIFI_LOCAL_MCP_PORT is a legacy fallback.
-        port = int(
-            os.getenv("UNIFI_MCP_PORT", os.getenv("UNIFI_LOCAL_MCP_PORT", "8001"))
-        )
-        log_level = os.getenv(
-            "UNIFI_MCP_LOG_LEVEL", os.getenv("UNIFI_LOCAL_MCP_LOG_LEVEL", "INFO")
-        )
-        log_file = os.getenv(
-            "UNIFI_MCP_LOG_FILE", os.getenv("UNIFI_LOCAL_MCP_LOG_FILE", "/tmp/unifi-mcp.log")
-        )
+        port = int(os.getenv("UNIFI_MCP_PORT", os.getenv("UNIFI_LOCAL_MCP_PORT", "8001")))
+        log_level = os.getenv("UNIFI_MCP_LOG_LEVEL", os.getenv("UNIFI_LOCAL_MCP_LOG_LEVEL", "INFO"))
+        log_file = os.getenv("UNIFI_MCP_LOG_FILE", os.getenv("UNIFI_LOCAL_MCP_LOG_FILE", "/tmp/unifi-mcp.log"))
         transport = os.getenv("UNIFI_MCP_TRANSPORT", "http")
 
         return cls(
@@ -169,9 +158,7 @@ def setup_logging(config: ServerConfig) -> None:
             handler.close()
 
     # Configure basic logging
-    logging.basicConfig(
-        level=getattr(logging, config.log_level.upper()), format=log_format, handlers=[]
-    )
+    logging.basicConfig(level=getattr(logging, config.log_level.upper()), format=log_format, handlers=[])
 
     # Add console handler
     console_handler = logging.StreamHandler()
@@ -213,10 +200,7 @@ def validate_auth_config() -> str | None:
     if not token and not no_auth:
         import sys
 
-        logging.getLogger(__name__).error(
-            "UNIFI_MCP_TOKEN must be set "
-            "(or set UNIFI_MCP_NO_AUTH=true to disable auth)"
-        )
+        logging.getLogger(__name__).error("UNIFI_MCP_TOKEN must be set (or set UNIFI_MCP_NO_AUTH=true to disable auth)")
         sys.exit(1)
 
     return token if token else None

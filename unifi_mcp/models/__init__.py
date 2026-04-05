@@ -7,7 +7,4 @@ Contains data models, enums, and validation schemas for the unified tool interfa
 from .enums import UnifiAction
 from .params import UnifiParams
 
-__all__ = [
-    "UnifiAction",
-    "UnifiParams"
-]
+__all__ = ["UnifiAction", "UnifiParams"]

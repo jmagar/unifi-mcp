@@ -45,14 +45,14 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
 
             if isinstance(clients, dict) and "error" in clients:
                 return ToolResult(
-                    content=[TextContent(type="text", text=f"Error: {clients.get('error','unknown error')}")],
-                    structured_content={"error": clients.get("error", "unknown error"), "raw": clients}
+                    content=[TextContent(type="text", text=f"Error: {clients.get('error', 'unknown error')}")],
+                    structured_content={"error": clients.get("error", "unknown error"), "raw": clients},
                 )
 
             if not isinstance(clients, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
-                    structured_content={"error": "Unexpected response format", "raw": clients}
+                    structured_content={"error": "Unexpected response format", "raw": clients},
                 )
 
             # Format each client for clean output
@@ -67,15 +67,11 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     formatted_clients.append(formatted_client)
                 except Exception as e:
                     logger.error(f"Error formatting client {client_data.get('name', 'Unknown')}: {e}")
-                    formatted_clients.append({
-                        "name": client_data.get("name", "Unknown"),
-                        "mac": client_data.get("mac", ""),
-                        "error": f"Formatting error: {e!s}"
-                    })
+                    formatted_clients.append(
+                        {"name": client_data.get("name", "Unknown"), "mac": client_data.get("mac", ""), "error": f"Formatting error: {e!s}"}
+                    )
 
-            summary_text = format_clients_list(
-                [c for c in clients if (c.get("is_online", True) or not connected_only)]
-            )
+            summary_text = format_clients_list([c for c in clients if (c.get("is_online", True) or not connected_only)])
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=list_payload(
@@ -86,11 +82,7 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
 
         except Exception as e:
             logger.error(f"Error getting clients: {e}")
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {e!s}")],
-                structured_content={"error": str(e), "raw": None}
-            )
-
+            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e), "raw": None})
 
     @mcp.tool()
     async def reconnect_client(mac: str, site_name: str = "default") -> ToolResult:
@@ -111,28 +103,14 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 rc = result.get("meta", {}).get("rc")
                 if rc and rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
-                    return ToolResult(
-                        content=[TextContent(type="text", text=f"Error: {msg}")],
-                        structured_content={"error": msg, "raw": result}
-                    )
+                    return ToolResult(content=[TextContent(type="text", text=f"Error: {msg}")], structured_content={"error": msg, "raw": result})
 
-            resp = {
-                "success": True,
-                "message": f"Client {mac} reconnect command sent",
-                "details": result
-            }
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Reconnect requested: {mac}")],
-                structured_content=resp
-            )
+            resp = {"success": True, "message": f"Client {mac} reconnect command sent", "details": result}
+            return ToolResult(content=[TextContent(type="text", text=f"Reconnect requested: {mac}")], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error reconnecting client {mac}: {e}")
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {e!s}")],
-                structured_content={"error": str(e)}
-            )
-
+            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
 
     @mcp.tool()
     async def block_client(mac: str, site_name: str = "default") -> ToolResult:
@@ -150,37 +128,20 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             # Normalize MAC address
             normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
 
-            result = await client._make_request("POST", "/cmd/stamgr",
-                                               site_name=site_name,
-                                               data={"cmd": "block-sta", "mac": normalized_mac})
+            result = await client._make_request("POST", "/cmd/stamgr", site_name=site_name, data={"cmd": "block-sta", "mac": normalized_mac})
 
             if isinstance(result, dict):
                 rc = result.get("meta", {}).get("rc")
                 if rc and rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
-                    return ToolResult(
-                        content=[TextContent(type="text", text=f"Error: {msg}")],
-                        structured_content={"error": msg, "raw": result}
-                    )
+                    return ToolResult(content=[TextContent(type="text", text=f"Error: {msg}")], structured_content={"error": msg, "raw": result})
 
-            resp = {
-                "success": True,
-                "message": f"Client {normalized_mac} has been blocked from network access",
-                "mac": normalized_mac,
-                "details": result
-            }
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Blocked client: {normalized_mac}")],
-                structured_content=resp
-            )
+            resp = {"success": True, "message": f"Client {normalized_mac} has been blocked from network access", "mac": normalized_mac, "details": result}
+            return ToolResult(content=[TextContent(type="text", text=f"Blocked client: {normalized_mac}")], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error blocking client {mac}: {e}")
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {e!s}")],
-                structured_content={"error": str(e)}
-            )
-
+            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
 
     @mcp.tool()
     async def unblock_client(mac: str, site_name: str = "default") -> ToolResult:
@@ -198,37 +159,25 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             # Normalize MAC address
             normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
 
-            result = await client._make_request("POST", "/cmd/stamgr",
-                                               site_name=site_name,
-                                               data={"cmd": "unblock-sta", "mac": normalized_mac})
+            result = await client._make_request("POST", "/cmd/stamgr", site_name=site_name, data={"cmd": "unblock-sta", "mac": normalized_mac})
 
             if isinstance(result, dict):
                 rc = result.get("meta", {}).get("rc")
                 if rc and rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
-                    return ToolResult(
-                        content=[TextContent(type="text", text=f"Error: {msg}")],
-                        structured_content={"error": msg, "raw": result}
-                    )
+                    return ToolResult(content=[TextContent(type="text", text=f"Error: {msg}")], structured_content={"error": msg, "raw": result})
 
             resp = {
                 "success": True,
                 "message": f"Client {normalized_mac} has been unblocked and can access the network",
                 "mac": normalized_mac,
-                "details": result
+                "details": result,
             }
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Unblocked client: {normalized_mac}")],
-                structured_content=resp
-            )
+            return ToolResult(content=[TextContent(type="text", text=f"Unblocked client: {normalized_mac}")], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error unblocking client {mac}: {e}")
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {e!s}")],
-                structured_content={"error": str(e)}
-            )
-
+            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
 
     @mcp.tool()
     async def forget_client(mac: str, site_name: str = "default") -> ToolResult:
@@ -246,41 +195,20 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
             # Normalize MAC address
             normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
 
-            result = await client._make_request("POST", "/cmd/stamgr",
-                                               site_name=site_name,
-                                               data={"cmd": "forget-sta", "macs": [normalized_mac]})
+            result = await client._make_request("POST", "/cmd/stamgr", site_name=site_name, data={"cmd": "forget-sta", "macs": [normalized_mac]})
 
             if isinstance(result, dict):
                 rc = result.get("meta", {}).get("rc")
                 if rc and rc != "ok":
-                    msg = (
-                        result.get("meta", {}).get("msg")
-                        or result.get("error")
-                        or "Controller returned failure"
-                    )
-                    return ToolResult(
-                        content=[TextContent(type="text", text=f"Error: {msg}")],
-                        structured_content={"error": msg, "raw": result}
-                    )
+                    msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
+                    return ToolResult(content=[TextContent(type="text", text=f"Error: {msg}")], structured_content={"error": msg, "raw": result})
 
-            resp = {
-                "success": True,
-                "message": f"Client {normalized_mac} historical data has been removed",
-                "mac": normalized_mac,
-                "details": result
-            }
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Forgot client data: {normalized_mac}")],
-                structured_content=resp
-            )
+            resp = {"success": True, "message": f"Client {normalized_mac} historical data has been removed", "mac": normalized_mac, "details": result}
+            return ToolResult(content=[TextContent(type="text", text=f"Forgot client data: {normalized_mac}")], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error forgetting client {mac}: {e}")
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {e!s}")],
-                structured_content={"error": str(e)}
-            )
-
+            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
 
     @mcp.tool()
     async def set_client_name(mac: str, name: str, site_name: str = "default") -> ToolResult:
@@ -309,52 +237,34 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                         break
             elif isinstance(users, dict) and "error" in users:
                 return ToolResult(
-                    content=[TextContent(type="text", text=f"Error: {users.get('error','unknown error')}")],
-                    structured_content={"error": users.get("error","unknown error"), "raw": users}
+                    content=[TextContent(type="text", text=f"Error: {users.get('error', 'unknown error')}")],
+                    structured_content={"error": users.get("error", "unknown error"), "raw": users},
                 )
 
             if not client_id:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Client not found: {normalized_mac}")],
-                    structured_content={"error": f"Client with MAC {normalized_mac} not found"}
+                    structured_content={"error": f"Client with MAC {normalized_mac} not found"},
                 )
 
             data = {"name": name} if name else {"name": ""}
 
-            result = await client._make_request("POST", f"/upd/user/{client_id}",
-                                               site_name=site_name,
-                                               data=data)
+            result = await client._make_request("POST", f"/upd/user/{client_id}", site_name=site_name, data=data)
 
             if isinstance(result, dict):
                 rc = result.get("meta", {}).get("rc")
                 if rc and rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
-                    return ToolResult(
-                        content=[TextContent(type="text", text=f"Error: {msg}")],
-                        structured_content={"error": msg, "raw": result}
-                    )
+                    return ToolResult(content=[TextContent(type="text", text=f"Error: {msg}")], structured_content={"error": msg, "raw": result})
 
             action = "updated" if name else "removed"
-            resp = {
-                "success": True,
-                "message": f"Client {normalized_mac} name {action} successfully",
-                "mac": normalized_mac,
-                "name": name,
-                "details": result
-            }
+            resp = {"success": True, "message": f"Client {normalized_mac} name {action} successfully", "mac": normalized_mac, "name": name, "details": result}
             nice = f"Name {action}: {normalized_mac} -> '{name}'" if name else f"Name {action}: {normalized_mac}"
-            return ToolResult(
-                content=[TextContent(type="text", text=nice)],
-                structured_content=resp
-            )
+            return ToolResult(content=[TextContent(type="text", text=nice)], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error setting client name for {mac}: {e}")
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {e!s}")],
-                structured_content={"error": str(e)}
-            )
-
+            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})
 
     @mcp.tool()
     async def set_client_note(mac: str, note: str, site_name: str = "default") -> ToolResult:
@@ -383,48 +293,31 @@ def register_client_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                         break
             elif isinstance(users, dict) and "error" in users:
                 return ToolResult(
-                    content=[TextContent(type="text", text=f"Error: {users.get('error','unknown error')}")],
-                    structured_content={"error": users.get("error","unknown error"), "raw": users}
+                    content=[TextContent(type="text", text=f"Error: {users.get('error', 'unknown error')}")],
+                    structured_content={"error": users.get("error", "unknown error"), "raw": users},
                 )
 
             if not client_id:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Client not found: {normalized_mac}")],
-                    structured_content={"error": f"Client with MAC {normalized_mac} not found"}
+                    structured_content={"error": f"Client with MAC {normalized_mac} not found"},
                 )
 
             data = {"note": note} if note else {"note": ""}
 
-            result = await client._make_request("POST", f"/upd/user/{client_id}",
-                                               site_name=site_name,
-                                               data=data)
+            result = await client._make_request("POST", f"/upd/user/{client_id}", site_name=site_name, data=data)
 
             if isinstance(result, dict):
                 rc = result.get("meta", {}).get("rc")
                 if rc and rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
-                    return ToolResult(
-                        content=[TextContent(type="text", text=f"Error: {msg}")],
-                        structured_content={"error": msg, "raw": result}
-                    )
+                    return ToolResult(content=[TextContent(type="text", text=f"Error: {msg}")], structured_content={"error": msg, "raw": result})
 
             action = "updated" if note else "removed"
-            resp = {
-                "success": True,
-                "message": f"Client {normalized_mac} note {action} successfully",
-                "mac": normalized_mac,
-                "note": note,
-                "details": result
-            }
+            resp = {"success": True, "message": f"Client {normalized_mac} note {action} successfully", "mac": normalized_mac, "note": note, "details": result}
             nice = f"Note {action}: {normalized_mac} -> '{note}'" if note else f"Note {action}: {normalized_mac}"
-            return ToolResult(
-                content=[TextContent(type="text", text=nice)],
-                structured_content=resp
-            )
+            return ToolResult(content=[TextContent(type="text", text=nice)], structured_content=resp)
 
         except Exception as e:
             logger.error(f"Error setting client note for {mac}: {e}")
-            return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {e!s}")],
-                structured_content={"error": str(e)}
-            )
+            return ToolResult(content=[TextContent(type="text", text=f"Error: {e!s}")], structured_content={"error": str(e)})

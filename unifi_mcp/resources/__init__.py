@@ -18,5 +18,5 @@ __all__ = [
     "register_monitoring_resources",
     "register_network_resources",
     "register_overview_resources",
-    "register_site_resources"
+    "register_site_resources",
 ]

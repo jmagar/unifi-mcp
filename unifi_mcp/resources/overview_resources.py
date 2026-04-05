@@ -28,18 +28,12 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
 
             if isinstance(dashboard, list):
                 if not dashboard:
-                    return (
-                        f"**UniFi Dashboard Metrics - {site_name}**\n\nNo dashboard data available."
-                    )
+                    return f"**UniFi Dashboard Metrics - {site_name}**\n\nNo dashboard data available."
 
                 latest_data = dashboard[-1]
                 filtered_dashboard = {
-                    "wan_tx_rate": latest_data.get(
-                        "wan-tx_bytes", latest_data.get("tx_bytes-r", 0)
-                    ),
-                    "wan_rx_rate": latest_data.get(
-                        "wan-rx_bytes", latest_data.get("rx_bytes-r", 0)
-                    ),
+                    "wan_tx_rate": latest_data.get("wan-tx_bytes", latest_data.get("tx_bytes-r", 0)),
+                    "wan_rx_rate": latest_data.get("wan-rx_bytes", latest_data.get("rx_bytes-r", 0)),
                     "wlan_tx_rate": latest_data.get("tx_bytes-r", 0),
                     "wlan_rx_rate": latest_data.get("rx_bytes-r", 0),
                     "latency_avg": latest_data.get("latency_avg", 0),
@@ -85,9 +79,7 @@ def register_overview_resources(mcp: FastMCP, client: UnifiControllerClient) -> 
 
             try:
                 port_forwarding = await client.get_port_forwarding_rules(site_name)
-                if (
-                    isinstance(port_forwarding, dict) and "error" in port_forwarding
-                ) or not isinstance(port_forwarding, list):
+                if (isinstance(port_forwarding, dict) and "error" in port_forwarding) or not isinstance(port_forwarding, list):
                     port_forwarding = []
             except Exception:
                 port_forwarding = []
