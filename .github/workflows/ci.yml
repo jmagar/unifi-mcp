@@ -69,11 +69,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check Dockerfile security
-        run: bash scripts/check-docker-security.sh Dockerfile
+        run: bash bin/check-docker-security.sh Dockerfile
       - name: Check no baked env vars
-        run: bash scripts/check-no-baked-env.sh .
+        run: bash bin/check-no-baked-env.sh .
       - name: Check ignore files
-        run: bash scripts/ensure-ignore-files.sh --check .
+        run: bash bin/ensure-ignore-files.sh --check .
+
 
   mcp-integration:
     name: MCP Integration Tests
@@ -90,3 +91,14 @@ jobs:
           UNIFI_USERNAME: ${{ secrets.UNIFI_USERNAME }}
           UNIFI_PASSWORD: ${{ secrets.UNIFI_PASSWORD }}
         run: bash tests/test_live.sh
+
+  gitleaks:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
