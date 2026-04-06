@@ -1,50 +1,49 @@
-# Plugin Settings
+# Plugin Settings -- unifi-mcp
 
-Plugin configuration, user-facing settings, and environment sync for unifi-mcp.
+Plugin configuration and user-facing settings.
 
-## Configuration Layers
+## How it works
 
-| Layer | Source | Priority |
-|-------|--------|----------|
-| Plugin userConfig | Claude Code UI | Highest — synced to .env at session start |
-| `.env` file | Project root | Medium — loaded by python-dotenv |
-| System environment | Shell/Docker | Lowest — fallback |
+When installed as a Claude Code plugin, unifi-mcp uses **stdio transport**. Claude Code spawns the server process directly — no HTTP layer, no bearer token needed.
 
-## userConfig Fields
+Sensitive credentials are stored in `plugin.json` `userConfig` fields. Claude Code interpolates `${userConfig.*}` references in `.mcp.json` at launch time, passing values as environment variables to the spawned process.
 
-Defined in `.claude-plugin/plugin.json`:
+## Configuration layers
 
-| Key | Type | Sensitive | Description |
-|-----|------|-----------|-------------|
-| `unifi_mcp_url` | string | no | MCP endpoint URL (default: `https://unifi.tootie.tv/mcp`) |
-| `unifi_mcp_token` | string | yes | Bearer token for MCP auth |
-| `unifi_url` | string | yes | UniFi controller URL |
-| `unifi_username` | string | yes | Controller admin username |
-| `unifi_password` | string | yes | Controller admin password |
+| Layer | Source | Managed by |
+|-------|--------|------------|
+| Plugin userConfig | `.claude-plugin/plugin.json` | Claude Code UI / plugin install |
+| .mcp.json env | `.mcp.json` | Checked into repo with defaults + `${userConfig.*}` refs |
+| Docker compose | `docker-compose.yaml` + `.env` | Manual `.env` file |
 
-## Environment Sync
+## userConfig fields
 
-The `sync-env.sh` hook runs at `SessionStart` and copies userConfig values into `.env`:
+| userConfig Key | Environment Variable | Sensitive | Description |
+|----------------|---------------------|-----------|-------------|
+| `unifi_url` | `UNIFI_URL` | no | UniFi controller URL with port |
+| `unifi_username` | `UNIFI_USERNAME` | yes | Controller local admin username |
+| `unifi_password` | `UNIFI_PASSWORD` | yes | Controller password (use a dedicated read-only account) |
 
-1. Reads userConfig values from the plugin framework
-2. Writes them to `.env` in the project root
-3. Ensures `.env` has `chmod 600` permissions
+## Defaults in .mcp.json
 
-This means users configure credentials once through the plugin UI and they are available to the server process.
+Non-sensitive environment variables have sensible defaults hardcoded in `.mcp.json`:
 
-## Codex Settings
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `UNIFI_MCP_TRANSPORT` | `stdio` | Always stdio for plugin deployment |
+| `UNIFI_MCP_NO_AUTH` | `true` | No HTTP auth needed for stdio |
+| `UNIFI_IS_UDM_PRO` | `true` | UDM Pro/SE/Cloud Gateway Max mode |
+| `UNIFI_VERIFY_SSL` | `false` | Skip SSL verification for self-signed certs |
+| `UNIFI_MCP_LOG_LEVEL` | `INFO` | Log level |
+| `UNIFI_MCP_ALLOW_YOLO` | `false` | Destructive op safety gate |
+| `UNIFI_MCP_ALLOW_DESTRUCTIVE` | `false` | Full destructive bypass |
 
-Defined in `gemini-extension.json` `settings` array:
+## Startup hooks
 
-| Setting | Env Var | Sensitive |
-|---------|---------|-----------|
-| UniFi Controller URL | `UNIFI_URL` | no |
-| UniFi Username | `UNIFI_USERNAME` | no |
-| UniFi Password | `UNIFI_PASSWORD` | yes |
-| UDM Pro Mode | `UNIFI_IS_UDM_PRO` | no |
+The `sync-uv.sh` SessionStart hook keeps the uv lockfile and persistent Python environment in sync at session start.
 
 ## See Also
 
-- [HOOKS.md](HOOKS.md) — Hook configuration
-- [PLUGINS.md](PLUGINS.md) — Manifest reference
-- [CONFIG](../CONFIG.md) — Full env var reference
+- [HOOKS.md](HOOKS.md) -- Hook configuration
+- [PLUGINS.md](PLUGINS.md) -- Manifest reference
+- [../CONFIG.md](../CONFIG.md) -- Full env var reference

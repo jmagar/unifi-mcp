@@ -179,42 +179,57 @@ If none of the above apply, the tool returns `error: confirmation_required` with
 
 ## Installation
 
-### Marketplace
+### Claude Code Plugin (recommended)
+
+Install via plugin marketplace — credentials are configured through the plugin UI:
 
 ```bash
 /plugin marketplace add jmagar/claude-homelab
 /plugin install unifi-mcp @jmagar-claude-homelab
 ```
 
+After installing, set `unifi_url`, `unifi_username`, and `unifi_password` in the plugin settings. The server starts automatically via stdio transport — no HTTP setup, no bearer token needed.
+
+### Docker Compose (HTTP)
+
+```bash
+cp .env.example .env
+chmod 600 .env
+# Fill in UNIFI_URL, UNIFI_USERNAME, UNIFI_PASSWORD, and UNIFI_MCP_TOKEN
+just up
+just logs
+```
+
 ### Local development
 
 ```bash
 uv sync
-uv run python -m unifi_mcp.main
-```
-
-Console script entrypoints:
-
-```bash
 uv run unifi-mcp
-uv run unifi-local-mcp
-```
-
-### Docker
-
-```bash
-just up
-just logs
 ```
 
 ---
 
 ## Configuration
 
+### Plugin (stdio) path
+
+Credentials are stored in plugin `userConfig` and interpolated into `.mcp.json` at launch. Three fields are needed:
+
+| userConfig Key | Description |
+| --- | --- |
+| `unifi_url` | UniFi controller URL with port (no trailing slash) |
+| `unifi_username` | Controller local admin username |
+| `unifi_password` | Use a dedicated read-only account, not your admin password |
+
+All other env vars have sensible defaults in `.mcp.json`. See [docs/plugin/CONFIG.md](docs/plugin/CONFIG.md).
+
+### Docker (HTTP) path
+
 Copy `.env.example` to `.env` and fill in the values:
 
 ```bash
 cp .env.example .env
+chmod 600 .env
 ```
 
 ### Environment variables

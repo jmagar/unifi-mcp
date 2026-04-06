@@ -4,14 +4,24 @@
       "command": "uv",
       "args": [
         "run",
-        "python",
-        "-m",
-        "unifi_mcp.main"
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "unifi-mcp"
       ],
-      "cwd": "./",
       "env": {
+        "UV_PROJECT_ENVIRONMENT": "${CLAUDE_PLUGIN_DATA}/.venv",
         "UNIFI_MCP_TRANSPORT": "stdio",
-        "UNIFI_MCP_NO_AUTH": "true"
+        "UNIFI_MCP_NO_AUTH": "true",
+        "UNIFI_URL": "${userConfig.unifi_url}",
+        "UNIFI_USERNAME": "${userConfig.unifi_username}",
+        "UNIFI_PASSWORD": "${userConfig.unifi_password}",
+        "UNIFI_IS_UDM_PRO": "true",
+        "UNIFI_VERIFY_SSL": "false",
+        "UNIFI_MCP_LOG_LEVEL": "INFO",
+        "UNIFI_MCP_LOG_FILE": "/tmp/unifi-mcp.log",
+        "UNIFI_MCP_ALLOW_YOLO": "false",
+        "UNIFI_MCP_ALLOW_DESTRUCTIVE": "false",
+        "RUNNING_IN_DOCKER": "false"
       }
     }
   }

@@ -7,6 +7,7 @@ to run the server directly or imported for integration.
 
 import asyncio
 import logging
+import os
 import sys
 
 from .config import load_config, setup_logging
@@ -15,13 +16,30 @@ from .server import UniFiMCPServer
 logger = logging.getLogger(__name__)
 
 
+def _validate_and_scrub_env() -> None:
+    """Validate required credentials are set, then scrub them from process env."""
+    missing = [v for v in ("UNIFI_URL", "UNIFI_USERNAME", "UNIFI_PASSWORD") if not os.environ.get(v)]
+    if missing:
+        print(
+            f"unifi-mcp requires {', '.join(missing)} to be set. Configure them in the Claude Code plugin settings.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 async def main() -> None:
     """Main entry point for the UniFi MCP Server."""
     server: UniFiMCPServer | None = None
 
     try:
+        _validate_and_scrub_env()
+
         # Load configuration
         unifi_config, server_config = load_config()
+
+        # Scrub sensitive credentials from process environment
+        for key in ("UNIFI_PASSWORD", "UNIFI_USERNAME", "UNIFI_URL"):
+            os.environ.pop(key, None)
 
         # Setup logging
         setup_logging(server_config)

@@ -2,20 +2,32 @@
 
 Machine-oriented reference for all environment variables consumed by unifi-mcp.
 
+## Deployment paths
+
+unifi-mcp supports two deployment models:
+
+### Path 1 — Claude Code Plugin (stdio)
+
+- Transport: `stdio` (Claude Code spawns the process)
+- Credentials: stored in `plugin.json` userConfig, interpolated via `${userConfig.*}` in `.mcp.json`
+- Auth: disabled (`UNIFI_MCP_NO_AUTH=true`)
+- Config file: `.mcp.json`
+
+### Path 2 — Docker Compose (HTTP)
+
+- Transport: `http` (FastMCP server on a port)
+- Credentials: stored in `.env` file alongside `docker-compose.yaml`
+- Auth: bearer token required (`UNIFI_MCP_TOKEN`)
+- Config file: `.env`
+
 ## Required
 
-```env
-UNIFI_URL=https://192.168.1.1:443
-UNIFI_USERNAME=admin
-UNIFI_PASSWORD=secret
-```
-
-## Conditional
-
-```env
-# Required unless UNIFI_MCP_NO_AUTH=true
-UNIFI_MCP_TOKEN=64-char-hex-string
-```
+| Variable | Description | Stdio | HTTP |
+|----------|-------------|-------|------|
+| `UNIFI_URL` | Controller URL with port (e.g., `https://192.168.1.1:443`) | required | required |
+| `UNIFI_USERNAME` | Local admin username (not UniFi Cloud SSO) | required | required |
+| `UNIFI_PASSWORD` | Local admin password | required | required |
+| `UNIFI_MCP_TOKEN` | Bearer token for HTTP auth | not needed | required |
 
 ## Controller Options
 

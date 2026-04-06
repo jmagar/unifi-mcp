@@ -16,36 +16,24 @@
     "homelab",
     "mcp"
   ],
+  "mcpServers": "./.mcp.json",
   "userConfig": {
-    "unifi_mcp_url": {
-      "type": "string",
-      "title": "UniFi MCP Server URL",
-      "description": "Full MCP endpoint URL including /mcp path. Default http://localhost:8001/mcp works if running via docker compose in this repo. Change if running on a different host or port.",
-      "default": "https://unifi.tootie.tv/mcp",
-      "sensitive": false
-    },
-    "unifi_mcp_token": {
-      "type": "string",
-      "title": "MCP Server Bearer Token",
-      "description": "Bearer token for authenticating with the MCP server. Must match UNIFI_MCP_TOKEN in .env. Generate with: openssl rand -hex 32",
-      "sensitive": true
-    },
     "unifi_url": {
       "type": "string",
       "title": "UniFi Controller URL",
       "description": "URL of your UniFi controller, e.g. https://192.168.1.1:443. No trailing slash.",
-      "sensitive": true
+      "sensitive": false
     },
     "unifi_username": {
       "type": "string",
       "title": "UniFi Username",
-      "description": "UniFi controller admin username.",
+      "description": "UniFi controller local admin username (not UniFi Cloud SSO).",
       "sensitive": true
     },
     "unifi_password": {
       "type": "string",
       "title": "UniFi Password",
-      "description": "UniFi controller admin password.",
+      "description": "Create a dedicated read-only UniFi local account for MCP access. Do NOT use your admin password. If UniFi supports API tokens, prefer those instead.",
       "sensitive": true
     }
   }

@@ -27,7 +27,7 @@ chmod 600 .env
 | `UNIFI_IS_UDM_PRO` | no | `true` | Set `true` for UDM Pro/SE/Cloud Gateway Max; `false` for legacy controllers |
 | `UNIFI_VERIFY_SSL` | no | `false` | Enable SSL certificate verification; `false` for self-signed certs |
 
-### UDM Pro Detection
+UDM Pro Detection
 
 When `UNIFI_IS_UDM_PRO=true`:
 - API base path: `/proxy/network/api`
@@ -53,7 +53,7 @@ When `UNIFI_IS_UDM_PRO=false`:
 | `UNIFI_MCP_LOG_LEVEL` | no | `INFO` | Log level: DEBUG, INFO, WARNING, ERROR |
 | `UNIFI_MCP_LOG_FILE` | no | `/tmp/unifi-mcp.log` | Log file path (auto-clears at 10 MB) |
 
-### Legacy Variable Names
+Legacy Variable Names
 
 These are accepted as fallbacks for backward compatibility:
 
@@ -91,17 +91,15 @@ Destructive actions (restart_device, block_client, forget_client, reconnect_clie
 
 ## Plugin userConfig
 
-When installed as a Claude Code plugin, these fields are presented to the user during setup:
+When installed as a Claude Code plugin (stdio transport), credentials are stored in `userConfig` and interpolated into `.mcp.json` via `${userConfig.*}` references. HTTP-only fields (`unifi_mcp_url`, `unifi_mcp_token`) are not needed for stdio.
 
-| userConfig Key | Maps To | Sensitive |
-|----------------|---------|-----------|
-| `unifi_mcp_url` | MCP endpoint URL | no |
-| `unifi_mcp_token` | `UNIFI_MCP_TOKEN` | yes |
-| `unifi_url` | `UNIFI_URL` | yes |
-| `unifi_username` | `UNIFI_USERNAME` | yes |
-| `unifi_password` | `UNIFI_PASSWORD` | yes |
+| userConfig Key | Maps To | Sensitive | Description |
+|----------------|---------|-----------|-------------|
+| `unifi_url` | `UNIFI_URL` | no | UniFi controller URL with port |
+| `unifi_username` | `UNIFI_USERNAME` | yes | Controller local admin username |
+| `unifi_password` | `UNIFI_PASSWORD` | yes | Use a dedicated read-only account |
 
-The `sync-env.sh` hook copies userConfig values into `.env` at session start.
+The `sync-uv.sh` hook keeps the repository lockfile and persistent Python environment in sync at session start.
 
 ## See Also
 
