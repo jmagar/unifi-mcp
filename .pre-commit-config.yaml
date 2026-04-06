@@ -41,3 +41,11 @@ repos:
         entry: bash scripts/ensure-ignore-files.sh --check
         pass_filenames: false
         always_run: true
+
+      - id: block-env-commits
+        name: Block .env file commits (allow only .env.example)
+        entry: bash bin/block-env-commits.sh
+        language: system
+        pass_filenames: false
+        files: '\.env'
+        exclude: '\.env\.example$'
