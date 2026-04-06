@@ -4,20 +4,20 @@ Safety and security patterns enforced across unifi-mcp.
 
 ## Credential Management
 
-### Storage
+Storage
 
 - Credentials live in `.env` (project root or `~/.claude-homelab/.env`)
 - `.env` is gitignored and dockerignored
 - File permissions: `chmod 600 .env`
-- The `fix-env-perms.sh` hook automatically enforces permissions after file writes
+- The `` hook automatically enforces permissions after file writes
 
-### Environment Variables
+Environment Variables
 
 - `UNIFI_PASSWORD` contains the controller password in plaintext — never log it
 - `UNIFI_MCP_TOKEN` is the bearer token — use `compare_digest()` for timing-safe comparison
 - Generate tokens with `openssl rand -hex 32` — never reuse tokens across services
 
-### Plugin userConfig
+Plugin userConfig
 
 Sensitive fields in `plugin.json` are marked `"sensitive": true`:
 - `unifi_mcp_token`
@@ -25,41 +25,41 @@ Sensitive fields in `plugin.json` are marked `"sensitive": true`:
 - `unifi_username`
 - `unifi_password`
 
-The `sync-env.sh` hook copies these into `.env` at session start. Values are stored encrypted by the plugin framework.
+The `sync-uv.sh` hook keeps the repository lockfile and persistent Python environment in sync at session start.
 
 ## Docker Security
 
-### Dockerfile
+Dockerfile
 
 - Multi-stage build: builder stage installs dependencies, runtime stage copies only the venv
 - Non-root user: `USER unifi` (UID 1000)
 - No secrets baked into the image — all credentials come from `env_file` at runtime
 - Health check uses `wget` against `/health` (unauthenticated endpoint)
 
-### Compose
+Compose
 
 - `env_file: ~/.claude-homelab/.env` — no `environment:` block to prevent env baking
 - Memory limit: 1024 MB
 - CPU limit: 1.0
 
-### Security Scripts
+Security Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/check-docker-security.sh` | Validates Dockerfile: non-root, no COPY .env, no ARG secrets |
-| `scripts/check-no-baked-env.sh` | Ensures no env vars are baked into Docker images |
-| `scripts/ensure-ignore-files.sh` | Validates .gitignore and .dockerignore contain required patterns |
+
+
+
 
 ## Authentication
 
-### Inbound (MCP Clients)
+Inbound (MCP Clients)
 
 - Bearer token required on all routes except `/health`
 - `BearerAuthMiddleware` uses `hmac.compare_digest()` for timing-safe comparison
 - Returns 401 for missing/malformed tokens, 403 for invalid tokens
 - Disabled via `UNIFI_MCP_NO_AUTH=true` only when behind a proxy with its own auth
 
-### Outbound (UniFi Controller)
+Outbound (UniFi Controller)
 
 - Session-based auth with username/password
 - CSRF token extracted from JWT payload (UDM Pro) or response headers (legacy)
@@ -74,7 +74,7 @@ Four actions are classified as destructive:
 - `forget_client` — permanently removes client history
 - `reconnect_client` — forcibly disconnects and reconnects a client
 
-### Confirmation Gate
+Confirmation Gate
 
 Destructive actions require explicit confirmation through one of three paths:
 
@@ -84,7 +84,7 @@ Destructive actions require explicit confirmation through one of three paths:
 
 Without confirmation, the server returns a `confirmation_required` error with instructions.
 
-### Safety Defaults
+Safety Defaults
 
 - `UNIFI_MCP_ALLOW_DESTRUCTIVE=false` by default
 - `UNIFI_MCP_ALLOW_YOLO=false` by default

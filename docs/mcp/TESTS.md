@@ -89,7 +89,7 @@ Requires `UNIFI_URL`, `UNIFI_USERNAME`, `UNIFI_PASSWORD` environment variables (
 ## Smoke Tests
 
 ```bash
-bash scripts/smoke-test.sh
+bash bin/smoke-test.sh
 ```
 
 Quick verification that the server starts, responds to health checks, and handles basic tool calls.

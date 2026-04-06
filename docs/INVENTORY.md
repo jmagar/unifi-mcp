@@ -11,7 +11,7 @@ Complete listing of all unifi-mcp components.
 
 ## Tool Actions (31 total)
 
-### Device Management (4)
+Device Management (4)
 
 | Action | MAC Required | Destructive | Description |
 |--------|-------------|-------------|-------------|
@@ -20,7 +20,7 @@ Complete listing of all unifi-mcp components.
 | `restart_device` | yes | yes | Restart a device |
 | `locate_device` | yes | no | Activate locate LED |
 
-### Client Management (7)
+Client Management (7)
 
 | Action | MAC Required | Destructive | Description |
 |--------|-------------|-------------|-------------|
@@ -32,7 +32,7 @@ Complete listing of all unifi-mcp components.
 | `set_client_name` | yes | no | Set alias name (requires `name` param) |
 | `set_client_note` | yes | no | Set note (requires `note` param) |
 
-### Network Configuration (8)
+Network Configuration (8)
 
 | Action | MAC Required | Destructive | Description |
 |--------|-------------|-------------|-------------|
@@ -45,7 +45,7 @@ Complete listing of all unifi-mcp components.
 | `get_firewall_groups` | no | no | List firewall groups |
 | `get_static_routes` | no | no | List static routes |
 
-### Monitoring and Statistics (10)
+Monitoring and Statistics (10)
 
 | Action | MAC Required | Destructive | Description |
 |--------|-------------|-------------|-------------|
@@ -60,7 +60,7 @@ Complete listing of all unifi-mcp components.
 | `get_speedtest_results` | no | no | Speed test history (limit default: 20) |
 | `get_ips_events` | no | no | IPS/IDS events (limit default: 50) |
 
-### Authentication (1)
+Authentication (1)
 
 | Action | MAC Required | Destructive | Description |
 |--------|-------------|-------------|-------------|
@@ -124,12 +124,11 @@ See [CONFIG](CONFIG.md) for the full reference. Summary:
 | Codex plugin | `.codex-plugin/plugin.json` | Codex manifest with interface metadata |
 | Gemini extension | `gemini-extension.json` | Gemini extension with MCP server config |
 | MCP Registry | `server.json` | Registry entry for tv.tootie/unifi-mcp |
-| Hooks | `hooks/hooks.json` | SessionStart and PostToolUse hooks |
 | Skill | `skills/unifi/SKILL.md` | Bundled skill definition |
 
 ## Dependencies
 
-### Runtime
+Runtime
 
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -140,7 +139,7 @@ See [CONFIG](CONFIG.md) for the full reference. Summary:
 | `uvicorn` | >=0.30.0 | ASGI server |
 | `unifi-controller-api` | >=0.3.0 | UniFi API types |
 
-### Development
+Development
 
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -155,11 +154,10 @@ See [CONFIG](CONFIG.md) for the full reference. Summary:
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/check-docker-security.sh` | Dockerfile security audit |
-| `scripts/check-no-baked-env.sh` | Detect baked env vars in Docker |
-| `scripts/ensure-ignore-files.sh` | Validate .gitignore/.dockerignore |
-| `scripts/check-outdated-deps.sh` | Check for outdated dependencies |
-| `scripts/smoke-test.sh` | End-to-end smoke test |
-| `hooks/scripts/sync-env.sh` | Sync userConfig to .env |
-| `hooks/scripts/fix-env-perms.sh` | Fix .env file permissions |
-| `hooks/scripts/ensure-ignore-files.sh` | Ensure ignore file entries |
+
+
+
+
+| `bin/smoke-test.sh` | End-to-end smoke test |
+The `sync-uv.sh` hook keeps the repository lockfile and persistent Python environment in sync at session start.
+| `bin/` | Fix .env file permissions |

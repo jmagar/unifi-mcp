@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tools: device management, client monitoring, network health, firewall rules
 - Docker Compose deployment with multi-stage Dockerfile
 - Claude Code plugin manifest with userConfig for credentials
-- Hooks: sync-env, fix-env-perms, ensure-ignore-files
+- Hooks: sync-uv, , ensure-ignore-files
 - SWAG reverse proxy configuration
 
 [Unreleased]: https://github.com/jmagar/unifi-mcp/compare/v1.0.3...HEAD

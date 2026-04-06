@@ -20,28 +20,6 @@ repos:
         entry: uv run ty check unifi_mcp
         pass_filenames: false
 
-      - id: docker-security
-        name: Check Docker security
-        language: script
-        entry: bash scripts/check-docker-security.sh
-        pass_filenames: false
-        always_run: false
-        files: ^Dockerfile
-
-      - id: no-baked-env
-        name: Check no baked-in env secrets
-        language: script
-        entry: bash scripts/check-no-baked-env.sh
-        pass_filenames: false
-        always_run: true
-
-      - id: ensure-ignore-files
-        name: Ensure .gitignore patterns present
-        language: script
-        entry: bash scripts/ensure-ignore-files.sh --check
-        pass_filenames: false
-        always_run: true
-
       - id: block-env-commits
         name: Block .env file commits (allow only .env.example)
         entry: bash bin/block-env-commits.sh

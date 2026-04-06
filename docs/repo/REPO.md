@@ -27,14 +27,14 @@ unifi-mcp/
 ├── hooks/
 │   ├── hooks.json               # Hook definitions
 │   └── scripts/
-│       ├── sync-env.sh          # Sync userConfig to .env
-│       ├── fix-env-perms.sh     # Fix .env permissions
-│       └── ensure-ignore-files.sh
+The `sync-uv.sh` hook keeps the repository lockfile and persistent Python environment in sync at session start.
+│       ├──      # Fix .env permissions
+
 ├── scripts/
-│   ├── check-docker-security.sh
-│   ├── check-no-baked-env.sh
-│   ├── check-outdated-deps.sh
-│   ├── ensure-ignore-files.sh
+
+
+
+
 │   └── smoke-test.sh
 ├── skills/
 │   └── unifi/

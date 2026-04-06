@@ -9,7 +9,7 @@ unifi-mcp has two authentication boundaries:
 
 ## Inbound Authentication (Client to MCP Server)
 
-### Bearer Token
+Bearer Token
 
 All HTTP requests to the MCP server require a bearer token:
 
@@ -23,7 +23,7 @@ The token is set via the `UNIFI_MCP_TOKEN` environment variable. Generate one wi
 openssl rand -hex 32
 ```
 
-### BearerAuthMiddleware
+BearerAuthMiddleware
 
 The server validates inbound tokens using `BearerAuthMiddleware`:
 
@@ -38,7 +38,7 @@ Request -> BearerAuthMiddleware -> Route Handler
 - Returns `403 Forbidden` if the token does not match (timing-safe comparison via `hmac.compare_digest`)
 - Applies to all routes except `/health`
 
-### Unauthenticated Endpoints
+Unauthenticated Endpoints
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -46,7 +46,7 @@ Request -> BearerAuthMiddleware -> Route Handler
 
 The health endpoint is intentionally unauthenticated so load balancers, Docker healthchecks, and monitoring can probe without credentials.
 
-### No-Auth Mode
+No-Auth Mode
 
 When running behind a reverse proxy that handles authentication (SWAG with Authelia, Cloudflare Access):
 
@@ -56,13 +56,13 @@ UNIFI_MCP_NO_AUTH=true
 
 This disables `BearerAuthMiddleware` entirely. The middleware passes all requests through without checking tokens. Only use when the proxy enforces its own auth layer.
 
-### stdio Transport
+stdio Transport
 
 stdio transport does not use bearer tokens. Process-level isolation provides the security boundary — only the parent process (Claude Desktop, Codex CLI) can communicate with the server.
 
 ## Outbound Authentication (MCP Server to UniFi Controller)
 
-### Session-Based Auth (Username/Password)
+Session-Based Auth (Username/Password)
 
 UniFi controllers use session-based authentication, not API keys. The server sends username and password to the login endpoint, receives a session cookie, and uses it for subsequent requests.
 
@@ -74,7 +74,7 @@ UNIFI_PASSWORD=your_password_here
 
 **Important**: Use a local admin account. UniFi Cloud (SSO) accounts are not supported for direct controller API access.
 
-### UDM Pro Authentication Flow
+UDM Pro Authentication Flow
 
 When `UNIFI_IS_UDM_PRO=true`:
 
@@ -84,7 +84,7 @@ When `UNIFI_IS_UDM_PRO=true`:
 4. All subsequent requests include `X-CSRF-Token: {csrfToken}` header
 5. Cookies are managed automatically by the httpx session
 
-### Legacy Controller Authentication Flow
+Legacy Controller Authentication Flow
 
 When `UNIFI_IS_UDM_PRO=false`:
 
@@ -93,14 +93,14 @@ When `UNIFI_IS_UDM_PRO=false`:
 3. CSRF token extracted from response headers
 4. Cookies are managed automatically by the httpx session
 
-### Session Management
+Session Management
 
 - `ensure_authenticated()` is called before every API request
 - On 401 response, the client automatically reauthenticates and retries the request once
 - Sessions time out after controller-defined intervals (typically 30 minutes)
 - The client handles reauthentication transparently
 
-### SSL Verification
+SSL Verification
 
 ```env
 UNIFI_VERIFY_SSL=false   # Default — self-signed certs (most homelabs)
@@ -141,7 +141,7 @@ When installed as a Claude Code plugin, credentials are managed via `userConfig`
 }
 ```
 
-Fields marked `"sensitive": true` are stored encrypted and synced to `.env` by the `sync-env.sh` hook at session start.
+Fields marked `"sensitive": true` are stored encrypted and synced to `.env` by the `sync-uv.sh` hook at session start.
 
 ## Security Best Practices
 

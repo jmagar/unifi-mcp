@@ -11,7 +11,7 @@ Smoke tests verify the full request path: HTTP transport, bearer auth, tool disp
 ### Via Script
 
 ```bash
-bash scripts/smoke-test.sh
+bash bin/smoke-test.sh
 ```
 
 ### Via Justfile

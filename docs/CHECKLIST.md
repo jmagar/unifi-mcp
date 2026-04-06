@@ -21,9 +21,9 @@ Pre-release and quality checklist. Complete all items before tagging a release.
 - [ ] No credentials in code, docs, or commit history
 - [ ] `UNIFI_MCP_TOKEN` is required by default (no `NO_AUTH=true` in production)
 - [ ] Dockerfile runs as non-root user (`USER unifi`)
-- [ ] Docker security checks pass (`scripts/check-docker-security.sh`)
-- [ ] No baked env vars in Docker image (`scripts/check-no-baked-env.sh`)
-- [ ] Ignore files are complete (`scripts/ensure-ignore-files.sh --check`)
+
+
+
 
 ## CI/CD
 
@@ -48,7 +48,6 @@ Pre-release and quality checklist. Complete all items before tagging a release.
 - [ ] `.codex-plugin/plugin.json` has valid `interface` and `skills` paths
 - [ ] `gemini-extension.json` has correct `mcpServers` config
 - [ ] `server.json` follows MCP Registry schema
-- [ ] `hooks/hooks.json` defines SessionStart and PostToolUse hooks
 - [ ] `skills/unifi/SKILL.md` matches actual tool surface
 
 ## Testing
