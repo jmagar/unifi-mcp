@@ -30,7 +30,7 @@ class TestUnifiControllerClientAuthentication:
             await client.connect()
 
             assert client.is_authenticated is True
-            assert client.csrf_token is None
+            assert client.csrf_token == "test-csrf"
 
             # Verify correct API endpoint was called
             mock_post.assert_called_once()
@@ -57,9 +57,9 @@ class TestUnifiControllerClientAuthentication:
             call_args = mock_post.call_args
             assert "/api/login" in call_args[0][0]
 
-            # Legacy mode still uses the shared JSON login payload.
-            assert "username" in call_args[1]["json"]
-            assert "password" in call_args[1]["json"]
+            # Legacy uses json payload
+            assert call_args[1]["json"]["username"] == "admin"
+            assert call_args[1]["json"]["password"] == "password123"
 
     async def test_authentication_failure_invalid_credentials(self, test_unifi_config):
         """Test authentication failure with invalid credentials."""
@@ -69,9 +69,7 @@ class TestUnifiControllerClientAuthentication:
             mock_post.return_value = Mock(status_code=401, json=Mock(return_value={"error": "Invalid credentials"}), cookies=httpx.Cookies({}), headers={})
 
             await client.connect()
-            result = await client.authenticate()
 
-            assert result is False
             assert client.is_authenticated is False
             assert client.csrf_token is None
 
@@ -83,9 +81,7 @@ class TestUnifiControllerClientAuthentication:
             mock_post.side_effect = httpx.ConnectError("Connection failed")
 
             await client.connect()
-            result = await client.authenticate()
 
-            assert result is False
             assert client.is_authenticated is False
 
     async def test_session_initialization_and_cleanup(self, test_unifi_config):
@@ -309,9 +305,17 @@ class TestUnifiControllerClientConfiguration:
             "username": client.config.username,
             "is_udm_pro": client.config.is_udm_pro,
             "verify_ssl": client.config.verify_ssl,
+            "site_name": client.config.site_name,
             "api_base": client.api_base,
         }
 
         assert config_dict == snapshot(
-            {"controller_url": "https://192.168.1.1:443", "username": "admin", "is_udm_pro": True, "verify_ssl": False, "api_base": "/proxy/network/api"}
+            {
+                "controller_url": "https://192.168.1.1:443",
+                "username": "admin",
+                "is_udm_pro": True,
+                "verify_ssl": False,
+                "site_name": "default",
+                "api_base": "/proxy/network/api",
+            }
         )

@@ -6,18 +6,11 @@ Routes actions to appropriate domain services and handles authentication.
 
 import logging
 
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
 from ..client import UnifiControllerClient
-from ..models.enums import (
-    AUTH_ACTIONS,
-    CLIENT_ACTIONS,
-    DEVICE_ACTIONS,
-    MONITORING_ACTIONS,
-    NETWORK_ACTIONS,
-    UnifiAction,
-)
+from ..models.enums import AUTH_ACTIONS, CLIENT_ACTIONS, DEVICE_ACTIONS, MONITORING_ACTIONS, NETWORK_ACTIONS, UnifiAction
 from ..models.params import UnifiParams
 from .client_service import ClientService
 from .device_service import DeviceService
@@ -70,7 +63,9 @@ class UnifiService:
             elif params.action in AUTH_ACTIONS:
                 return await self._handle_auth_action(params)
             else:
-                return self._create_error_result(f"Unknown action: {params.action}")
+                return self._create_error_result(
+                    f"Unknown action: {params.action}"
+                )
 
         except Exception as e:
             logger.error(f"Error executing action {params.action}: {e}")
@@ -88,7 +83,9 @@ class UnifiService:
         if params.action == UnifiAction.GET_USER_INFO:
             return await self._get_user_info()
         else:
-            return self._create_error_result(f"Authentication action {params.action} not supported")
+            return self._create_error_result(
+                f"Authentication action {params.action} not supported"
+            )
 
     async def _get_user_info(self) -> ToolResult:
         """Get authenticated user information (OAuth only).
@@ -108,24 +105,16 @@ class UnifiService:
                 except Exception:
                     return ts
 
-            try:
-                token = get_access_token()
-            except Exception:
-                token = None
+            token = get_access_token()
+            # If get_access_token becomes async in future versions:
+            # token = await get_access_token()
+
             if token is None:
                 return ToolResult(
-                    content=[
-                        TextContent(
-                            type="text",
-                            text="OAuth not configured — get_user_info requires MCP OAuth authentication",
-                        )
-                    ],
-                    structured_content={
-                        "error": "OAuth not configured",
-                        "authenticated": False,
-                        "hint": "get_user_info requires MCP OAuth (e.g. Google). UniFi controller auth is separate.",
-                    },
+                    content=[TextContent(type="text", text="Error: Not authenticated")],
+                    structured_content={"authenticated": False, "error": "No authentication token found"}
                 )
+
             # The GoogleProvider stores user data in token claims
             user_info = {
                 "google_id": token.claims.get("sub"),
@@ -142,7 +131,7 @@ class UnifiService:
             logger.debug("User authenticated.")
             return ToolResult(
                 content=[TextContent(type="text", text=f"Authenticated as: {user_info.get('email', 'Unknown')}")],
-                structured_content=user_info,
+                structured_content=user_info
             )
 
         except Exception as e:
@@ -151,8 +140,8 @@ class UnifiService:
                 content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={
                     "error": f"Failed to get user info: {e!s}",
-                    "authenticated": False,
-                },
+                    "authenticated": False
+                }
             )
 
     @staticmethod
@@ -168,5 +157,5 @@ class UnifiService:
         """
         return ToolResult(
             content=[TextContent(type="text", text=f"Error: {message}")],
-            structured_content={"error": message, "raw": raw_data},
+            structured_content={"error": message, "raw": raw_data}
         )

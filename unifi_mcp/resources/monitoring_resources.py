@@ -160,7 +160,7 @@ def register_monitoring_resources(mcp: FastMCP, client: UnifiControllerClient) -
                 elif severity.lower() in ["medium", "warning"]:
                     icon = "⚠️"
                 elif severity.lower() in ["low", "info"]:
-                    icon = "ℹ️"  # noqa: RUF001
+                    icon = "i️"
                 else:
                     icon = "🚨"
 

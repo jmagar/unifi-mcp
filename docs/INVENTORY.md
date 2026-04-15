@@ -124,7 +124,7 @@ See [CONFIG](CONFIG.md) for the full reference. Summary:
 | Codex plugin | `.codex-plugin/plugin.json` | Codex manifest with interface metadata |
 | Gemini extension | `gemini-extension.json` | Gemini extension with MCP server config |
 | MCP Registry | `server.json` | Registry entry for tv.tootie/unifi-mcp |
-| Hooks | `hooks/hooks.json` | SessionStart and PostToolUse hooks |
+| Hooks | `hooks/hooks.json` | SessionStart hook |
 | Skill | `skills/unifi/SKILL.md` | Bundled skill definition |
 
 ## Dependencies
@@ -155,11 +155,5 @@ See [CONFIG](CONFIG.md) for the full reference. Summary:
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/check-docker-security.sh` | Dockerfile security audit |
-| `scripts/check-no-baked-env.sh` | Detect baked env vars in Docker |
-| `scripts/ensure-ignore-files.sh` | Validate .gitignore/.dockerignore |
-| `scripts/check-outdated-deps.sh` | Check for outdated dependencies |
 | `scripts/smoke-test.sh` | End-to-end smoke test |
-| `hooks/scripts/sync-env.sh` | Sync userConfig to .env |
-| `hooks/scripts/fix-env-perms.sh` | Fix .env file permissions |
-| `hooks/scripts/ensure-ignore-files.sh` | Ensure ignore file entries |
+| `bin/sync-uv.sh` | SessionStart hook: sync uv environment |

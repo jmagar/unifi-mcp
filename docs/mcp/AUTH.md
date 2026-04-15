@@ -141,7 +141,7 @@ When installed as a Claude Code plugin, credentials are managed via `userConfig`
 }
 ```
 
-Fields marked `"sensitive": true` are stored encrypted and synced to `.env` by the `sync-env.sh` hook at session start.
+Fields marked `"sensitive": true` are stored encrypted by the plugin framework and must be set manually in `.env`.
 
 ## Security Best Practices
 

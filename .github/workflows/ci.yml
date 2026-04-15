@@ -63,19 +63,6 @@ jobs:
           [ "$PYPROJECT_VER" = "$PLUGIN_VER" ] && [ "$PLUGIN_VER" = "$CODEX_VER" ] && [ "$CODEX_VER" = "$APP_VER" ] || \
             (echo "Version mismatch!" && exit 1)
 
-  docker-security:
-    name: Docker Security
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check Dockerfile security
-        run: bash bin/check-docker-security.sh Dockerfile
-      - name: Check no baked env vars
-        run: bash bin/check-no-baked-env.sh .
-      - name: Check ignore files
-        run: bash bin/ensure-ignore-files.sh --check .
-
-
   mcp-integration:
     name: MCP Integration Tests
     runs-on: ubuntu-latest

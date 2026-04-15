@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-04-15
+
+### Changed
+- Repository maintenance updates committed from the current working tree.
+- Version-bearing manifests synchronized to 1.0.4.
+
+
+### Security
+- **CRITICAL**: Updated fastmcp from 2.12.0 to >=2.13.0 to fix Confused Deputy Account Takeover vulnerability
+- Added MAC address format validation with regex to prevent malformed input
+- Enhanced .gitignore to explicitly prevent .env file commits
+- Added SECURITY.md with comprehensive security documentation
+- Added mypy type checking configuration for improved type safety
+
+### Fixed
+- Fixed undefined variable `events` in monitoring_tools.py (should be `dpi_stats` and `rogue_aps`)
+- Fixed missing `json` import in tests/conftest.py
+- Fixed all ruff linting errors (31 total)
+  - Removed unused imports (24 auto-fixed)
+  - Removed unnecessary f-string prefixes
+  - Cleaned up unused local variables
+- Fixed type annotation issues
+  - Added Optional types for None default parameters
+  - Fixed return type annotation in BaseService.check_list_response
+  - Added proper type hints throughout codebase
+
+### Changed
+- Enhanced run.sh script to work without uv package manager (falls back to python3)
+- Improved error messages for MAC address validation failures
+- Updated BaseService.normalize_mac to validate MAC address format
+
+### Added
+- Created mypy.ini for type checking configuration
+- Added CHANGELOG.md for tracking changes
+- Added comprehensive inline documentation for security practices
+- Enhanced exception handling for MAC address validation
+
 ## [1.0.3] - 2026-04-05
 
 ### Fixed
@@ -27,10 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **docs/AUTHENTICATION.md**: New setup guide covering token generation and client config.
 - **README Authentication section**: Added quick-start examples and link to full guide.
-
-
-
-
 
 ## [0.1.0] - 2026-03-31
 

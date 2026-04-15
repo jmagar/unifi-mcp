@@ -21,19 +21,36 @@ from unifi_mcp.server import UniFiMCPServer
 @pytest.fixture
 def test_unifi_config() -> UniFiConfig:
     """Test UniFi configuration."""
-    return UniFiConfig(controller_url="https://192.168.1.1:443", username="admin", password="password123", verify_ssl=False, is_udm_pro=True)
+    return UniFiConfig(
+        controller_url="https://192.168.1.1:443",
+        username="admin",
+        password="password123",
+        verify_ssl=False,
+        is_udm_pro=True
+    )
 
 
 @pytest.fixture
 def test_legacy_unifi_config() -> UniFiConfig:
     """Test legacy UniFi configuration."""
-    return UniFiConfig(controller_url="https://192.168.1.1:8443", username="admin", password="password123", verify_ssl=False, is_udm_pro=False)
+    return UniFiConfig(
+        controller_url="https://192.168.1.1:8443",
+        username="admin",
+        password="password123",
+        verify_ssl=False,
+        is_udm_pro=False
+    )
 
 
 @pytest.fixture
 def test_server_config() -> ServerConfig:
     """Test server configuration."""
-    return ServerConfig(host="127.0.0.1", port=8001, log_level="DEBUG", log_file=None)
+    return ServerConfig(
+        host="127.0.0.1",
+        port=8001,
+        log_level="DEBUG",
+        log_file=None
+    )
 
 
 @pytest.fixture
@@ -56,7 +73,10 @@ def mock_device_data() -> list[dict[str, Any]]:
             "mem": 45.2,
             "temperature": 42.1,
             "port_overrides": [],
-            "port_table": [{"port_idx": 1, "name": "Port 1", "up": True}, {"port_idx": 2, "name": "Port 2", "up": False}],
+            "port_table": [
+                {"port_idx": 1, "name": "Port 1", "up": True},
+                {"port_idx": 2, "name": "Port 2", "up": False}
+            ]
         },
         {
             "_id": "device2",
@@ -73,8 +93,11 @@ def mock_device_data() -> list[dict[str, Any]]:
             "cpu": 8.3,
             "mem": 32.1,
             "temperature": 38.5,
-            "radio_table": [{"name": "wifi0", "channel": 36, "tx_power": 20}, {"name": "wifi1", "channel": 6, "tx_power": 17}],
-        },
+            "radio_table": [
+                {"name": "wifi0", "channel": 36, "tx_power": 20},
+                {"name": "wifi1", "channel": 6, "tx_power": 17}
+            ]
+        }
     ]
 
 
@@ -101,7 +124,7 @@ def mock_client_data() -> list[dict[str, Any]]:
             "user_id": "user1",
             "first_seen": 1640908800,
             "satisfaction": 95,
-            "anomalies": 0,
+            "anomalies": 0
         },
         {
             "_id": "client2",
@@ -120,8 +143,8 @@ def mock_client_data() -> list[dict[str, Any]]:
             "user_id": "user2",
             "first_seen": 1640822400,
             "satisfaction": 100,
-            "anomalies": 0,
-        },
+            "anomalies": 0
+        }
     ]
 
 
@@ -138,7 +161,7 @@ def mock_network_data() -> list[dict[str, Any]]:
             "dhcp_enabled": True,
             "dhcp_start": "192.168.1.100",
             "dhcp_stop": "192.168.1.200",
-            "dhcp_lease": 86400,
+            "dhcp_lease": 86400
         },
         {
             "_id": "net2",
@@ -149,8 +172,8 @@ def mock_network_data() -> list[dict[str, Any]]:
             "dhcp_enabled": True,
             "dhcp_start": "192.168.2.100",
             "dhcp_stop": "192.168.2.200",
-            "dhcp_lease": 3600,
-        },
+            "dhcp_lease": 3600
+        }
     ]
 
 
@@ -163,7 +186,11 @@ def mock_site_data() -> dict[str, Any]:
         "desc": "Default Site",
         "role": "admin",
         "num_new_alarms": 0,
-        "health": [{"subsystem": "wan", "status": "ok"}, {"subsystem": "lan", "status": "ok"}, {"subsystem": "wlan", "status": "warning"}],
+        "health": [
+            {"subsystem": "wan", "status": "ok"},
+            {"subsystem": "lan", "status": "ok"},
+            {"subsystem": "wlan", "status": "warning"}
+        ]
     }
 
 
@@ -199,16 +226,6 @@ def mock_unifi_client(test_unifi_config, mock_device_data, mock_client_data, moc
     mock_client.set_client_name = AsyncMock(return_value={"message": "Name updated"})
     mock_client.set_client_note = AsyncMock(return_value={"message": "Note updated"})
 
-    async def _make_request(method, endpoint, site_name="default", data=None, params=None):
-        if method == "GET" and endpoint == "/list/user":
-            return [
-                {"_id": "user1", "mac": "aa:bb:cc:dd:ee:f1"},
-                {"_id": "user2", "mac": "aa:bb:cc:dd:ee:f2"},
-            ]
-        return {"meta": {"rc": "ok"}, "data": []}
-
-    mock_client._make_request = AsyncMock(side_effect=_make_request)
-
     return mock_client
 
 
@@ -233,24 +250,39 @@ def mock_failed_unifi_client():
 def mock_http_responses():
     """Mock HTTP responses for different scenarios."""
     return {
-        "login_success_udm": {"status_code": 200, "json": {}, "cookies": {"TOKEN": "test-token"}, "headers": {"x-csrf-token": "test-csrf"}},
-        "login_success_legacy": {"status_code": 200, "json": {"data": [], "meta": {"rc": "ok"}}, "cookies": {"unifises": "test-session"}, "headers": {}},
-        "login_failure": {"status_code": 401, "json": {"error": "Invalid credentials"}, "cookies": {}, "headers": {}},
+        "login_success_udm": {
+            "status_code": 200,
+            "json": {},
+            "cookies": {"TOKEN": "test-token"},
+            "headers": {"x-csrf-token": "test-csrf"}
+        },
+        "login_success_legacy": {
+            "status_code": 200,
+            "json": {"data": [], "meta": {"rc": "ok"}},
+            "cookies": {"unifises": "test-session"},
+            "headers": {}
+        },
+        "login_failure": {
+            "status_code": 401,
+            "json": {"error": "Invalid credentials"},
+            "cookies": {},
+            "headers": {}
+        },
         "devices_response": {
             "status_code": 200,
             "json": {"data": [], "meta": {"rc": "ok"}},
         },
-        "network_error": {"status_code": 500, "json": {"error": "Internal server error"}},
+        "network_error": {
+            "status_code": 500,
+            "json": {"error": "Internal server error"}
+        }
     }
 
 
 @pytest_asyncio.fixture
 async def test_server(test_unifi_config, test_server_config, mock_unifi_client) -> FastMCP:
     """Create test FastMCP server with mocked UniFi client."""
-    with (
-        patch.dict("os.environ", {"UNIFI_MCP_TOKEN": "test-token"}, clear=False),
-        patch("unifi_mcp.server.UnifiControllerClient", return_value=mock_unifi_client),
-    ):
+    with patch('unifi_mcp.server.UnifiControllerClient', return_value=mock_unifi_client):
         server = UniFiMCPServer(test_unifi_config, test_server_config)
         await server.initialize()
         yield server.mcp
@@ -262,7 +294,7 @@ def integration_config() -> UniFiConfig | None:
     """Configuration for integration tests - returns None if env vars not set."""
     import os
 
-    controller_url = os.getenv("UNIFI_URL", os.getenv("UNIFI_CONTROLLER_URL"))
+    controller_url = os.getenv("UNIFI_CONTROLLER_URL")
     username = os.getenv("UNIFI_USERNAME")
     password = os.getenv("UNIFI_PASSWORD")
 
@@ -274,7 +306,7 @@ def integration_config() -> UniFiConfig | None:
         username=username,
         password=password,
         verify_ssl=os.getenv("UNIFI_VERIFY_SSL", "false").lower() == "true",
-        is_udm_pro=os.getenv("UNIFI_IS_UDM_PRO", "true").lower() == "true",
+        is_udm_pro=os.getenv("UNIFI_IS_UDM_PRO", "true").lower() == "true"
     )
 
 
@@ -284,9 +316,8 @@ def normalize_mac(mac: str) -> str:
     return mac.strip().lower().replace("-", ":").replace(".", ":")
 
 
-def mock_httpx_response(
-    status_code: int, json_data: dict[str, Any] | None = None, cookies: dict[str, str] | None = None, headers: dict[str, str] | None = None
-):
+def mock_httpx_response(status_code: int, json_data: dict[str, Any] | None = None,
+                       cookies: dict[str, str] | None = None, headers: dict[str, str] | None = None):
     """Create mock httpx Response object."""
     response = Mock(spec=httpx.Response)
     response.status_code = status_code

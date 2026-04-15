@@ -6,8 +6,9 @@ port configurations, and security settings.
 """
 
 import logging
+from typing import Any, cast
 
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
 from ..formatters import (
@@ -56,7 +57,9 @@ class NetworkService(BaseService):
 
         handler = action_map.get(params.action)
         if not handler:
-            return self.create_error_result(f"Network action {params.action} not supported")
+            return self.create_error_result(
+                f"Network action {params.action} not supported"
+            )
 
         try:
             return await handler(params)
@@ -71,7 +74,7 @@ class NetworkService(BaseService):
 
             # Check for error response
             if isinstance(sites, dict) and "error" in sites:
-                return self.create_error_result(sites.get("error", "unknown error"), sites)
+                return self.create_error_result(sites.get('error','unknown error'), sites)
 
             if not isinstance(sites, list):
                 return self.create_error_result("Unexpected response format")
@@ -84,19 +87,17 @@ class NetworkService(BaseService):
                     formatted_sites.append(formatted_site)
                 except Exception as e:
                     logger.error(f"Error formatting site {site.get('name', 'Unknown')}: {e}")
-                    formatted_sites.append(
-                        {
-                            "name": site.get("name", "Unknown"),
-                            "description": site.get("desc", "Unknown"),
-                            "error": f"Formatting error: {e!s}",
-                        }
-                    )
+                    formatted_sites.append({
+                        "name": site.get("name", "Unknown"),
+                        "description": site.get("desc", "Unknown"),
+                        "error": f"Formatting error: {e!s}"
+                    })
 
             summary_text = format_sites_list(sites)
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_sites,
-                success_message=f"Retrieved {len(formatted_sites)} sites",
+                success_message=f"Retrieved {len(formatted_sites)} sites"
             )
 
         except Exception as e:
@@ -107,7 +108,7 @@ class NetworkService(BaseService):
         """Get wireless network (WLAN) configurations."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             wlans = await self.client.get_wlan_configs(site_name)
 
@@ -115,13 +116,17 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(wlans, params.action)
             if error_result:
                 return error_result
-            if not isinstance(wlans, list):
-                return self.create_error_result("Unexpected response format", wlans)
-            wlan_items = self.dict_items(wlans)
+
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(wlans, list), "Expected list response"
+
+            # Type narrowing: after check_list_response, we know it's a list
+            assert isinstance(wlans, list), "Expected list of WLANs"
 
             # Format WLAN configs for clean output
             formatted_wlans = []
-            for wlan in wlan_items:
+            for wlan in wlans:
+                wlan = cast("dict[str, Any]", wlan)
                 formatted_wlan = {
                     "name": wlan.get("name", "Unknown WLAN"),
                     # SSID is typically under 'ssid' (fallback to profile 'name')
@@ -133,15 +138,15 @@ class NetworkService(BaseService):
                     "guest_access": wlan.get("is_guest", False),
                     "hide_ssid": wlan.get("hide_ssid", False),
                     "mac_filter_enabled": wlan.get("mac_filter_enabled", False),
-                    "band_steering": wlan.get("band_steering", False),
+                    "band_steering": wlan.get("band_steering", False)
                 }
                 formatted_wlans.append(formatted_wlan)
 
-            summary_text = format_wlans_list(wlan_items)
+            summary_text = format_wlans_list(wlans)
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_wlans,
-                success_message=f"Retrieved {len(formatted_wlans)} WLAN configurations",
+                success_message=f"Retrieved {len(formatted_wlans)} WLAN configurations"
             )
 
         except Exception as e:
@@ -152,7 +157,7 @@ class NetworkService(BaseService):
         """Get network/VLAN configurations."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             networks = await self.client.get_network_configs(site_name)
 
@@ -160,13 +165,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(networks, params.action)
             if error_result:
                 return error_result
-            if not isinstance(networks, list):
-                return self.create_error_result("Unexpected response format", networks)
-            network_items = self.dict_items(networks)
+
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(networks, list), "Expected list response"
 
             # Format network configs for clean output
             formatted_networks = []
-            for network in network_items:
+            for network in networks:
+                network = cast("dict[str, Any]", network)
                 formatted_network = {
                     "name": network.get("name", "Unknown Network"),
                     "purpose": network.get("purpose", "Unknown"),
@@ -175,20 +181,18 @@ class NetworkService(BaseService):
                     "dhcp_enabled": network.get("dhcpd_enabled", False),
                     "dhcp_range": {
                         "start": network.get("dhcpd_start"),
-                        "stop": network.get("dhcpd_stop"),
-                    }
-                    if network.get("dhcpd_enabled")
-                    else None,
+                        "stop": network.get("dhcpd_stop")
+                    } if network.get("dhcpd_enabled") else None,
                     "domain_name": network.get("domain_name"),
-                    "guest_access": network.get("is_guest", False),
+                    "guest_access": network.get("is_guest", False)
                 }
                 formatted_networks.append(formatted_network)
 
-            summary_text = format_networks_list(network_items)
+            summary_text = format_networks_list(cast("list[dict[str, Any]]", networks))
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_networks,
-                success_message=f"Retrieved {len(formatted_networks)} network configurations",
+                success_message=f"Retrieved {len(formatted_networks)} network configurations"
             )
 
         except Exception as e:
@@ -199,7 +203,7 @@ class NetworkService(BaseService):
         """Get switch port profile configurations."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             ports = await self.client.get_port_configs(site_name)
 
@@ -207,13 +211,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(ports, params.action)
             if error_result:
                 return error_result
-            if not isinstance(ports, list):
-                return self.create_error_result("Unexpected response format", ports)
-            port_items = self.dict_items(ports)
+
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(ports, list), "Expected list response"
 
             # Format port configs for clean output
             formatted_ports = []
-            for port in port_items:
+            for port in ports:
+                port = cast("dict[str, Any]", port)
                 formatted_port = {
                     "name": port.get("name", "Unknown Port Profile"),
                     "enabled": port.get("enabled", False),
@@ -223,29 +228,29 @@ class NetworkService(BaseService):
                     "storm_control": port.get("storm_ctrl_enabled", False),
                     "poe_mode": port.get("poe_mode", "auto"),
                     "speed": port.get("speed", "auto"),
-                    "duplex": port.get("full_duplex", True),
+                    "duplex": port.get("full_duplex", True)
                 }
                 formatted_ports.append(formatted_port)
 
             # Compact summary: name | VLAN/native | PoE | Security
             lines = [f"Port Profiles ({len(formatted_ports)} total)"]
             lines.append(f"  {'En':<2} {'Profile Name':<28} {'Native VLAN':<11} {'Tagged Count':<13} {'PoE Mode':<8} {'Port Security':<13}")
-            lines.append(f"  {'-' * 2:<2} {'-' * 28:<28} {'-' * 11:<11} {'-' * 13:<13} {'-' * 8:<8} {'-' * 13:<13}")
+            lines.append(f"  {'-'*2:<2} {'-'*28:<28} {'-'*11:<11} {'-'*13:<13} {'-'*8:<8} {'-'*13:<13}")
             for p in formatted_ports[:40]:
-                en = "✓" if p.get("enabled") else "✗"
-                name = str(p.get("name", ""))[:28]
-                native = str(p.get("native_vlan", "Default"))[:11]
-                tagged = str(len(p.get("tagged_vlans", []) or []))[:13]
-                poe = str(p.get("poe_mode", "auto"))[:8]
-                sec = "✓" if p.get("port_security") else "✗"
+                en = '✓' if p.get('enabled') else '✗'
+                name = str(p.get('name',''))[:28]
+                native = str(p.get('native_vlan','Default'))[:11]
+                tagged = str(len(p.get('tagged_vlans',[]) or []))[:13]
+                poe = str(p.get('poe_mode','auto'))[:8]
+                sec = '✓' if p.get('port_security') else '✗'
                 lines.append(f"  {en:<2} {name:<28} {native:<11} {tagged:<13} {poe:<8} {sec:<13}")
             if len(formatted_ports) > 40:
-                lines.append(f"  ... and {len(formatted_ports) - 40} more")
+                lines.append(f"  ... and {len(formatted_ports)-40} more")
             summary_text = "\n".join(lines)
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_ports,
-                success_message=f"Retrieved {len(formatted_ports)} port configurations",
+                success_message=f"Retrieved {len(formatted_ports)} port configurations"
             )
 
         except Exception as e:
@@ -256,7 +261,7 @@ class NetworkService(BaseService):
         """Get port forwarding rules."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             rules = await self.client.get_port_forwarding_rules(site_name)
 
@@ -264,13 +269,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(rules, params.action)
             if error_result:
                 return error_result
-            if not isinstance(rules, list):
-                return self.create_error_result("Unexpected response format", rules)
-            rule_items = self.dict_items(rules)
+
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(rules, list), "Expected list response"
 
             # Format port forwarding rules for clean output
             formatted_rules = []
-            for rule in rule_items:
+            for rule in rules:
+                rule = cast("dict[str, Any]", rule)
                 formatted_rule = {
                     "name": rule.get("name", "Unknown Rule"),
                     "enabled": rule.get("enabled", False),
@@ -279,7 +285,7 @@ class NetworkService(BaseService):
                     "internal_ip": rule.get("fwd", "Unknown"),
                     "internal_port": rule.get("fwd_port", "Unknown"),
                     "log": rule.get("log", False),
-                    "source": rule.get("src", "any"),
+                    "source": rule.get("src", "any")
                 }
                 formatted_rules.append(formatted_rule)
 
@@ -287,7 +293,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_rules,
-                success_message=f"Retrieved {len(formatted_rules)} port forwarding rules",
+                success_message=f"Retrieved {len(formatted_rules)} port forwarding rules"
             )
 
         except Exception as e:
@@ -298,32 +304,30 @@ class NetworkService(BaseService):
         """Get firewall rules for security audit and management."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             rules = await self.client._make_request("GET", "/rest/firewallrule", site_name=site_name)
 
             # Check for error response
             if isinstance(rules, dict) and "error" in rules:
-                return self.create_error_result(rules.get("error", "unknown error"), rules)
+                return self.create_error_result(rules.get('error','unknown error'), rules)
 
             if not isinstance(rules, list):
-                return self.create_error_result(
-                    f"Unexpected response format: {type(rules).__name__}",
-                    {"error": f"Unexpected response format: {type(rules).__name__}", "data": rules},
-                )
+                msg = f"Unexpected response format: {type(rules).__name__}"
+                return self.create_error_result(msg, {"error": msg, "data": rules})
 
             # Add debug info if no rules found
             if not rules:
+                empty = [{"message": "No firewall rules found", "rule_count": 0}]
                 return ToolResult(
                     content=[TextContent(type="text", text="Firewall Rules (0 total)\n  -")],
-                    structured_content={"message": "No firewall rules found", "rule_count": 0},
+                    structured_content=empty
                 )
-
-            rule_items = self.dict_items(rules)
 
             # Format firewall rules for clean output
             formatted_rules = []
-            for rule in rule_items:
+            for rule in rules:
+                rule = cast("dict[str, Any]", rule)
                 formatted_rule = {
                     "name": rule.get("name", "Unnamed Rule"),
                     "enabled": rule.get("enabled", False),
@@ -337,7 +341,7 @@ class NetworkService(BaseService):
                     "index": rule.get("rule_index", None),
                     "logging": rule.get("logging", False),
                     "established": rule.get("state_established", False),
-                    "related": rule.get("state_related", False),
+                    "related": rule.get("state_related", False)
                 }
                 formatted_rules.append(formatted_rule)
 
@@ -345,7 +349,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_rules,
-                success_message=f"Retrieved {len(formatted_rules)} firewall rules",
+                success_message=f"Retrieved {len(formatted_rules)} firewall rules"
             )
 
         except Exception as e:
@@ -356,7 +360,7 @@ class NetworkService(BaseService):
         """Get firewall groups for security management."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             groups = await self.client._make_request("GET", "/rest/firewallgroup", site_name=site_name)
 
@@ -364,19 +368,20 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(groups, params.action)
             if error_result:
                 return error_result
-            if not isinstance(groups, list):
-                return self.create_error_result("Unexpected response format", groups)
-            group_items = self.dict_items(groups)
+
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(groups, list), "Expected list response"
 
             # Format firewall groups for clean output
             formatted_groups = []
-            for group in group_items:
+            for group in groups:
+                group = cast("dict[str, Any]", group)
                 formatted_group = {
                     "name": group.get("name", "Unnamed Group"),
                     "group_type": group.get("group_type", "unknown"),
                     "group_members": group.get("group_members", []),
                     "member_count": len(group.get("group_members", [])),
-                    "description": group.get("description", "No description"),
+                    "description": group.get("description", "No description")
                 }
                 formatted_groups.append(formatted_group)
 
@@ -384,7 +389,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_groups,
-                success_message=f"Retrieved {len(formatted_groups)} firewall groups",
+                success_message=f"Retrieved {len(formatted_groups)} firewall groups"
             )
 
         except Exception as e:
@@ -395,7 +400,7 @@ class NetworkService(BaseService):
         """Get static routes for advanced network routing analysis."""
         try:
             defaults = params.get_action_defaults()
-            site_name = defaults.get("site_name", "default")
+            site_name = defaults.get('site_name', 'default')
 
             routes = await self.client._make_request("GET", "/rest/routing", site_name=site_name)
 
@@ -403,13 +408,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(routes, params.action)
             if error_result:
                 return error_result
-            if not isinstance(routes, list):
-                return self.create_error_result("Unexpected response format", routes)
-            route_items = self.dict_items(routes)
+
+                # Type narrowing: after check_list_response, we know it's a list
+                assert isinstance(routes, list), "Expected list response"
 
             # Format static routes for clean output
             formatted_routes = []
-            for route in route_items:
+            for route in routes:
+                route = cast("dict[str, Any]", route)
                 formatted_route = {
                     "name": route.get("name", "Unnamed Route"),
                     "enabled": route.get("enabled", False),
@@ -417,7 +423,7 @@ class NetworkService(BaseService):
                     "distance": route.get("static-route_distance", "unknown"),
                     "gateway": route.get("static-route_nexthop", "unknown"),
                     "interface": route.get("static-route_interface", "auto"),
-                    "type": route.get("type", "static"),
+                    "type": route.get("type", "static")
                 }
                 formatted_routes.append(formatted_route)
 
@@ -425,7 +431,7 @@ class NetworkService(BaseService):
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_routes,
-                success_message=f"Retrieved {len(formatted_routes)} static routes",
+                success_message=f"Retrieved {len(formatted_routes)} static routes"
             )
 
         except Exception as e:

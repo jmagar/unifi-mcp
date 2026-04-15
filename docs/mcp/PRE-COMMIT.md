@@ -1,33 +1,44 @@
-# Pre-commit Hook Configuration
+# Git Hook Configuration
 
-Pre-commit hooks for unifi-mcp. These run locally before each commit and are also enforced in CI.
+Git hooks for unifi-mcp. These run locally before each commit and are also enforced in CI.
 
 ## Setup
 
 ```bash
 uv sync --extra dev
-uv run pre-commit install
+lefthook install
 ```
 
 ## Configuration
 
-Defined in `.pre-commit-config.yaml`:
+Defined in `lefthook.yml`:
 
 ```yaml
-repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
+pre-commit:
+  parallel: true
+  commands:
+    diff_check:
+      run: git diff --check --cached
+    yaml:
+      glob: "*.{yml,yaml}"
+      run: uv run python -c 'import sys, yaml; [yaml.safe_load(open(path, "r", encoding="utf-8")) for path in sys.argv[1:]]' {staged_files}
+    lint:
+      run: just lint
+    format:
+      run: just fmt
+    typecheck:
+      run: just typecheck
 ```
 
 ## Hooks
 
 | Hook | Purpose | Auto-fix |
 |------|---------|----------|
-| `ruff` | Lint Python code | yes (with `--fix`) |
-| `ruff-format` | Format Python code | yes |
+| `diff_check` | Detect trailing whitespace and conflict markers in staged diff | no |
+| `yaml` | Validate staged YAML syntax | no |
+| `lint` | Lint Python code with Ruff | no |
+| `format` | Format Python code with Ruff | yes |
+| `typecheck` | Run `ty` against `unifi_mcp` | no |
 
 ## Ruff Configuration
 

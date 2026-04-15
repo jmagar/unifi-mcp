@@ -12,7 +12,7 @@ from hmac import compare_digest
 from typing import Annotated
 
 from fastmcp import FastMCP
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 from pydantic import Field
 

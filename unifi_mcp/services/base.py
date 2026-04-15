@@ -5,20 +5,23 @@ Provides shared functionality and common patterns for all domain services.
 """
 
 import logging
-from abc import ABC
-from typing import Any
+import re
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import cast
 
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
 from ..client import UnifiControllerClient
 from ..models.enums import UnifiAction
 from ..models.params import UnifiParams
+from ..types import ErrorResponse, JSONValue, UniFiData
 
 logger = logging.getLogger(__name__)
 
 
-class BaseService(ABC):  # noqa: B024
+class BaseService(ABC):
     """Base service providing shared functionality for all domain services.
 
     This class centralizes common patterns like MAC address normalization,
@@ -38,29 +41,28 @@ class BaseService(ABC):  # noqa: B024
         """Normalize MAC address to consistent format.
 
         Converts any MAC address format to lowercase colon-separated format.
+        Validates the MAC address format.
 
         Args:
             mac: MAC address in any format (xx:xx:xx:xx:xx:xx, xx-xx-xx-xx-xx-xx, etc.)
 
         Returns:
             Normalized MAC address in xx:xx:xx:xx:xx:xx format
+
+        Raises:
+            ValueError: If the MAC address format is invalid
         """
-        return mac.strip().lower().replace("-", ":").replace(".", ":")
+        # Normalize to colon-separated format
+        normalized = mac.strip().lower().replace("-", ":").replace(".", ":")
+
+        # Validate MAC address format (6 groups of 2 hex digits)
+        if not re.match(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$", normalized):
+            raise ValueError(f"Invalid MAC address format: {mac}")
+
+        return normalized
 
     @staticmethod
-    def require_mac(params: UnifiParams) -> str:
-        """Return a required MAC parameter or raise a ValueError."""
-        if not params.mac:
-            raise ValueError(f"{params.action.value} requires a MAC address")
-        return params.mac
-
-    @staticmethod
-    def dict_items(items: list[Any]) -> list[dict[str, Any]]:
-        """Keep only dict items from a loosely typed controller response list."""
-        return [item for item in items if isinstance(item, dict)]
-
-    @staticmethod
-    def create_error_result(message: str, raw_data: Any = None) -> ToolResult:
+    def create_error_result(message: str, raw_data: UniFiData | ErrorResponse | dict[str, JSONValue] | None = None) -> ToolResult:
         """Create standardized error ToolResult.
 
         Args:
@@ -74,9 +76,7 @@ class BaseService(ABC):  # noqa: B024
 
     @staticmethod
     def create_success_result(
-        text: str,
-        data: Any,
-        success_message: str | None = None,
+        text: str, data: UniFiData | dict[str, JSONValue] | list[dict[str, JSONValue]] | JSONValue, success_message: str | None = None
     ) -> ToolResult:
         """Create standardized success ToolResult.
 
@@ -88,15 +88,17 @@ class BaseService(ABC):  # noqa: B024
         Returns:
             ToolResult with success information
         """
-        structured_content = data
+        structured_content: dict[str, JSONValue] | UniFiData | list[dict[str, JSONValue]] | JSONValue = data
         if success_message and isinstance(data, dict):
-            structured_content = {"success": True, "message": success_message, **data}
+            # Build dict with update() to avoid TypedDict unpacking issues
+            structured_content = cast("dict[str, JSONValue]", {"success": True, "message": success_message})
+            structured_content.update(cast("dict[str, JSONValue]", data))
         elif success_message:
-            structured_content = {"success": True, "message": success_message, "data": data}
+            structured_content = {"success": True, "message": success_message, "data": cast("JSONValue", data)}
 
         return ToolResult(content=[TextContent(type="text", text=text)], structured_content=structured_content)
 
-    def validate_response(self, response: Any, action: UnifiAction) -> tuple[bool, str]:
+    def validate_response(self, response: UniFiData | ErrorResponse | dict[str, JSONValue], action: UnifiAction) -> tuple[bool, str]:
         """Validate API response for common error patterns.
 
         Args:
@@ -108,18 +110,20 @@ class BaseService(ABC):  # noqa: B024
         """
         if isinstance(response, dict):
             if "error" in response:
-                return False, response.get("error", "unknown error")
+                error_val = response.get("error", "unknown error")
+                return False, str(error_val) if error_val is not None else "unknown error"
 
             # Check UniFi API response code
             meta = response.get("meta", {})
-            rc = meta.get("rc")
-            if rc and rc != "ok":
-                msg = meta.get("msg", "Controller returned failure")
-                return False, msg
+            if isinstance(meta, dict):
+                rc = meta.get("rc")
+                if rc and rc != "ok":
+                    msg = meta.get("msg", "Controller returned failure")
+                    return False, str(msg) if msg is not None else "Controller returned failure"
 
         return True, ""
 
-    def check_list_response(self, response: Any, action: UnifiAction) -> ToolResult | None:
+    def check_list_response(self, response: UniFiData | ErrorResponse | dict[str, JSONValue], action: UnifiAction) -> ToolResult | None:
         """Check if response is a valid list and handle common error cases.
 
         Args:
@@ -131,20 +135,21 @@ class BaseService(ABC):  # noqa: B024
         """
         # Check for error dict
         if isinstance(response, dict) and "error" in response:
-            return self.create_error_result(response.get("error", "unknown error"), response)
+            error_val = response.get("error", "unknown error")
+            return self.create_error_result(str(error_val) if error_val is not None else "unknown error", response)
 
         # Check if response is expected list format
         if not isinstance(response, list):
             error_msg = f"Unexpected response format: expected list, got {type(response).__name__}"
-            return self.create_error_result(error_msg, response)
+            return self.create_error_result(error_msg, None)
 
         return None
 
     def format_action_result(
         self,
-        response: Any,
+        response: UniFiData | ErrorResponse | dict[str, JSONValue],
         action: UnifiAction,
-        formatter_func=None,
+        formatter_func: Callable[[UniFiData | dict[str, JSONValue]], dict[str, JSONValue] | list[dict[str, JSONValue]] | str] | None = None,
         success_text: str | None = None,
     ) -> ToolResult:
         """Format action result with consistent error handling.
@@ -166,7 +171,7 @@ class BaseService(ABC):  # noqa: B024
         # Format response if formatter provided
         if formatter_func:
             try:
-                formatted_data = formatter_func(response)
+                formatted_data = formatter_func(cast("UniFiData | dict[str, JSONValue]", response))
                 text = success_text or f"{action.value} completed successfully"
                 return self.create_success_result(text, formatted_data)
             except Exception as e:
@@ -175,12 +180,13 @@ class BaseService(ABC):  # noqa: B024
 
         # Return raw response if no formatter
         text = success_text or f"{action.value} completed"
-        return self.create_success_result(text, response)
+        return self.create_success_result(text, cast("UniFiData | dict[str, JSONValue] | list[dict[str, JSONValue]] | JSONValue", response))
 
+    @abstractmethod
     async def execute_action(self, params: UnifiParams) -> ToolResult:
         """Execute the specified action with the given parameters.
 
-        This is the main entry point that subclasses should override
+        This is the main entry point that subclasses must override
         to implement their specific action routing.
 
         Args:
@@ -189,4 +195,3 @@ class BaseService(ABC):  # noqa: B024
         Returns:
             ToolResult with action response
         """
-        return self.create_error_result(f"Action {params.action} not implemented in {self.__class__.__name__}")

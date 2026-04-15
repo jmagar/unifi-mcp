@@ -13,12 +13,7 @@ from typing import Any
 import httpx
 
 from .config import UniFiConfig
-from .formatters import (
-    format_bytes,
-    format_client_summary,
-    format_device_summary,
-    format_site_summary,
-)
+from .formatters import format_bytes, format_client_summary, format_device_summary, format_site_summary
 
 logger = logging.getLogger(__name__)
 
@@ -67,16 +62,13 @@ class UnifiControllerClient:
 
         try:
             # Determine login endpoint and payload
+            login_data: dict[str, str | bool]
             if self.config.is_udm_pro:
                 login_url = f"{self.config.controller_url}/api/auth/login"
                 login_data = {"username": self.config.username, "password": self.config.password}
             else:
                 login_url = f"{self.config.controller_url}{self.api_base}/login"
-                login_data = {
-                    "username": self.config.username,
-                    "password": self.config.password,
-                    "remember": True,
-                }
+                login_data = {"username": self.config.username, "password": self.config.password, "remember": True}
 
             logger.debug(f"Authenticating to {login_url}")
 
@@ -87,23 +79,29 @@ class UnifiControllerClient:
 
             # Handle UDM Pro authentication
             if self.config.is_udm_pro:
-                # Extract CSRF token from JWT
-                token_cookie = self.session.cookies.get("TOKEN")
+                # First try to extract CSRF token from response header
+                csrf_from_header = response.headers.get("x-csrf-token")
+                if csrf_from_header:
+                    self.csrf_token = csrf_from_header
+                    logger.debug("Extracted CSRF token from response header")
+                else:
+                    # Fall back to extracting CSRF token from JWT cookie
+                    token_cookie = self.session.cookies.get("TOKEN")
 
-                if token_cookie:
-                    try:
-                        # Decode JWT payload (second part)
-                        jwt_parts = token_cookie.split(".")
-                        if len(jwt_parts) >= 2:
-                            # Add padding if needed
-                            payload = jwt_parts[1]
-                            payload += "=" * (4 - len(payload) % 4)
-                            decoded = base64.urlsafe_b64decode(payload)
-                            jwt_data = json.loads(decoded)
-                            self.csrf_token = jwt_data.get("csrfToken")
-                            logger.debug("Extracted CSRF token from JWT")
-                    except Exception as e:
-                        logger.warning(f"Failed to extract CSRF token: {e}")
+                    if token_cookie:
+                        try:
+                            # Decode JWT payload (second part)
+                            jwt_parts = token_cookie.split(".")
+                            if len(jwt_parts) >= 2:
+                                # Add padding if needed
+                                payload = jwt_parts[1]
+                                payload += "=" * (4 - len(payload) % 4)
+                                decoded = base64.urlsafe_b64decode(payload)
+                                jwt_data = json.loads(decoded)
+                                self.csrf_token = jwt_data.get("csrfToken")
+                                logger.debug("Extracted CSRF token from JWT")
+                        except Exception as e:
+                            logger.warning(f"Failed to extract CSRF token: {e}")
 
             self.is_authenticated = True
             logger.info("Successfully authenticated to UniFi controller")
@@ -119,12 +117,7 @@ class UnifiControllerClient:
             await self.authenticate()
 
     async def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        site_name: str = "default",
-        data: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
+        self, method: str, endpoint: str, site_name: str = "default", data: dict[str, Any] | None = None, params: dict[str, Any] | None = None
     ) -> dict[str, Any] | list:
         """Make an authenticated request to the UniFi controller."""
         await self.ensure_authenticated()
@@ -210,34 +203,9 @@ class UnifiControllerClient:
         return await self._make_request("POST", "/cmd/stamgr", site_name=site_name, data=data)
 
     async def get_events(self, site_name: str = "default", limit: int = 100) -> dict[str, Any] | list:
-        """Get recent events.
-
-        Tries v2 API first (UDM Pro firmware 5.x+), falls back to legacy /stat/event.
-        """
-        if self.config.is_udm_pro:
-            # v2 API — available on modern UDM firmware
-            await self.ensure_authenticated()
-            assert self.session is not None, "Session must be initialized after ensure_authenticated"
-            url = f"{self.config.controller_url}/proxy/network/v2/api/site/{site_name}/events"
-            headers = {"Content-Type": "application/json"}
-            if self.csrf_token:
-                headers["X-CSRF-Token"] = self.csrf_token
-            resp = await self.session.get(url, params={"limit": limit}, headers=headers)
-            if resp.status_code == 200:
-                body = resp.json()
-                return body.get("data", body) if isinstance(body, dict) else body
-            # Fall through to legacy endpoint
-            logger.debug(f"v2 events returned {resp.status_code}, trying legacy endpoint")
-        result = await self._make_request("POST", "/stat/event", site_name=site_name, data={"_limit": limit})
-        # Both v2 and legacy paths return 404 on Network Application 10.x —
-        # surface a clear message instead of a raw error
-        if isinstance(result, dict) and "error" in result:
-            return {
-                "error": "Events API not available on this controller version",
-                "detail": result.get("error", ""),
-                "hint": "Network Application 10.x removed the legacy /stat/event endpoint. Use get_alarms for active alerts instead.",
-            }
-        return result
+        """Get recent events."""
+        data = {"_limit": limit}
+        return await self._make_request("POST", "/stat/event", site_name=site_name, data=data)
 
     async def get_alarms(self, site_name: str = "default") -> dict[str, Any] | list:
         """Get active alarms."""
@@ -314,11 +282,7 @@ class UnifiControllerClient:
             except Exception as e:
                 # Handle formatting errors gracefully
                 formatted_devices.append(
-                    {
-                        "name": device.get("name", "Unknown Device"),
-                        "mac": device.get("mac", "Unknown"),
-                        "error": f"Formatting error: {e!s}",
-                    }
+                    {"name": device.get("name", "Unknown Device"), "mac": device.get("mac", "Unknown"), "error": f"Formatting error: {e!s}"}
                 )
         return formatted_devices
 
@@ -340,11 +304,12 @@ class UnifiControllerClient:
         formatted_clients = await self.get_clients_formatted(site_name)
         if isinstance(formatted_clients, dict) and "error" in formatted_clients:
             return f"Error: {formatted_clients['error']}"
-        if not isinstance(formatted_clients, list):
-            return "Error: Unexpected response format"
 
         if not formatted_clients:
             return "📱 No clients connected"
+
+        # Type narrowing: after error check, should be a list
+        assert isinstance(formatted_clients, list), "Expected list of clients"
 
         wireless = [c for c in formatted_clients if c.get("connection_type") == "Wireless"]
         wired = [c for c in formatted_clients if c.get("connection_type") == "Wired"]
@@ -367,11 +332,12 @@ class UnifiControllerClient:
         formatted_devices = await self.get_devices_formatted(site_name)
         if isinstance(formatted_devices, dict) and "error" in formatted_devices:
             return f"Error: {formatted_devices['error']}"
-        if not isinstance(formatted_devices, list):
-            return "Error: Unexpected response format"
 
         if not formatted_devices:
             return "📱 No devices found"
+
+        # Type narrowing: after error check, should be a list
+        assert isinstance(formatted_devices, list), "Expected list of devices"
 
         online = len([d for d in formatted_devices if d.get("status") == "Online"])
         aps = len([d for d in formatted_devices if d.get("type") == "Access Point"])
@@ -424,14 +390,15 @@ class UnifiControllerClient:
         formatted_sites = await self.get_sites_formatted()
         if isinstance(formatted_sites, dict) and "error" in formatted_sites:
             return f"Error: {formatted_sites['error']}"
-        if not isinstance(formatted_sites, list):
-            return "Error: Unexpected response format"
 
         if not formatted_sites:
             return "🏢 No sites found"
 
+        # Type narrowing: after error check, should be a list
+        assert isinstance(formatted_sites, list), "Expected list of sites"
+
         summary = f"🏢 {len(formatted_sites)} sites: "
-        site_names = [site.get("name", "Site") for site in formatted_sites[:3]]
+        site_names = [s.get("name", "Site") for s in formatted_sites[:3]]
         summary += ", ".join(site_names)
         if len(formatted_sites) > 3:
             summary += f" +{len(formatted_sites) - 3} more"

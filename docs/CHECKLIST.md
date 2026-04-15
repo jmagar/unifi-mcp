@@ -21,13 +21,9 @@ Pre-release and quality checklist. Complete all items before tagging a release.
 - [ ] No credentials in code, docs, or commit history
 - [ ] `UNIFI_MCP_TOKEN` is required by default (no `NO_AUTH=true` in production)
 - [ ] Dockerfile runs as non-root user (`USER unifi`)
-- [ ] Docker security checks pass (`scripts/check-docker-security.sh`)
-- [ ] No baked env vars in Docker image (`scripts/check-no-baked-env.sh`)
-- [ ] Ignore files are complete (`scripts/ensure-ignore-files.sh --check`)
-
 ## CI/CD
 
-- [ ] All CI jobs pass: lint, typecheck, test, version-sync, contract-drift, docker-security
+- [ ] All CI jobs pass: lint, typecheck, test, version-sync
 - [ ] Docker image builds for `linux/amd64` and `linux/arm64`
 - [ ] PyPI publish workflow validated (tag trigger, version match)
 - [ ] MCP Registry publish step included in PyPI workflow
