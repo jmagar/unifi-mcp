@@ -5,15 +5,16 @@ Following FastMCP testing patterns for reusable test resources.
 """
 
 import json
+from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
+
+import httpx
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, Mock, patch
-from typing import Dict, Any, List, Optional
-import httpx
 from fastmcp import FastMCP
 
-from unifi_mcp.config import UniFiConfig, ServerConfig
 from unifi_mcp.client import UnifiControllerClient
+from unifi_mcp.config import ServerConfig, UniFiConfig
 from unifi_mcp.server import UniFiMCPServer
 
 
@@ -53,7 +54,7 @@ def test_server_config() -> ServerConfig:
 
 
 @pytest.fixture
-def mock_device_data() -> List[Dict[str, Any]]:
+def mock_device_data() -> list[dict[str, Any]]:
     """Mock device data for testing."""
     return [
         {
@@ -78,7 +79,7 @@ def mock_device_data() -> List[Dict[str, Any]]:
             ]
         },
         {
-            "_id": "device2", 
+            "_id": "device2",
             "name": "Living Room AP",
             "mac": "aa:bb:cc:dd:ee:02",
             "model": "U6-Pro",
@@ -101,7 +102,7 @@ def mock_device_data() -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def mock_client_data() -> List[Dict[str, Any]]:
+def mock_client_data() -> list[dict[str, Any]]:
     """Mock client data for testing."""
     return [
         {
@@ -128,7 +129,7 @@ def mock_client_data() -> List[Dict[str, Any]]:
         {
             "_id": "client2",
             "name": "Desktop PC",
-            "mac": "aa:bb:cc:dd:ee:f2", 
+            "mac": "aa:bb:cc:dd:ee:f2",
             "ip": "192.168.1.101",
             "hostname": "desktop-pc",
             "is_online": True,
@@ -148,7 +149,7 @@ def mock_client_data() -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def mock_network_data() -> List[Dict[str, Any]]:
+def mock_network_data() -> list[dict[str, Any]]:
     """Mock network configuration data."""
     return [
         {
@@ -163,7 +164,7 @@ def mock_network_data() -> List[Dict[str, Any]]:
             "dhcp_lease": 86400
         },
         {
-            "_id": "net2", 
+            "_id": "net2",
             "name": "Guest",
             "purpose": "guest",
             "ip_subnet": "192.168.2.1/24",
@@ -177,7 +178,7 @@ def mock_network_data() -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def mock_site_data() -> Dict[str, Any]:
+def mock_site_data() -> dict[str, Any]:
     """Mock site data."""
     return {
         "_id": "site1",
@@ -200,31 +201,31 @@ def mock_unifi_client(test_unifi_config, mock_device_data, mock_client_data, moc
     mock_client.config = test_unifi_config
     mock_client.is_authenticated = True
     mock_client.csrf_token = "test-csrf-token"
-    
+
     # Mock authentication methods
     mock_client.authenticate = AsyncMock(return_value=True)
     mock_client.ensure_authenticated = AsyncMock(return_value=True)
     mock_client.connect = AsyncMock()
     mock_client.disconnect = AsyncMock()
-    
+
     # Mock API methods
     mock_client.get_devices = AsyncMock(return_value=mock_device_data)
     mock_client.get_clients = AsyncMock(return_value=mock_client_data)
     mock_client.get_networks = AsyncMock(return_value=mock_network_data)
     mock_client.get_sites = AsyncMock(return_value=[mock_site_data])
     mock_client.get_site = AsyncMock(return_value=mock_site_data)
-    
+
     # Mock device management methods
     mock_client.restart_device = AsyncMock(return_value={"message": "Device restart initiated"})
     mock_client.locate_device = AsyncMock(return_value={"message": "Device locate started"})
     mock_client.get_device_stats = AsyncMock(return_value={"stats": "mock_stats"})
-    
+
     # Mock client management methods
     mock_client.block_client = AsyncMock(return_value={"message": "Client blocked"})
     mock_client.unblock_client = AsyncMock(return_value={"message": "Client unblocked"})
     mock_client.set_client_name = AsyncMock(return_value={"message": "Name updated"})
     mock_client.set_client_note = AsyncMock(return_value={"message": "Note updated"})
-    
+
     return mock_client
 
 
@@ -235,13 +236,13 @@ def mock_failed_unifi_client():
     mock_client.is_authenticated = False
     mock_client.authenticate = AsyncMock(return_value=False)
     mock_client.ensure_authenticated = AsyncMock(side_effect=Exception("Authentication failed"))
-    
+
     # All API calls should return errors
     error_response = {"error": "Authentication required"}
     mock_client.get_devices = AsyncMock(return_value=error_response)
     mock_client.get_clients = AsyncMock(return_value=error_response)
     mock_client.get_networks = AsyncMock(return_value=error_response)
-    
+
     return mock_client
 
 
@@ -289,17 +290,17 @@ async def test_server(test_unifi_config, test_server_config, mock_unifi_client) 
 
 
 @pytest.fixture
-def integration_config() -> Optional[UniFiConfig]:
+def integration_config() -> UniFiConfig | None:
     """Configuration for integration tests - returns None if env vars not set."""
     import os
-    
+
     controller_url = os.getenv("UNIFI_CONTROLLER_URL")
-    username = os.getenv("UNIFI_USERNAME") 
+    username = os.getenv("UNIFI_USERNAME")
     password = os.getenv("UNIFI_PASSWORD")
-    
+
     if not all([controller_url, username, password]):
         return None
-        
+
     return UniFiConfig(
         controller_url=controller_url,
         username=username,
@@ -315,8 +316,8 @@ def normalize_mac(mac: str) -> str:
     return mac.strip().lower().replace("-", ":").replace(".", ":")
 
 
-def mock_httpx_response(status_code: int, json_data: Dict[str, Any] = None, 
-                       cookies: Dict[str, str] = None, headers: Dict[str, str] = None):
+def mock_httpx_response(status_code: int, json_data: dict[str, Any] | None = None,
+                       cookies: dict[str, str] | None = None, headers: dict[str, str] | None = None):
     """Create mock httpx Response object."""
     response = Mock(spec=httpx.Response)
     response.status_code = status_code

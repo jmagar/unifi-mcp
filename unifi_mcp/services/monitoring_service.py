@@ -4,26 +4,26 @@ Monitoring service for UniFi MCP Server.
 Handles all monitoring and statistics operations including controller status,
 events, alarms, security monitoring, and performance metrics.
 """
-from typing import cast, Any
-
 import logging
 import time
-from fastmcp.tools.tool import ToolResult
+from typing import Any, cast
+
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
-from ..models.enums import UnifiAction
-from ..models.params import UnifiParams
 from ..formatters import (
-    format_timestamp,
-    format_data_values,
-    format_events_list,
     format_alarms_list,
+    format_data_values,
     format_dpi_stats_list,
+    format_events_list,
+    format_ips_events_list,
     format_rogue_aps_list,
     format_speedtests_list,
-    format_ips_events_list,
+    format_timestamp,
 )
+from ..models.enums import UnifiAction
+from ..models.params import UnifiParams
+from .base import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class MonitoringService(BaseService):
                     content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
                     structured_content={"error": result.get('error','unknown error'), "raw": result}
                 )
-            
+
             # Type narrowing: result should be a dict here
             assert isinstance(result, dict), "Expected dict response from controller status"
 
@@ -100,7 +100,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error getting controller status: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -155,7 +155,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error getting events: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
 
@@ -209,7 +209,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error getting alarms: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
 
@@ -260,7 +260,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error getting DPI stats: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
 
@@ -301,10 +301,10 @@ class MonitoringService(BaseService):
 
             for rogue in filtered_rogues:
                 rssi = rogue.get("rssi", "Unknown")
-                signal_str = f"{rssi} dBm" if isinstance(rssi, (int, float)) else str(rssi)
+                signal_str = f"{rssi} dBm" if isinstance(rssi, int | float) else str(rssi)
 
                 # Determine threat level based on signal strength
-                if isinstance(rssi, (int, float)):
+                if isinstance(rssi, int | float):
                     if rssi > -60:
                         threat_level = "High"
                     elif rssi > -80:
@@ -336,14 +336,14 @@ class MonitoringService(BaseService):
                 summary_text = header + "\n" + summary_text
             return self.create_success_result(
                 text=summary_text,
-                data=cast(list[dict[str, Any]], formatted_rogues),
+                data=cast("list[dict[str, Any]]", formatted_rogues),
                 success_message=f"Retrieved {len(text_items)} rogue access points"
             )
 
         except Exception as e:
             logger.error(f"Error getting rogue APs: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
 
@@ -386,7 +386,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error starting spectrum scan on {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -421,7 +421,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error getting spectrum scan state for {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -484,7 +484,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error authorizing guest {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -512,7 +512,8 @@ class MonitoringService(BaseService):
                 return self.create_error_result(results.get('error','unknown error'), results)
 
             if not isinstance(results, list):
-                return self.create_error_result(f"Unexpected response format: {type(results).__name__}", {"error": f"Unexpected response format: {type(results).__name__}", "data": results})
+                msg = f"Unexpected response format: {type(results).__name__}"
+                return self.create_error_result(msg, {"error": msg, "data": results})
 
             # Format speed test results for clean output
             formatted_results = []
@@ -548,7 +549,7 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error getting speed test results: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
 
@@ -615,6 +616,6 @@ class MonitoringService(BaseService):
         except Exception as e:
             logger.error(f"Error getting IPS events: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )

@@ -24,17 +24,11 @@ unifi-mcp/
 │   ├── repo/                    # Repository docs
 │   ├── stack/                   # Technology stack docs
 │   └── upstream/                # Upstream service docs
+├── bin/
+│   └── sync-uv.sh               # SessionStart hook: sync uv environment
 ├── hooks/
-│   ├── hooks.json               # Hook definitions
-│   └── scripts/
-│       ├── sync-env.sh          # Sync userConfig to .env
-│       ├── fix-env-perms.sh     # Fix .env permissions
-│       └── ensure-ignore-files.sh
+│   └── hooks.json               # Hook definitions
 ├── scripts/
-│   ├── check-docker-security.sh
-│   ├── check-no-baked-env.sh
-│   ├── check-outdated-deps.sh
-│   ├── ensure-ignore-files.sh
 │   └── smoke-test.sh
 ├── skills/
 │   └── unifi/
@@ -79,7 +73,7 @@ unifi-mcp/
 ├── .env.example                 # Environment template
 ├── .mcp.json                    # MCP server config
 ├── .app.json                    # App metadata
-├── .pre-commit-config.yaml
+├── lefthook.yml
 ├── CHANGELOG.md
 ├── CLAUDE.md                    # Claude Code instructions
 ├── Dockerfile

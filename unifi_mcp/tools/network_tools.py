@@ -6,20 +6,21 @@ and network-related settings.
 """
 
 import logging
+
 from fastmcp import FastMCP
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
 from ..client import UnifiControllerClient
 from ..formatters import (
-    format_site_summary,
-    format_sites_list,
-    format_wlans_list,
+    format_firewall_groups_list,
+    format_firewall_rules_list,
     format_networks_list,
     format_port_forwarding_list,
-    format_firewall_rules_list,
-    format_firewall_groups_list,
+    format_site_summary,
+    format_sites_list,
     format_static_routes_list,
+    format_wlans_list,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,30 +28,30 @@ logger = logging.getLogger(__name__)
 
 def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
     """Register all network configuration tools."""
-    
+
     @mcp.tool()
     async def get_sites() -> ToolResult:
         """
         Get all controller sites with health information.
-        
+
         Returns:
             List of sites with formatted health and device information
         """
         try:
             sites = await client.get_sites()
-            
+
             if isinstance(sites, dict) and "error" in sites:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {sites.get('error','unknown error')}")],
                     structured_content=[sites]
                 )
-            
+
             if not isinstance(sites, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content=[{"error": "Unexpected response format"}]
                 )
-            
+
             # Format each site for clean output
             formatted_sites = []
             for site in sites:
@@ -62,49 +63,49 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     formatted_sites.append({
                         "name": site.get("name", "Unknown"),
                         "description": site.get("desc", "Unknown"),
-                        "error": f"Formatting error: {str(e)}"
+                        "error": f"Formatting error: {e!s}"
                     })
-            
+
             summary_text = format_sites_list(sites)
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_sites
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting sites: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )
-    
-    
+
+
     @mcp.tool()
     async def get_wlan_configs(site_name: str = "default") -> ToolResult:
         """
         Get wireless network (WLAN) configurations.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of WLAN configurations with essential settings
         """
         try:
             wlans = await client.get_wlan_configs(site_name)
-            
+
             if isinstance(wlans, dict) and "error" in wlans:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {wlans.get('error','unknown error')}")],
                     structured_content=[wlans]
                 )
-            
+
             if not isinstance(wlans, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content=[{"error": "Unexpected response format"}]
                 )
-            
+
             # Format WLAN configs for clean output
             formatted_wlans = []
             for wlan in wlans:
@@ -122,47 +123,47 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "band_steering": wlan.get("band_steering", False)
                 }
                 formatted_wlans.append(formatted_wlan)
-            
+
             summary_text = format_wlans_list(wlans)
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_wlans
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting WLAN configs: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )
-    
-    
+
+
     @mcp.tool()
     async def get_network_configs(site_name: str = "default") -> ToolResult:
         """
         Get network/VLAN configurations.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of network configurations with essential settings
         """
         try:
             networks = await client.get_network_configs(site_name)
-            
+
             if isinstance(networks, dict) and "error" in networks:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {networks.get('error','unknown error')}")],
                     structured_content=[networks]
                 )
-            
+
             if not isinstance(networks, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content=[{"error": "Unexpected response format"}]
                 )
-            
+
             # Format network configs for clean output
             formatted_networks = []
             for network in networks:
@@ -180,47 +181,47 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "guest_access": network.get("is_guest", False)
                 }
                 formatted_networks.append(formatted_network)
-            
+
             summary_text = format_networks_list(networks)
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_networks
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting network configs: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )
-    
-    
+
+
     @mcp.tool()
     async def get_port_configs(site_name: str = "default") -> ToolResult:
         """
         Get switch port profile configurations.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of port profile configurations
         """
         try:
             ports = await client.get_port_configs(site_name)
-            
+
             if isinstance(ports, dict) and "error" in ports:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {ports.get('error','unknown error')}")],
                     structured_content=[ports]
                 )
-            
+
             if not isinstance(ports, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content=[{"error": "Unexpected response format"}]
                 )
-            
+
             # Format port configs for clean output
             formatted_ports = []
             for port in ports:
@@ -236,7 +237,7 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "duplex": port.get("full_duplex", True)
                 }
                 formatted_ports.append(formatted_port)
-            
+
             # Compact summary: name | VLAN/native | PoE | Security
             lines = [f"Port Profiles ({len(formatted_ports)} total)"]
             lines.append(f"  {'En':<2} {'Profile Name':<28} {'Native VLAN':<11} {'Tagged Count':<13} {'PoE Mode':<8} {'Port Security':<13}")
@@ -256,41 +257,41 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_ports
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting port configs: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )
-    
-    
+
+
     @mcp.tool()
     async def get_port_forwarding_rules(site_name: str = "default") -> ToolResult:
         """
         Get port forwarding rules.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of port forwarding rules with essential information
         """
         try:
             rules = await client.get_port_forwarding_rules(site_name)
-            
+
             if isinstance(rules, dict) and "error" in rules:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {rules.get('error','unknown error')}")],
                     structured_content=[rules]
                 )
-            
+
             if not isinstance(rules, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content=[{"error": "Unexpected response format"}]
                 )
-            
+
             # Format port forwarding rules for clean output
             formatted_rules = []
             for rule in rules:
@@ -305,47 +306,47 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "source": rule.get("src", "any")
                 }
                 formatted_rules.append(formatted_rule)
-            
+
             summary_text = format_port_forwarding_list(formatted_rules)
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_rules
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting port forwarding rules: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )
-    
-    
+
+
     @mcp.tool()
     async def get_firewall_rules(site_name: str = "default") -> ToolResult:
         """
         Get firewall rules for security audit and management.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of firewall rules with formatted information
         """
         try:
             rules = await client._make_request("GET", "/rest/firewallrule", site_name=site_name)
-            
+
             if isinstance(rules, dict) and "error" in rules:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {rules.get('error','unknown error')}")],
                     structured_content=[rules]
                 )
-            
+
             if not isinstance(rules, list):
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: Unexpected response format: {type(rules).__name__}")],
                     structured_content=[{"error": f"Unexpected response format: {type(rules).__name__}", "data": rules}]
                 )
-            
+
             # Add debug info if no rules found
             if not rules:
                 empty = [{"message": "No firewall rules found", "rule_count": 0}]
@@ -353,7 +354,7 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     content=[TextContent(type="text", text="Firewall Rules (0 total)\n  -")],
                     structured_content=empty
                 )
-            
+
             # Format firewall rules for clean output
             formatted_rules = []
             for rule in rules:
@@ -373,47 +374,47 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "related": rule.get("state_related", False)
                 }
                 formatted_rules.append(formatted_rule)
-            
+
             summary_text = format_firewall_rules_list(formatted_rules)
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_rules
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting firewall rules: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )
-    
-    
+
+
     @mcp.tool()
     async def get_firewall_groups(site_name: str = "default") -> ToolResult:
         """
         Get firewall groups for security management.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of firewall groups with formatted information
         """
         try:
             groups = await client._make_request("GET", "/rest/firewallgroup", site_name=site_name)
-            
+
             if isinstance(groups, dict) and "error" in groups:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {groups.get('error','unknown error')}")],
                     structured_content=[groups]
                 )
-            
+
             if not isinstance(groups, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content=[{"error": "Unexpected response format"}]
                 )
-            
+
             # Format firewall groups for clean output
             formatted_groups = []
             for group in groups:
@@ -425,47 +426,47 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "description": group.get("description", "No description")
                 }
                 formatted_groups.append(formatted_group)
-            
+
             summary_text = format_firewall_groups_list(formatted_groups)
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_groups
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting firewall groups: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )
-    
-    
+
+
     @mcp.tool()
     async def get_static_routes(site_name: str = "default") -> ToolResult:
         """
         Get static routes for advanced network routing analysis.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of static routes with formatted information
         """
         try:
             routes = await client._make_request("GET", "/rest/routing", site_name=site_name)
-            
+
             if isinstance(routes, dict) and "error" in routes:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {routes.get('error','unknown error')}")],
                     structured_content=[routes]
                 )
-            
+
             if not isinstance(routes, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content=[{"error": "Unexpected response format"}]
                 )
-            
+
             # Format static routes for clean output
             formatted_routes = []
             for route in routes:
@@ -479,16 +480,16 @@ def register_network_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     "type": route.get("type", "static")
                 }
                 formatted_routes.append(formatted_route)
-            
+
             summary_text = format_static_routes_list(formatted_routes)
             return ToolResult(
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_routes
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting static routes: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content=[{"error": str(e)}]
             )

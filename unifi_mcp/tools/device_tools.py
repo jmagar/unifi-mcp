@@ -5,8 +5,9 @@ Provides tools for listing, managing, and controlling UniFi devices.
 """
 
 import logging
+
 from fastmcp import FastMCP
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
 from ..client import UnifiControllerClient
@@ -17,33 +18,33 @@ logger = logging.getLogger(__name__)
 
 def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
     """Register all device management tools."""
-    
+
     @mcp.tool()
     async def get_devices(site_name: str = "default") -> ToolResult:
         """
         Get all devices with clean, formatted summaries.
-        
+
         Args:
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             List of devices with formatted, essential information
         """
         try:
             devices = await client.get_devices(site_name)
-            
+
             if isinstance(devices, dict) and "error" in devices:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {devices.get('error','unknown error')}")],
                     structured_content={"error": devices.get('error','unknown error'), "raw": devices}
                 )
-            
+
             if not isinstance(devices, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content={"error": "Unexpected response format", "raw": devices}
                 )
-            
+
             # Format each device for clean output
             formatted_devices = []
             for device in devices:
@@ -54,9 +55,9 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                     logger.error(f"Error formatting device {device.get('name', 'Unknown')}: {e}")
                     formatted_devices.append({
                         "name": device.get("name", "Unknown"),
-                        "error": f"Formatting error: {str(e)}"
+                        "error": f"Formatting error: {e!s}"
                     })
-            
+
             # Token-efficient human summary
             summary_text = format_devices_list(devices)
 
@@ -64,45 +65,45 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 content=[TextContent(type="text", text=summary_text)],
                 structured_content=formatted_devices
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting devices: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
-    
-    
+
+
     @mcp.tool()
     async def get_device_by_mac(mac: str, site_name: str = "default") -> ToolResult:
         """
         Get specific device details by MAC address with formatted output.
-        
+
         Args:
             mac: Device MAC address (any format)
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             Device details with clean, formatted information
         """
         try:
             devices = await client.get_devices(site_name)
-            
+
             if isinstance(devices, dict) and "error" in devices:
                 return ToolResult(
                     content=[TextContent(type="text", text=f"Error: {devices.get('error','unknown error')}")],
                     structured_content={"error": devices.get('error','unknown error'), "raw": devices}
                 )
-            
+
             if not isinstance(devices, list):
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Unexpected response format")],
                     structured_content={"error": "Unexpected response format", "raw": devices}
                 )
-            
+
             # Normalize MAC address for comparison
             normalized_mac = mac.lower().replace("-", ":").replace(".", ":")
-            
+
             # Find matching device
             for device in devices:
                 device_mac = device.get("mac", "").lower().replace("-", ":").replace(".", ":")
@@ -123,30 +124,30 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 content=[TextContent(type="text", text=f"Device with MAC {mac} not found")],
                 structured_content={"error": f"Device with MAC {mac} not found", "raw": None}
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting device by MAC {mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
-    
-    
+
+
     @mcp.tool()
     async def restart_device(mac: str, site_name: str = "default") -> ToolResult:
         """
         Restart a UniFi device.
-        
+
         Args:
             mac: Device MAC address (any format)
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             Result of the restart operation
         """
         try:
             result = await client.restart_device(mac, site_name)
-            
+
             if isinstance(result, dict):
                 rc = result.get("meta", {}).get("rc")
                 if rc != "ok":
@@ -165,37 +166,37 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 content=[TextContent(type="text", text=f"Device restart requested: {mac}")],
                 structured_content=resp
             )
-            
+
         except Exception as e:
             logger.error(f"Error restarting device {mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )
-    
-    
+
+
     @mcp.tool()
     async def locate_device(mac: str, site_name: str = "default") -> ToolResult:
         """
         Trigger locate LED on a UniFi device.
-        
+
         Args:
             mac: Device MAC address (any format)
             site_name: UniFi site name (default: "default")
-            
+
         Returns:
             Result of the locate operation
         """
         try:
             result = await client.locate_device(mac, site_name)
-            
+
             if isinstance(result, dict):
                 if "error" in result:
                     return ToolResult(
                         content=[TextContent(type="text", text=f"Error: {result.get('error','unknown error')}")],
                         structured_content={"error": result.get('error','unknown error'), "raw": result}
                     )
-                
+
                 rc = result.get("meta", {}).get("rc")
                 if rc != "ok":
                     msg = result.get("meta", {}).get("msg") or result.get("error") or "Controller returned failure"
@@ -213,10 +214,10 @@ def register_device_tools(mcp: FastMCP, client: UnifiControllerClient) -> None:
                 content=[TextContent(type="text", text=f"Locate LED activated: {mac}")],
                 structured_content=resp
             )
-            
+
         except Exception as e:
             logger.error(f"Error locating device {mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e), "raw": None}
             )

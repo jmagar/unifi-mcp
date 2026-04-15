@@ -1,6 +1,6 @@
 """Type definitions for UniFi API responses and data structures."""
 
-from typing import TypedDict, Union, List, Optional
+from typing import TypedDict
 
 
 # Base UniFi API Response
@@ -13,7 +13,7 @@ class UniFiMeta(TypedDict, total=False):
 class UniFiResponse(TypedDict, total=False):
     """Base UniFi API response structure."""
     meta: UniFiMeta
-    data: Union[List['UniFiDevice'], List['UniFiClient'], List['UniFiSite'], List[dict[str, 'JSONValue']], dict[str, 'JSONValue']]
+    data: list['UniFiDevice'] | list['UniFiClient'] | list['UniFiSite'] | list[dict[str, 'JSONValue']] | dict[str, 'JSONValue']
 
 
 # Device Types
@@ -41,9 +41,9 @@ class UniFiDevice(TypedDict, total=False):
     guest_num_sta: int
     uplink: dict[str, 'JSONValue']
     config_network: dict[str, 'JSONValue']
-    port_table: List[dict[str, 'JSONValue']]
-    ethernet_table: List[dict[str, 'JSONValue']]
-    temperatures: List[float]
+    port_table: list[dict[str, 'JSONValue']]
+    ethernet_table: list[dict[str, 'JSONValue']]
+    temperatures: list[float]
     cpu: float
     mem: float
     system_stats: dict[str, 'JSONValue']
@@ -90,7 +90,7 @@ class UniFiClient(TypedDict, total=False):
     site_id: str
 
 
-# Site Types  
+# Site Types
 class UniFiSite(TypedDict, total=False):
     """UniFi site data structure."""
     _id: str
@@ -236,12 +236,12 @@ class UniFiFirewallRule(TypedDict, total=False):
     protocol: str
     protocol_match_excepted: bool
     logging: bool
-    src_firewallgroup_ids: List[str]
+    src_firewallgroup_ids: list[str]
     src_mac_address: str
     src_address: str
     src_networkconf_id: str
     src_networkconf_type: str
-    dst_firewallgroup_ids: List[str]
+    dst_firewallgroup_ids: list[str]
     dst_address: str
     dst_networkconf_id: str
     dst_networkconf_type: str
@@ -255,7 +255,7 @@ class UniFiFirewallGroup(TypedDict, total=False):
     _id: str
     name: str
     group_type: str
-    group_members: List[str]
+    group_members: list[str]
     site_id: str
 
 
@@ -300,7 +300,7 @@ class UniFiSpeedTest(TypedDict, total=False):
     test_server: str
 
 
-# IPS Event Types  
+# IPS Event Types
 class UniFiIPSEvent(TypedDict, total=False):
     """UniFi IPS (Intrusion Prevention System) event."""
     _id: str
@@ -353,45 +353,24 @@ class UniFiGuestAuth(TypedDict, total=False):
     """UniFi guest authorization data."""
     mac: str
     minutes: int
-    up: Optional[int]
-    down: Optional[int]
-    bytes: Optional[int]
+    up: int | None
+    down: int | None
+    bytes: int | None
     ap_mac: str
 
 
 # JSON Value type for recursive structures
-JSONValue = Union[
-    None,
-    bool,
-    int,
-    float,
-    str,
-    List['JSONValue'],
-    dict[str, 'JSONValue']
-]
+JSONValue = None | bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"]
 
 # Union types for API responses
-UniFiData = Union[
-    List[UniFiDevice],
-    List[UniFiClient],
-    List[UniFiSite],
-    List[UniFiNetwork],
-    List[UniFiWLAN],
-    List[UniFiDPIStat],
-    List[UniFiEvent],
-    List[UniFiAlarm],
-    List[UniFiPortForward],
-    List[UniFiFirewallRule],
-    List[UniFiFirewallGroup],
-    List[UniFiStaticRoute],
-    List[UniFiSpeedTest],
-    List[UniFiIPSEvent],
-    List[UniFiRogueAP],
-    UniFiDashboard,
-    UniFiControllerStatus,
-    List[dict[str, JSONValue]],
-    dict[str, JSONValue]
-]
+UniFiData = (
+    list[UniFiDevice] | list[UniFiClient] | list[UniFiSite] | list[UniFiNetwork]
+    | list[UniFiWLAN] | list[UniFiDPIStat] | list[UniFiEvent] | list[UniFiAlarm]
+    | list[UniFiPortForward] | list[UniFiFirewallRule] | list[UniFiFirewallGroup]
+    | list[UniFiStaticRoute] | list[UniFiSpeedTest] | list[UniFiIPSEvent]
+    | list[UniFiRogueAP] | UniFiDashboard | UniFiControllerStatus
+    | list[dict[str, JSONValue]] | dict[str, JSONValue]
+)
 
 # Error response type
 class ErrorResponse(TypedDict):
@@ -403,4 +382,4 @@ class ErrorResponse(TypedDict):
 class CommandResponse(TypedDict, total=False):
     """Command response structure."""
     meta: UniFiMeta
-    data: List[dict[str, JSONValue]]
+    data: list[dict[str, JSONValue]]

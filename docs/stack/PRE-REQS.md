@@ -22,7 +22,7 @@ Required tools and versions before developing or deploying unifi-mcp.
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| pre-commit | latest | Pre-commit hooks (`uv sync --extra dev && uv run pre-commit install`) |
+| lefthook | latest | Git hooks (`npm install -g @evilmartians/lefthook && lefthook install`) |
 | curl | any | Manual testing |
 | jq | any | JSON formatting |
 

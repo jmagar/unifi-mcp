@@ -5,13 +5,14 @@ Handles all client management operations including listing, control, and configu
 """
 
 import logging
-from fastmcp.tools.tool import ToolResult
+
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
+from ..formatters import format_client_summary, format_clients_list
 from ..models.enums import UnifiAction
 from ..models.params import UnifiParams
-from ..formatters import format_client_summary, format_clients_list
+from .base import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class ClientService(BaseService):
                     formatted_clients.append({
                         "name": client_data.get("name", "Unknown"),
                         "mac": client_data.get("mac", ""),
-                        "error": f"Formatting error: {str(e)}"
+                        "error": f"Formatting error: {e!s}"
                     })
 
             summary_text = format_clients_list(
@@ -105,7 +106,7 @@ class ClientService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-            
+
             # MAC is required and validated by pydantic
             assert params.mac is not None, "MAC address required"
             result = await self.client.reconnect_client(params.mac, site_name)
@@ -128,7 +129,7 @@ class ClientService(BaseService):
         except Exception as e:
             logger.error(f"Error reconnecting client {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -168,7 +169,7 @@ class ClientService(BaseService):
         except Exception as e:
             logger.error(f"Error blocking client {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -208,7 +209,7 @@ class ClientService(BaseService):
         except Exception as e:
             logger.error(f"Error unblocking client {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -248,7 +249,7 @@ class ClientService(BaseService):
         except Exception as e:
             logger.error(f"Error forgetting client {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -313,7 +314,7 @@ class ClientService(BaseService):
         except Exception as e:
             logger.error(f"Error setting client name for {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )
 
@@ -378,6 +379,6 @@ class ClientService(BaseService):
         except Exception as e:
             logger.error(f"Error setting client note for {params.mac}: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={"error": str(e)}
             )

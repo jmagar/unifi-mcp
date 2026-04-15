@@ -101,7 +101,7 @@ When installed as a Claude Code plugin, these fields are presented to the user d
 | `unifi_username` | `UNIFI_USERNAME` | yes |
 | `unifi_password` | `UNIFI_PASSWORD` | yes |
 
-The `sync-env.sh` hook copies userConfig values into `.env` at session start.
+userConfig values must be set manually in `.env`.
 
 ## See Also
 

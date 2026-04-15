@@ -6,19 +6,18 @@ in-memory Client for zero-network-call testing. Mocks the UnifiControllerClient
 at the service layer to isolate the MCP tool logic.
 """
 
-import pytest
-import pytest_asyncio  # noqa: F401 – needed for @pytest_asyncio.fixture
-from unittest.mock import AsyncMock, patch
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
-from fastmcp import FastMCP, Client
+import pytest
+import pytest_asyncio
+from fastmcp import Client, FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from unifi_mcp.config import UniFiConfig, ServerConfig
 from unifi_mcp.client import UnifiControllerClient
+from unifi_mcp.config import ServerConfig, UniFiConfig
 from unifi_mcp.server import UniFiMCPServer
-
 
 # ---------------------------------------------------------------------------
 # Shared mock data
@@ -285,11 +284,11 @@ def _build_mock_client() -> AsyncMock:
                 return MOCK_CMD_RESPONSE
             return MOCK_CMD_RESPONSE
 
-        # set_client_name / set_client_note – user list lookup
+        # set_client_name / set_client_note - user list lookup
         if method == "GET" and path == "/list/user":
             return MOCK_USERS_LIST
 
-        # set_client_name / set_client_note – update call
+        # set_client_name / set_client_note - update call
         if method == "POST" and path.startswith("/upd/user/"):
             return MOCK_CMD_RESPONSE
 
@@ -401,9 +400,7 @@ def _is_error(result: ToolResult) -> bool:
         return True
     # Pydantic/service errors are captured as structured_content{"error": ...}
     sc = result.structured_content
-    if isinstance(sc, dict) and "error" in sc:
-        return True
-    return False
+    return bool(isinstance(sc, dict) and "error" in sc)
 
 
 def _data(result: ToolResult) -> Any:
@@ -497,30 +494,22 @@ class TestDeviceActions:
     @pytest.mark.asyncio
     async def test_get_devices_with_custom_site(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_devices", "site_name": "office"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_devices", "site_name": "office"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
     async def test_get_device_by_mac_found(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "aa:bb:cc:dd:ee:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "aa:bb:cc:dd:ee:01"})
         assert not _is_error(result)
         assert isinstance(result.structured_content, dict)
         assert result.structured_content.get("name") == "Core Switch"
 
     @pytest.mark.asyncio
-    async def test_get_device_by_mac_normalizes_format(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_get_device_by_mac_normalizes_format(self, mcp_server: FastMCP) -> None:
         """MAC in uppercase dash format should still match."""
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "AA-BB-CC-DD-EE-01"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "AA-BB-CC-DD-EE-01"})
         assert not _is_error(result)
         assert isinstance(result.structured_content, dict)
         assert result.structured_content.get("name") == "Core Switch"
@@ -528,17 +517,13 @@ class TestDeviceActions:
     @pytest.mark.asyncio
     async def test_get_device_by_mac_not_found(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "ff:ff:ff:ff:ff:ff"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "ff:ff:ff:ff:ff:ff"})
         assert _is_error(result)
 
     @pytest.mark.asyncio
     async def test_restart_device_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "restart_device", "mac": "aa:bb:cc:dd:ee:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "restart_device", "mac": "aa:bb:cc:dd:ee:01"})
         assert not _is_error(result)
         sc = result.structured_content
         assert isinstance(sc, dict)
@@ -547,9 +532,7 @@ class TestDeviceActions:
     @pytest.mark.asyncio
     async def test_locate_device_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "locate_device", "mac": "aa:bb:cc:dd:ee:02"}
-            )
+            result = await client.call_tool("unifi", {"action": "locate_device", "mac": "aa:bb:cc:dd:ee:02"})
         assert not _is_error(result)
         sc = result.structured_content
         assert isinstance(sc, dict)
@@ -580,9 +563,7 @@ class TestClientActions:
         assert isinstance(_data(result), list)
 
     @pytest.mark.asyncio
-    async def test_get_clients_connected_only_default(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_get_clients_connected_only_default(self, mcp_server: FastMCP) -> None:
         """By default connected_only=True; both mock clients are online."""
         async with Client(mcp_server) as client:
             result = await client.call_tool("unifi", {"action": "get_clients"})
@@ -593,21 +574,15 @@ class TestClientActions:
         assert len(clients) == 2
 
     @pytest.mark.asyncio
-    async def test_get_clients_with_connected_only_false(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_get_clients_with_connected_only_false(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_clients", "connected_only": False}
-            )
+            result = await client.call_tool("unifi", {"action": "get_clients", "connected_only": False})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
     async def test_block_client_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "block_client", "mac": "cc:dd:ee:ff:00:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "block_client", "mac": "cc:dd:ee:ff:00:01"})
         assert not _is_error(result)
         sc = result.structured_content
         assert isinstance(sc, dict)
@@ -616,9 +591,7 @@ class TestClientActions:
     @pytest.mark.asyncio
     async def test_unblock_client_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "unblock_client", "mac": "cc:dd:ee:ff:00:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "unblock_client", "mac": "cc:dd:ee:ff:00:01"})
         assert not _is_error(result)
         sc = result.structured_content
         assert isinstance(sc, dict)
@@ -627,17 +600,13 @@ class TestClientActions:
     @pytest.mark.asyncio
     async def test_forget_client_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "forget_client", "mac": "cc:dd:ee:ff:00:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "forget_client", "mac": "cc:dd:ee:ff:00:01"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
     async def test_reconnect_client_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "reconnect_client", "mac": "cc:dd:ee:ff:00:02"}
-            )
+            result = await client.call_tool("unifi", {"action": "reconnect_client", "mac": "cc:dd:ee:ff:00:02"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
@@ -734,9 +703,7 @@ class TestNetworkActions:
     @pytest.mark.asyncio
     async def test_get_port_forwarding_rules_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_port_forwarding_rules"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_port_forwarding_rules"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
@@ -769,9 +736,7 @@ class TestMonitoringActions:
     @pytest.mark.asyncio
     async def test_get_controller_status_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_controller_status"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_controller_status"})
         assert not _is_error(result)
         assert result.content
 
@@ -784,9 +749,7 @@ class TestMonitoringActions:
     @pytest.mark.asyncio
     async def test_get_events_with_limit(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_events", "limit": 10}
-            )
+            result = await client.call_tool("unifi", {"action": "get_events", "limit": 10})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
@@ -798,9 +761,7 @@ class TestMonitoringActions:
     @pytest.mark.asyncio
     async def test_get_alarms_active_only(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_alarms", "active_only": True}
-            )
+            result = await client.call_tool("unifi", {"action": "get_alarms", "active_only": True})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
@@ -812,9 +773,7 @@ class TestMonitoringActions:
     @pytest.mark.asyncio
     async def test_get_dpi_stats_by_cat(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_dpi_stats", "by_filter": "by_cat"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_dpi_stats", "by_filter": "by_cat"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
@@ -826,9 +785,7 @@ class TestMonitoringActions:
     @pytest.mark.asyncio
     async def test_get_speedtest_results_success(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_speedtest_results"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_speedtest_results"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
@@ -846,9 +803,7 @@ class TestMonitoringActions:
     @pytest.mark.asyncio
     async def test_start_spectrum_scan_with_mac(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "start_spectrum_scan", "mac": "aa:bb:cc:dd:ee:02"}
-            )
+            result = await client.call_tool("unifi", {"action": "start_spectrum_scan", "mac": "aa:bb:cc:dd:ee:02"})
         # Should not crash (may succeed or return API error)
         assert result.content
 
@@ -893,18 +848,12 @@ class TestErrorHandling:
     """Tests for graceful error handling in the unified tool."""
 
     @pytest.mark.asyncio
-    async def test_api_failure_returns_error_result(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    async def test_api_failure_returns_error_result(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         """When the API client raises an exception the tool returns an error ToolResult."""
         failing_client = _build_mock_client()
-        failing_client.get_devices = AsyncMock(
-            side_effect=Exception("Connection refused")
-        )
+        failing_client.get_devices = AsyncMock(side_effect=Exception("Connection refused"))
 
-        with patch(
-            "unifi_mcp.server.UnifiControllerClient", return_value=failing_client
-        ):
+        with patch("unifi_mcp.server.UnifiControllerClient", return_value=failing_client):
             server = UniFiMCPServer(unifi_config, server_config)
             await server.initialize()
             try:
@@ -915,9 +864,7 @@ class TestErrorHandling:
                 await server.cleanup()
 
     @pytest.mark.asyncio
-    async def test_empty_device_list_handled(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    async def test_empty_device_list_handled(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         empty_client = _build_mock_client()
         empty_client.get_devices = AsyncMock(return_value=[])
 
@@ -935,9 +882,7 @@ class TestErrorHandling:
                 await server.cleanup()
 
     @pytest.mark.asyncio
-    async def test_api_error_dict_returned_as_error(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    async def test_api_error_dict_returned_as_error(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         """When the API client returns an error dict the tool returns an error."""
         error_client = _build_mock_client()
         error_client.get_clients = AsyncMock(return_value={"error": "Unauthorized"})
@@ -956,9 +901,7 @@ class TestErrorHandling:
     async def test_invalid_mac_format_returns_error(self, mcp_server: FastMCP) -> None:
         """A badly-formatted MAC should produce an error, not a crash."""
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "not-a-mac"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "not-a-mac"})
         assert result.content  # Should return something (error or not-found)
 
     @pytest.mark.asyncio
@@ -975,14 +918,10 @@ class TestErrorHandling:
             for args in actions_to_test:
                 result = await client.call_tool("unifi", args)
                 assert len(result.content) > 0, f"No content for {args}"
-                assert isinstance(result.content[0], TextContent), (
-                    f"Expected TextContent for {args}, got {type(result.content[0])}"
-                )
+                assert isinstance(result.content[0], TextContent), f"Expected TextContent for {args}, got {type(result.content[0])}"
 
     @pytest.mark.asyncio
-    async def test_structured_content_present_on_success(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_structured_content_present_on_success(self, mcp_server: FastMCP) -> None:
         """Successful responses should include structured_content."""
         async with Client(mcp_server) as client:
             result = await client.call_tool("unifi", {"action": "get_devices"})
@@ -990,9 +929,7 @@ class TestErrorHandling:
         assert result.structured_content is not None
 
     @pytest.mark.asyncio
-    async def test_invalid_action_lists_valid_actions(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_invalid_action_lists_valid_actions(self, mcp_server: FastMCP) -> None:
         """The error message for an invalid action should list valid options."""
         async with Client(mcp_server) as client:
             result = await client.call_tool("unifi", {"action": "does_not_exist"})
@@ -1019,9 +956,7 @@ class TestDataIntegrity:
             assert "mac" in device
 
     @pytest.mark.asyncio
-    async def test_device_summary_type_is_human_readable(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_device_summary_type_is_human_readable(self, mcp_server: FastMCP) -> None:
         """Device type should be formatted as human-readable (e.g. 'Switch', not 'usw')."""
         async with Client(mcp_server) as client:
             result = await client.call_tool("unifi", {"action": "get_devices"})
@@ -1030,26 +965,18 @@ class TestDataIntegrity:
         switch = next(d for d in devices if "Core Switch" in d.get("name", ""))
         # The formatter should produce something human-readable (not the raw type code)
         device_type = switch.get("type", "")
-        assert device_type != "usw", (
-            "Expected human-readable type, got raw API code 'usw'"
-        )
+        assert device_type != "usw", "Expected human-readable type, got raw API code 'usw'"
 
     @pytest.mark.asyncio
-    async def test_get_clients_structured_content_is_list(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_get_clients_structured_content_is_list(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
             result = await client.call_tool("unifi", {"action": "get_clients"})
         assert isinstance(_data(result), list)
 
     @pytest.mark.asyncio
-    async def test_get_device_by_mac_structured_content_is_dict(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_get_device_by_mac_structured_content_is_dict(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "aa:bb:cc:dd:ee:02"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "aa:bb:cc:dd:ee:02"})
         assert not _is_error(result)
         assert isinstance(result.structured_content, dict)
         assert result.structured_content.get("name") == "Bedroom AP"
@@ -1057,22 +984,16 @@ class TestDataIntegrity:
     @pytest.mark.asyncio
     async def test_restart_device_response_shape(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "restart_device", "mac": "aa:bb:cc:dd:ee:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "restart_device", "mac": "aa:bb:cc:dd:ee:01"})
         sc = result.structured_content
         assert isinstance(sc, dict)
         assert "success" in sc
         assert sc["success"] is True
 
     @pytest.mark.asyncio
-    async def test_block_client_response_includes_mac(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_block_client_response_includes_mac(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "block_client", "mac": "cc:dd:ee:ff:00:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "block_client", "mac": "cc:dd:ee:ff:00:01"})
         sc = result.structured_content
         assert isinstance(sc, dict)
         assert "mac" in sc
@@ -1091,35 +1012,25 @@ class TestMacNormalisation:
     @pytest.mark.asyncio
     async def test_uppercase_mac_resolves_device(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "AA:BB:CC:DD:EE:02"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "AA:BB:CC:DD:EE:02"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
-    async def test_dash_separated_mac_resolves_device(
-        self, mcp_server: FastMCP
-    ) -> None:
+    async def test_dash_separated_mac_resolves_device(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "aa-bb-cc-dd-ee-02"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "aa-bb-cc-dd-ee-02"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
     async def test_dot_separated_mac_resolves_device(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "get_device_by_mac", "mac": "aa.bb.cc.dd.ee.02"}
-            )
+            result = await client.call_tool("unifi", {"action": "get_device_by_mac", "mac": "aa.bb.cc.dd.ee.02"})
         assert not _is_error(result)
 
     @pytest.mark.asyncio
     async def test_mixed_case_mac_resolves_client(self, mcp_server: FastMCP) -> None:
         async with Client(mcp_server) as client:
-            result = await client.call_tool(
-                "unifi", {"action": "block_client", "mac": "CC:DD:EE:FF:00:01"}
-            )
+            result = await client.call_tool("unifi", {"action": "block_client", "mac": "CC:DD:EE:FF:00:01"})
         assert not _is_error(result)
 
 
@@ -1131,39 +1042,28 @@ class TestMacNormalisation:
 class TestServerLifecycle:
     """Tests covering server initialization and teardown."""
 
-    def test_server_creates_fastmcp_instance(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    def test_server_creates_fastmcp_instance(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         mock_client = _build_mock_client()
         with patch("unifi_mcp.server.UnifiControllerClient", return_value=mock_client):
             server = UniFiMCPServer(unifi_config, server_config)
         assert isinstance(server.mcp, FastMCP)
 
-    def test_server_name(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    def test_server_name(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         mock_client = _build_mock_client()
         with patch("unifi_mcp.server.UnifiControllerClient", return_value=mock_client):
             server = UniFiMCPServer(unifi_config, server_config)
         assert "UniFi" in server.mcp.name
 
-    def test_auth_disabled_by_default(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    def test_auth_disabled_by_default(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         import os
 
         mock_client = _build_mock_client()
-        with patch.dict(os.environ, {}, clear=True):
-            with patch(
-                "unifi_mcp.server.UnifiControllerClient", return_value=mock_client
-            ):
-                server = UniFiMCPServer(unifi_config, server_config)
+        with patch.dict(os.environ, {}, clear=True), patch("unifi_mcp.server.UnifiControllerClient", return_value=mock_client):
+            server = UniFiMCPServer(unifi_config, server_config)
         assert server._auth_enabled is False
 
     @pytest.mark.asyncio
-    async def test_server_initializes_and_registers_tool(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    async def test_server_initializes_and_registers_tool(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         mock_client = _build_mock_client()
         with patch("unifi_mcp.server.UnifiControllerClient", return_value=mock_client):
             server = UniFiMCPServer(unifi_config, server_config)
@@ -1176,9 +1076,7 @@ class TestServerLifecycle:
                 await server.cleanup()
 
     @pytest.mark.asyncio
-    async def test_cleanup_disconnects_client(
-        self, unifi_config: UniFiConfig, server_config: ServerConfig
-    ) -> None:
+    async def test_cleanup_disconnects_client(self, unifi_config: UniFiConfig, server_config: ServerConfig) -> None:
         mock_client = _build_mock_client()
         with patch("unifi_mcp.server.UnifiControllerClient", return_value=mock_client):
             server = UniFiMCPServer(unifi_config, server_config)

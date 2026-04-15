@@ -5,23 +5,17 @@ Routes actions to appropriate domain services and handles authentication.
 """
 
 import logging
-from fastmcp.tools.tool import ToolResult
+
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
-from .device_service import DeviceService
-from .client_service import ClientService
-from .network_service import NetworkService
-from .monitoring_service import MonitoringService
 from ..client import UnifiControllerClient
-from ..models.enums import (
-    UnifiAction,
-    DEVICE_ACTIONS,
-    CLIENT_ACTIONS,
-    NETWORK_ACTIONS,
-    MONITORING_ACTIONS,
-    AUTH_ACTIONS
-)
+from ..models.enums import AUTH_ACTIONS, CLIENT_ACTIONS, DEVICE_ACTIONS, MONITORING_ACTIONS, NETWORK_ACTIONS, UnifiAction
 from ..models.params import UnifiParams
+from .client_service import ClientService
+from .device_service import DeviceService
+from .monitoring_service import MonitoringService
+from .network_service import NetworkService
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +95,9 @@ class UnifiService:
         """
         try:
             # Import here to avoid issues if not using authentication
-            from fastmcp.server.dependencies import get_access_token
             from datetime import datetime, timezone
+
+            from fastmcp.server.dependencies import get_access_token
 
             def _to_iso(ts):
                 try:
@@ -113,13 +108,13 @@ class UnifiService:
             token = get_access_token()
             # If get_access_token becomes async in future versions:
             # token = await get_access_token()
-            
+
             if token is None:
                 return ToolResult(
                     content=[TextContent(type="text", text="Error: Not authenticated")],
                     structured_content={"authenticated": False, "error": "No authentication token found"}
                 )
-            
+
             # The GoogleProvider stores user data in token claims
             user_info = {
                 "google_id": token.claims.get("sub"),
@@ -142,9 +137,9 @@ class UnifiService:
         except Exception as e:
             logger.error(f"Error getting user info: {e}")
             return ToolResult(
-                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                content=[TextContent(type="text", text=f"Error: {e!s}")],
                 structured_content={
-                    "error": f"Failed to get user info: {str(e)}",
+                    "error": f"Failed to get user info: {e!s}",
                     "authenticated": False
                 }
             )

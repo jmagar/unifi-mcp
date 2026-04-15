@@ -896,7 +896,7 @@ def format_generic_list(items: list[dict[str, Any]], resource_type: str, key_fie
 def format_data_values(data: Any) -> Any:
     """Recursively format data values for human consumption."""
     if isinstance(data, dict):
-        formatted: Dict[str, Any] = {}
+        formatted: dict[str, Any] = {}
         for key, value in data.items():
             # Handle byte values
             if key.endswith(("_bytes", "-bytes", "bytes")):

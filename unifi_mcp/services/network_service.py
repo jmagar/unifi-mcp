@@ -5,24 +5,25 @@ Handles all network configuration operations including sites, WLANs, networks,
 port configurations, and security settings.
 """
 
-from typing import cast, Dict, Any
 import logging
-from fastmcp.tools.tool import ToolResult
+from typing import Any, cast
+
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
-from ..models.enums import UnifiAction
-from ..models.params import UnifiParams
 from ..formatters import (
-    format_site_summary,
-    format_sites_list,
-    format_wlans_list,
+    format_firewall_groups_list,
+    format_firewall_rules_list,
     format_networks_list,
     format_port_forwarding_list,
-    format_firewall_rules_list,
-    format_firewall_groups_list,
+    format_site_summary,
+    format_sites_list,
     format_static_routes_list,
+    format_wlans_list,
 )
+from ..models.enums import UnifiAction
+from ..models.params import UnifiParams
+from .base import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class NetworkService(BaseService):
                     formatted_sites.append({
                         "name": site.get("name", "Unknown"),
                         "description": site.get("desc", "Unknown"),
-                        "error": f"Formatting error: {str(e)}"
+                        "error": f"Formatting error: {e!s}"
                     })
 
             summary_text = format_sites_list(sites)
@@ -115,17 +116,17 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(wlans, params.action)
             if error_result:
                 return error_result
-                
+
                 # Type narrowing: after check_list_response, we know it's a list
                 assert isinstance(wlans, list), "Expected list response"
-            
+
             # Type narrowing: after check_list_response, we know it's a list
             assert isinstance(wlans, list), "Expected list of WLANs"
 
             # Format WLAN configs for clean output
             formatted_wlans = []
             for wlan in wlans:
-                wlan = cast(Dict[str, Any], wlan)
+                wlan = cast("dict[str, Any]", wlan)
                 formatted_wlan = {
                     "name": wlan.get("name", "Unknown WLAN"),
                     # SSID is typically under 'ssid' (fallback to profile 'name')
@@ -164,14 +165,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(networks, params.action)
             if error_result:
                 return error_result
-                
+
                 # Type narrowing: after check_list_response, we know it's a list
                 assert isinstance(networks, list), "Expected list response"
 
             # Format network configs for clean output
             formatted_networks = []
             for network in networks:
-                network = cast(Dict[str, Any], network)
+                network = cast("dict[str, Any]", network)
                 formatted_network = {
                     "name": network.get("name", "Unknown Network"),
                     "purpose": network.get("purpose", "Unknown"),
@@ -187,7 +188,7 @@ class NetworkService(BaseService):
                 }
                 formatted_networks.append(formatted_network)
 
-            summary_text = format_networks_list(cast(list[Dict[str, Any]], networks))
+            summary_text = format_networks_list(cast("list[dict[str, Any]]", networks))
             return self.create_success_result(
                 text=summary_text,
                 data=formatted_networks,
@@ -210,14 +211,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(ports, params.action)
             if error_result:
                 return error_result
-                
+
                 # Type narrowing: after check_list_response, we know it's a list
                 assert isinstance(ports, list), "Expected list response"
 
             # Format port configs for clean output
             formatted_ports = []
             for port in ports:
-                port = cast(Dict[str, Any], port)
+                port = cast("dict[str, Any]", port)
                 formatted_port = {
                     "name": port.get("name", "Unknown Port Profile"),
                     "enabled": port.get("enabled", False),
@@ -268,14 +269,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(rules, params.action)
             if error_result:
                 return error_result
-                
+
                 # Type narrowing: after check_list_response, we know it's a list
                 assert isinstance(rules, list), "Expected list response"
 
             # Format port forwarding rules for clean output
             formatted_rules = []
             for rule in rules:
-                rule = cast(Dict[str, Any], rule)
+                rule = cast("dict[str, Any]", rule)
                 formatted_rule = {
                     "name": rule.get("name", "Unknown Rule"),
                     "enabled": rule.get("enabled", False),
@@ -312,7 +313,8 @@ class NetworkService(BaseService):
                 return self.create_error_result(rules.get('error','unknown error'), rules)
 
             if not isinstance(rules, list):
-                return self.create_error_result(f"Unexpected response format: {type(rules).__name__}", {"error": f"Unexpected response format: {type(rules).__name__}", "data": rules})
+                msg = f"Unexpected response format: {type(rules).__name__}"
+                return self.create_error_result(msg, {"error": msg, "data": rules})
 
             # Add debug info if no rules found
             if not rules:
@@ -325,7 +327,7 @@ class NetworkService(BaseService):
             # Format firewall rules for clean output
             formatted_rules = []
             for rule in rules:
-                rule = cast(Dict[str, Any], rule)
+                rule = cast("dict[str, Any]", rule)
                 formatted_rule = {
                     "name": rule.get("name", "Unnamed Rule"),
                     "enabled": rule.get("enabled", False),
@@ -366,14 +368,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(groups, params.action)
             if error_result:
                 return error_result
-                
+
                 # Type narrowing: after check_list_response, we know it's a list
                 assert isinstance(groups, list), "Expected list response"
 
             # Format firewall groups for clean output
             formatted_groups = []
             for group in groups:
-                group = cast(Dict[str, Any], group)
+                group = cast("dict[str, Any]", group)
                 formatted_group = {
                     "name": group.get("name", "Unnamed Group"),
                     "group_type": group.get("group_type", "unknown"),
@@ -406,14 +408,14 @@ class NetworkService(BaseService):
             error_result = self.check_list_response(routes, params.action)
             if error_result:
                 return error_result
-                
+
                 # Type narrowing: after check_list_response, we know it's a list
                 assert isinstance(routes, list), "Expected list response"
 
             # Format static routes for clean output
             formatted_routes = []
             for route in routes:
-                route = cast(Dict[str, Any], route)
+                route = cast("dict[str, Any]", route)
                 formatted_route = {
                     "name": route.get("name", "Unnamed Route"),
                     "enabled": route.get("enabled", False),

@@ -1,20 +1,12 @@
 {
-  "description": "Sync userConfig credentials to .env and enforce permissions",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
-          {"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/sync-env.sh", "timeout": 10},
-          {"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/ensure-ignore-files.sh", "timeout": 5}
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit|MultiEdit|Bash",
-        "hooks": [
-          {"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/fix-env-perms.sh", "timeout": 5},
-          {"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/ensure-ignore-files.sh", "timeout": 5}
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/sync-uv.sh"
+          }
         ]
       }
     ]

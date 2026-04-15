@@ -24,13 +24,7 @@ Defined in `.claude-plugin/plugin.json`:
 
 ## Environment Sync
 
-The `sync-env.sh` hook runs at `SessionStart` and copies userConfig values into `.env`:
-
-1. Reads userConfig values from the plugin framework
-2. Writes them to `.env` in the project root
-3. Ensures `.env` has `chmod 600` permissions
-
-This means users configure credentials once through the plugin UI and they are available to the server process.
+userConfig values must be set manually in `.env`. The plugin framework stores sensitive values encrypted; copy them into `.env` using `.env.example` as a template and ensure permissions with `chmod 600 .env`.
 
 ## Codex Settings
 

@@ -9,7 +9,6 @@ Safety and security patterns enforced across unifi-mcp.
 - Credentials live in `.env` (project root or `~/.claude-homelab/.env`)
 - `.env` is gitignored and dockerignored
 - File permissions: `chmod 600 .env`
-- The `fix-env-perms.sh` hook automatically enforces permissions after file writes
 
 ### Environment Variables
 
@@ -25,7 +24,7 @@ Sensitive fields in `plugin.json` are marked `"sensitive": true`:
 - `unifi_username`
 - `unifi_password`
 
-The `sync-env.sh` hook copies these into `.env` at session start. Values are stored encrypted by the plugin framework.
+Values are stored encrypted by the plugin framework and must be set manually in `.env`.
 
 ## Docker Security
 
@@ -41,14 +40,6 @@ The `sync-env.sh` hook copies these into `.env` at session start. Values are sto
 - `env_file: ~/.claude-homelab/.env` — no `environment:` block to prevent env baking
 - Memory limit: 1024 MB
 - CPU limit: 1.0
-
-### Security Scripts
-
-| Script | Purpose |
-|--------|---------|
-| `scripts/check-docker-security.sh` | Validates Dockerfile: non-root, no COPY .env, no ARG secrets |
-| `scripts/check-no-baked-env.sh` | Ensures no env vars are baked into Docker images |
-| `scripts/ensure-ignore-files.sh` | Validates .gitignore and .dockerignore contain required patterns |
 
 ## Authentication
 

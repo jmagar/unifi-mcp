@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-04-15
+
+### Changed
+- Repository maintenance updates committed from the current working tree.
+- Version-bearing manifests synchronized to 1.0.4.
+
+
 ### Security
 - **CRITICAL**: Updated fastmcp from 2.12.0 to >=2.13.0 to fix Confused Deputy Account Takeover vulnerability
 - Added MAC address format validation with regex to prevent malformed input

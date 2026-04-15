@@ -5,14 +5,15 @@ Handles all device management operations including listing, control, and monitor
 """
 
 import logging
-from typing import cast, Dict, Any
-from fastmcp.tools.tool import ToolResult
+from typing import Any, cast
+
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
-from .base import BaseService
+from ..formatters import format_device_summary, format_devices_list
 from ..models.enums import UnifiAction
 from ..models.params import UnifiParams
-from ..formatters import format_device_summary, format_devices_list
+from .base import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +65,14 @@ class DeviceService(BaseService):
             error_result = self.check_list_response(devices, params.action)
             if error_result:
                 return error_result
-            
+
             # Type narrowing: after check_list_response, we know it's a list
             assert isinstance(devices, list), "Expected list of devices"
 
             # Format each device for clean output
             formatted_devices = []
             for device in devices:
-                device = cast(Dict[str, Any], device)
+                device = cast("dict[str, Any]", device)
                 try:
                     formatted_device = format_device_summary(device)
                     formatted_devices.append(formatted_device)
@@ -79,7 +80,7 @@ class DeviceService(BaseService):
                     logger.error(f"Error formatting device {device.get('name', 'Unknown')}: {e}")
                     formatted_devices.append({
                         "name": device.get("name", "Unknown"),
-                        "error": f"Formatting error: {str(e)}"
+                        "error": f"Formatting error: {e!s}"
                     })
 
             # Token-efficient human summary
@@ -110,14 +111,14 @@ class DeviceService(BaseService):
 
             # Type narrowing: after check_list_response, we know it's a list
             assert isinstance(devices, list), "Expected list of devices"
-            
+
             # Normalize MAC address for comparison (validated by pydantic)
             assert params.mac is not None, "MAC address required for this action"
             normalized_mac = self.normalize_mac(params.mac)
 
             # Find matching device
             for device in devices:
-                device = cast(Dict[str, Any], device)
+                device = cast("dict[str, Any]", device)
                 device_mac = self.normalize_mac(device.get("mac", ""))
                 if device_mac == normalized_mac:
                     formatted = format_device_summary(device)
@@ -143,7 +144,7 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-            
+
             # MAC is required and validated by pydantic
             assert params.mac is not None, "MAC address required for restart_device"
             result = await self.client.restart_device(params.mac, site_name)
@@ -172,7 +173,7 @@ class DeviceService(BaseService):
         try:
             defaults = params.get_action_defaults()
             site_name = defaults.get('site_name', 'default')
-            
+
             # MAC is required and validated by pydantic
             assert params.mac is not None, "MAC address required for locate_device"
             result = await self.client.locate_device(params.mac, site_name)

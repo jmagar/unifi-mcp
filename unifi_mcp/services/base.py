@@ -6,15 +6,17 @@ Provides shared functionality and common patterns for all domain services.
 
 import logging
 import re
-from abc import ABC
-from typing import Optional, Callable, Union, cast
-from fastmcp.tools.tool import ToolResult
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import cast
+
+from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
 
 from ..client import UnifiControllerClient
 from ..models.enums import UnifiAction
 from ..models.params import UnifiParams
-from ..types import JSONValue, ErrorResponse, UniFiData
+from ..types import ErrorResponse, JSONValue, UniFiData
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +48,21 @@ class BaseService(ABC):
 
         Returns:
             Normalized MAC address in xx:xx:xx:xx:xx:xx format
-            
+
         Raises:
             ValueError: If the MAC address format is invalid
         """
         # Normalize to colon-separated format
         normalized = mac.strip().lower().replace("-", ":").replace(".", ":")
-        
+
         # Validate MAC address format (6 groups of 2 hex digits)
-        if not re.match(r'^([0-9a-f]{2}:){5}[0-9a-f]{2}$', normalized):
+        if not re.match(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$", normalized):
             raise ValueError(f"Invalid MAC address format: {mac}")
-        
+
         return normalized
 
     @staticmethod
-    def create_error_result(message: str, raw_data: Optional[Union[UniFiData, ErrorResponse, dict[str, JSONValue]]] = None) -> ToolResult:
+    def create_error_result(message: str, raw_data: UniFiData | ErrorResponse | dict[str, JSONValue] | None = None) -> ToolResult:
         """Create standardized error ToolResult.
 
         Args:
@@ -70,16 +72,11 @@ class BaseService(ABC):
         Returns:
             ToolResult with error information
         """
-        return ToolResult(
-            content=[TextContent(type="text", text=f"Error: {message}")],
-            structured_content={"error": message, "raw": raw_data}
-        )
+        return ToolResult(content=[TextContent(type="text", text=f"Error: {message}")], structured_content={"error": message, "raw": raw_data})
 
     @staticmethod
     def create_success_result(
-        text: str,
-        data: Union[UniFiData, dict[str, JSONValue], list[dict[str, JSONValue]], JSONValue],
-        success_message: Optional[str] = None
+        text: str, data: UniFiData | dict[str, JSONValue] | list[dict[str, JSONValue]] | JSONValue, success_message: str | None = None
     ) -> ToolResult:
         """Create standardized success ToolResult.
 
@@ -91,24 +88,17 @@ class BaseService(ABC):
         Returns:
             ToolResult with success information
         """
-        structured_content: Union[dict[str, JSONValue], UniFiData, list[dict[str, JSONValue]], JSONValue] = data
+        structured_content: dict[str, JSONValue] | UniFiData | list[dict[str, JSONValue]] | JSONValue = data
         if success_message and isinstance(data, dict):
             # Build dict with update() to avoid TypedDict unpacking issues
-            structured_content = cast(dict[str, JSONValue], {"success": True, "message": success_message})
-            structured_content.update(cast(dict[str, JSONValue], data))
+            structured_content = cast("dict[str, JSONValue]", {"success": True, "message": success_message})
+            structured_content.update(cast("dict[str, JSONValue]", data))
         elif success_message:
-            structured_content = {
-                "success": True,
-                "message": success_message,
-                "data": cast(JSONValue, data)
-            }
+            structured_content = {"success": True, "message": success_message, "data": cast("JSONValue", data)}
 
-        return ToolResult(
-            content=[TextContent(type="text", text=text)],
-            structured_content=structured_content
-        )
+        return ToolResult(content=[TextContent(type="text", text=text)], structured_content=structured_content)
 
-    def validate_response(self, response: Union[UniFiData, ErrorResponse, dict[str, JSONValue]], action: UnifiAction) -> tuple[bool, str]:
+    def validate_response(self, response: UniFiData | ErrorResponse | dict[str, JSONValue], action: UnifiAction) -> tuple[bool, str]:
         """Validate API response for common error patterns.
 
         Args:
@@ -133,7 +123,7 @@ class BaseService(ABC):
 
         return True, ""
 
-    def check_list_response(self, response: Union[UniFiData, ErrorResponse, dict[str, JSONValue]], action: UnifiAction) -> Optional[ToolResult]:
+    def check_list_response(self, response: UniFiData | ErrorResponse | dict[str, JSONValue], action: UnifiAction) -> ToolResult | None:
         """Check if response is a valid list and handle common error cases.
 
         Args:
@@ -157,10 +147,10 @@ class BaseService(ABC):
 
     def format_action_result(
         self,
-        response: Union[UniFiData, ErrorResponse, dict[str, JSONValue]],
+        response: UniFiData | ErrorResponse | dict[str, JSONValue],
         action: UnifiAction,
-        formatter_func: Optional[Callable[[Union[UniFiData, dict[str, JSONValue]]], Union[dict[str, JSONValue], list[dict[str, JSONValue]], str]]] = None,
-        success_text: Optional[str] = None
+        formatter_func: Callable[[UniFiData | dict[str, JSONValue]], dict[str, JSONValue] | list[dict[str, JSONValue]] | str] | None = None,
+        success_text: str | None = None,
     ) -> ToolResult:
         """Format action result with consistent error handling.
 
@@ -181,21 +171,22 @@ class BaseService(ABC):
         # Format response if formatter provided
         if formatter_func:
             try:
-                formatted_data = formatter_func(cast(Union[UniFiData, dict[str, JSONValue]], response))
+                formatted_data = formatter_func(cast("UniFiData | dict[str, JSONValue]", response))
                 text = success_text or f"{action.value} completed successfully"
                 return self.create_success_result(text, formatted_data)
             except Exception as e:
                 logger.error(f"Error formatting response for {action.value}: {e}")
-                return self.create_error_result(f"Formatting error: {str(e)}", response)
+                return self.create_error_result(f"Formatting error: {e!s}", response)
 
         # Return raw response if no formatter
         text = success_text or f"{action.value} completed"
-        return self.create_success_result(text, cast(Union[UniFiData, dict[str, JSONValue], list[dict[str, JSONValue]], JSONValue], response))
+        return self.create_success_result(text, cast("UniFiData | dict[str, JSONValue] | list[dict[str, JSONValue]] | JSONValue", response))
 
+    @abstractmethod
     async def execute_action(self, params: UnifiParams) -> ToolResult:
         """Execute the specified action with the given parameters.
 
-        This is the main entry point that subclasses should override
+        This is the main entry point that subclasses must override
         to implement their specific action routing.
 
         Args:
@@ -204,6 +195,3 @@ class BaseService(ABC):
         Returns:
             ToolResult with action response
         """
-        return self.create_error_result(
-            f"Action {params.action} not implemented in {self.__class__.__name__}"
-        )
